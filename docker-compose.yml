@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  neoarchive:
+    build: .
+    container_name: neoarchive_app
+    ports:
+      - "3002:3002"
+    volumes:
+      # Persist the database file
+      - ./data:/app/data
+      # Try to mount .env but don't fail hard if missing (managed via env_file mostly)
+      - ./.env:/app/.env
+    env_file:
+      - .env
+    environment:
+      - PORT=3002
+      - HOST=0.0.0.0
+      # Pass variables with empty defaults to allow container start even if host env is missing them
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+    restart: unless-stopped
