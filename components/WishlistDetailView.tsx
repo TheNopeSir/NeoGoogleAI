@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
-import { ArrowLeft, Trash2, Search, Target, AlertCircle, Sparkles } from 'lucide-react';
-import { WishlistItem, UserProfile, Exhibit } from '../types';
+import React from 'react';
+import { ArrowLeft, Trash2, Search, Target, AlertCircle } from 'lucide-react';
+import { WishlistItem } from '../types';
 import { WISHLIST_PRIORITY_CONFIG } from '../constants';
-import { getUserAvatar, getFullDatabase } from '../services/storageService';
-import TradeOfferModal from './TradeOfferModal';
+import { getUserAvatar } from '../services/storageService';
 
 interface WishlistDetailViewProps {
     item: WishlistItem;
@@ -13,37 +12,18 @@ interface WishlistDetailViewProps {
     onDelete?: (id: string) => void;
     onAuthorClick: (username: string) => void;
     currentUser: string;
-    userInventory?: Exhibit[]; // Needed for trade
 }
 
 const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({ 
-    item, theme, onBack, onDelete, onAuthorClick, currentUser, userInventory = [] 
+    item, theme, onBack, onDelete, onAuthorClick, currentUser 
 }) => {
     const priorityConfig = WISHLIST_PRIORITY_CONFIG[item.priority];
     const isOwner = currentUser === item.owner;
     const isXP = theme === 'xp';
     const isWinamp = theme === 'winamp';
-    
-    const [showTradeModal, setShowTradeModal] = useState(false);
-    
-    // Retrieve full recipient profile for the trade modal
-    const recipientProfile = getFullDatabase().users.find(u => u.username === item.owner) || { username: item.owner } as UserProfile;
-    const currentUserProfile = getFullDatabase().users.find(u => u.username === currentUser) || { username: currentUser } as UserProfile;
 
     return (
         <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
-            
-            {showTradeModal && (
-                <TradeOfferModal
-                    recipient={recipientProfile}
-                    currentUser={currentUserProfile}
-                    userInventory={userInventory}
-                    onClose={() => setShowTradeModal(false)}
-                    isWishlist={true}
-                    wishlistId={item.id}
-                />
-            )}
-
             <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={14} /> НАЗАД
@@ -111,16 +91,10 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                     </div>
                     
                     {!isOwner && (
-                        <div className="text-center pt-4 space-y-3">
-                            <p className="text-[10px] opacity-40 font-mono">Есть этот предмет?</p>
-                            <button 
-                                onClick={() => setShowTradeModal(true)} 
-                                className="w-full px-6 py-4 bg-green-600 text-white font-pixel text-xs font-bold rounded-xl hover:bg-green-500 transition-transform shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 uppercase tracking-widest"
-                            >
-                                <Sparkles size={16}/> Есть у меня! Предложить
-                            </button>
-                            <button onClick={() => onAuthorClick(item.owner)} className="text-[10px] font-bold text-purple-400 hover:underline uppercase">
-                                Написать сообщение
+                        <div className="text-center pt-2">
+                            <p className="text-[10px] opacity-40 font-mono mb-2">Есть этот предмет? Свяжитесь с автором.</p>
+                            <button onClick={() => onAuthorClick(item.owner)} className="px-6 py-2 bg-purple-500 text-white font-pixel text-[10px] font-bold rounded-full hover:scale-105 transition-transform">
+                                НАПИСАТЬ СООБЩЕНИЕ
                             </button>
                         </div>
                     )}

@@ -10,11 +10,12 @@ interface StorageMonitorProps {
 const StorageMonitor: React.FC<StorageMonitorProps> = ({ theme }) => {
     const [stats, setStats] = useState<{usage: number, quota: number, percentage: number} | null>(null);
 
+    // Fix: Explicitly handle StorageEstimate object and calculate percentage manually to match required state type
     useEffect(() => {
         getStorageEstimate().then((estimate) => {
-            if (estimate && typeof estimate.usage === 'number' && typeof estimate.quota === 'number') {
-                const usage = estimate.usage;
-                const quota = estimate.quota;
+            if (estimate) {
+                const usage = estimate.usage || 0;
+                const quota = estimate.quota || 1;
                 setStats({
                     usage,
                     quota,
