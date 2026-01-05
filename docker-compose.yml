@@ -5,7 +5,7 @@ services:
     build: .
     container_name: neoarchive_app
     ports:
-      - "3002:3002"
+      - "3000:3000"
     volumes:
       # Persist the database file
       - ./data:/app/data
@@ -14,7 +14,7 @@ services:
     env_file:
       - .env
     environment:
-      - PORT=3002
+      - PORT=3000
       - HOST=0.0.0.0
       # Pass variables with empty defaults to allow container start even if host env is missing them
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}

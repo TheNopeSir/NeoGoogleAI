@@ -166,7 +166,7 @@ export interface Duel {
 }
 
 export type TradeRequestStatus = 'PENDING' | 'COUNTER_OFFERED' | 'ACCEPTED' | 'COMPLETED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
-export type TradeType = 'DIRECT' | 'MULTI' | 'GIFT' | 'MONEY';
+export type TradeType = 'DIRECT' | 'MULTI' | 'GIFT';
 
 export interface TradeMessage {
     author: string;
@@ -185,10 +185,6 @@ export interface TradeRequest {
     messages: TradeMessage[];
     createdAt: string;
     updatedAt: string;
-    price?: number; // For MONEY trades
-    currency?: 'RUB';
-    isWishlistFulfillment?: boolean; // If this trade serves a wishlist item
-    wishlistId?: string;
     ratings?: {
         sender?: number;
         recipient?: number;
