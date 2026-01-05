@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
   <head>
@@ -40,106 +39,39 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=16&bold=true" />
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=192&bold=true" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Font Stack: Orbitron (Headers), Exo 2 (Body), VT323 (Winamp) -->
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Orbitron:wght@400..900&family=VT323&display=swap" rel="stylesheet">
     
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              'dark-bg': '#09090b',
-              'dark-surface': '#18181b',
-              'dark-primary': '#4ade80',
-              'dark-secondary': '#22c55e',
-              'dark-dim': '#3f3f46',
-              'light-bg': '#e5e7eb',
-              'light-surface': '#f3f4f6',
-              'light-primary': '#111827',
-              'light-accent': '#059669',
-              'light-dim': '#9ca3af',
-              // Winamp authentic colors
-              'wa-base': '#292929',
-              'wa-gray': '#DCDCDC',
-              'wa-dark': '#1a1a1a',
-              'wa-green': '#00EA00',
-              'wa-gold': '#FFD700',
-              'wa-blue-dark': '#000040',
-              'wa-blue-light': '#0000A0',
-            },
-            fontFamily: {
-              'mono': ['"Exo 2"', 'monospace'], 
-              'pixel': ['"Orbitron"', 'sans-serif'],
-              'sans': ['"Exo 2"', 'sans-serif'],
-              'winamp': ['"VT323"', 'monospace'],
-            },
-            animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'scanline': 'scanline 15s linear infinite',
-            },
-            keyframes: {
-              scanline: {
-                '0%': { transform: 'translateY(-100%)' },
-                '100%': { transform: 'translateY(100%)' },
-              }
-            }
-          },
-        },
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.1",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+        "react/": "https://aistudiocdn.com/react@^19.2.1/",
+        "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+        "http": "https://aistudiocdn.com/http@^0.0.1-security",
+        "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
+        "path": "https://aistudiocdn.com/path@^0.12.7",
+        "url": "https://aistudiocdn.com/url@^0.11.4",
+        "vite": "https://aistudiocdn.com/vite@^7.2.7",
+        "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
+        "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.11",
+        "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1",
+        "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.2.0",
+        "cors": "https://aistudiocdn.com/cors@^2.8.5",
+        "pg": "https://aistudiocdn.com/pg@^8.16.3",
+        "express": "https://aistudiocdn.com/express@^5.2.1",
+        "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+        "os": "https://aistudiocdn.com/os@^0.1.2",
+        "mysql2/": "https://esm.sh/mysql2@^3.15.3/",
+        "react-helmet-async": "https://esm.sh/react-helmet-async@^2.0.4",
+        "crypto": "https://esm.sh/crypto@^1.0.1",
+        "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
       }
+    }
     </script>
-    <style>
-      body { transition: background-color 0.3s, color 0.3s; overscroll-behavior-y: none; font-family: 'Exo 2', sans-serif; }
-      h1, h2, h3, h4, h5, h6, .font-pixel { font-family: 'Orbitron', sans-serif; }
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      .dark ::-webkit-scrollbar-track { background: #09090b; }
-      .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
-      .dark ::-webkit-scrollbar-thumb:hover { background: #4ade80; }
-      .light ::-webkit-scrollbar-track { background: #e5e7eb; }
-      .light ::-webkit-scrollbar-thumb { background: #9ca3af; }
-      .light ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-      
-      /* Winamp Scrollbar */
-      .winamp-scroll ::-webkit-scrollbar { width: 10px; height: 10px; }
-      .winamp-scroll ::-webkit-scrollbar-track { background: #292929; border-left: 1px solid #505050; }
-      .winamp-scroll ::-webkit-scrollbar-thumb { background: #505050; border: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; }
-      .winamp-scroll ::-webkit-scrollbar-thumb:active { background: #292929; }
-
-      .scrollbar-hide::-webkit-scrollbar { display: none; }
-      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "http": "https://aistudiocdn.com/http@^0.0.1-security",
-    "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "url": "https://aistudiocdn.com/url@^0.11.4",
-    "vite": "https://aistudiocdn.com/vite@^7.2.7",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
-    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.11",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1",
-    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.2.0",
-    "cors": "https://aistudiocdn.com/cors@^2.8.5",
-    "pg": "https://aistudiocdn.com/pg@^8.16.3",
-    "express": "https://aistudiocdn.com/express@^5.2.1",
-    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
-    "os": "https://aistudiocdn.com/os@^0.1.2",
-    "mysql2/": "https://esm.sh/mysql2@^3.15.3/",
-    "react-helmet-async": "https://esm.sh/react-helmet-async@^2.0.4",
-    "crypto": "https://esm.sh/crypto@^1.0.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
-  }
-}
-</script>
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
         (function(m,e,t,r,i,k,a){
@@ -152,7 +84,6 @@
         ym(106078846, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
     </script>
     <!-- /Yandex.Metrika counter -->
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <noscript><div><img src="https://mc.yandex.ru/watch/106078846" style="position:absolute; left:-9999px;" alt="" /></div></noscript>

@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -13,6 +12,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // Disable PWA in development to prevent Service Worker from caching API 404s
+      devOptions: {
+        enabled: false,
+        type: 'module',
+      },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
@@ -63,18 +67,22 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0', // Listen on all network interfaces
-    port: 3000,
-    strictPort: false, // Try next port if 3000 is taken (avoids collision with server.js)
-    cors: true, // Allow CORS
+    host: '0.0.0.0', 
+    port: 5173, 
+    strictPort: false, 
+    cors: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000', // Assuming server.js runs on 3000 locally
+        target: 'http://localhost:3002', // Use localhost to match server binding
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path, 
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
-            console.log('🔴 Proxy Error (Server likely down):', err);
+            console.log('🔴 Proxy Error (Backend might be down on 3002):', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // console.log('Proxying:', req.method, req.url);
           });
         },
       }
@@ -83,6 +91,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    target: 'esnext' // Modern browsers support
+    target: 'esnext'
   }
 })
