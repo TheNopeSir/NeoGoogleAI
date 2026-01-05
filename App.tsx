@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
-  Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle
+  Heart, SkipBack, Play, Square, Pause, User
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -27,10 +26,9 @@ import SearchView from './components/SearchView';
 import GuildDetailView from './components/GuildDetailView';
 import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
-import ToastContainer from './components/ToastContainer';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, Guild, UserStatus } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, Guild } from './types';
 import { getArtifactTier } from './constants';
 import useSwipe from './hooks/useSwipe';
 
@@ -40,7 +38,7 @@ export default function App() {
   
   const [isInitializing, setIsInitializing] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
-  const [isOffline, setIsOffline] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   
   const [user, setUser] = useState<UserProfile | null>(null);
   const [exhibits, setExhibits] = useState<Exhibit[]>([]);
@@ -55,6 +53,8 @@ export default function App() {
   const [selectedWishlistItem, setSelectedWishlistItem] = useState<WishlistItem | null>(null);
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [viewedProfileUsername, setViewedProfileUsername] = useState<string>('');
+  
+  // Advanced Notification State
   const [highlightCommentId, setHighlightCommentId] = useState<string | undefined>(undefined);
 
   // Feed State
@@ -62,6 +62,10 @@ export default function App() {
   const [feedMode, setFeedMode] = useState<'ARTIFACTS' | 'WISHLIST'>('ARTIFACTS');
   const [feedViewMode, setFeedViewMode] = useState<'GRID' | 'LIST'>('GRID');
   const [feedType, setFeedType] = useState<'FOR_YOU' | 'FOLLOWING'>('FOR_YOU');
+
+  // Pagination
+  const [feedPage, setFeedPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   // Social/Edit State
   const [socialListType, setSocialListType] = useState<'followers' | 'following'>('followers');
@@ -71,7 +75,7 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editTagline, setEditTagline] = useState('');
   const [editBio, setEditBio] = useState(''); 
-  const [editStatus, setEditStatus] = useState<UserStatus>('ONLINE');
+  const [editStatus, setEditStatus] = useState<any>('ONLINE');
   const [editTelegram, setEditTelegram] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [profileTab, setProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>('ARTIFACTS');
@@ -86,11 +90,14 @@ export default function App() {
           .filter(e => following.includes(e.owner) && !e.isDraft)
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
-      const storyUsers = Array.from(new Set(recentPosts.map(e => e.owner))).slice(0, 10) as string[];
+      // Get unique users who posted recently
+      const storyUsers = Array.from(new Set(recentPosts.map(e => e.owner))).slice(0, 10);
       return storyUsers.map(u => ({ username: u, avatar: db.getUserAvatar(u), latestItem: recentPosts.find(e => e.owner === u) }));
   }, [user, exhibits]);
 
   // --- ROUTING LOGIC ---
+
+  // Central function to sync state from URL
   const syncFromUrl = useCallback(async () => {
       const path = window.location.pathname;
       const segments = path.split('/').filter(Boolean); // Remove empty strings
@@ -198,9 +205,13 @@ export default function App() {
 
   const globalSwipeHandlers = useSwipe({
     onSwipeLeft: () => {
-      if (view === 'FEED') navigateTo('COMMUNITY_HUB');
-      else if (view === 'COMMUNITY_HUB') navigateTo('ACTIVITY');
-      else if (view === 'ACTIVITY' && user) navigateTo('USER_PROFILE', { username: user.username });
+      if (view === 'FEED') {
+          navigateTo('COMMUNITY_HUB');
+      } else if (view === 'COMMUNITY_HUB') {
+          navigateTo('ACTIVITY');
+      } else if (view === 'ACTIVITY') {
+          if (user) navigateTo('USER_PROFILE', { username: user.username });
+      }
     },
     onSwipeRight: () => {
         if (view !== 'FEED') handleBack();
@@ -215,10 +226,6 @@ export default function App() {
     setNotifications(data.notifications || []);
     setMessages(data.messages || []);
     setGuestbook(data.guestbook || []);
-    
-    // Check offline status helper
-    setIsOffline(db.isOffline());
-
     if (user) {
        const updatedUser = data.users.find(u => u.username === user.username);
        if (updatedUser) setUser(updatedUser);
@@ -234,8 +241,10 @@ export default function App() {
     };
   }, [refreshData]);
 
-  // Initial Boot
   useEffect(() => {
+    document.body.style.overflowY = 'scroll';
+    const safetyTimer = setTimeout(() => { setIsInitializing(false); setShowSplash(false); }, 6000); 
+    
     const init = async () => {
       try {
           const activeUser = await db.initializeDatabase();
@@ -250,12 +259,34 @@ export default function App() {
       } catch (e) { 
           setView('AUTH'); 
       } finally { 
+          clearTimeout(safetyTimer); 
           setIsInitializing(false); 
-          setTimeout(() => setShowSplash(false), 500); 
+          setTimeout(() => setShowSplash(false), 300); 
       }
     };
     init();
   }, []);
+
+  const loadMore = useCallback(async () => {
+      if (isLoadingMore || !hasMore || feedMode !== 'ARTIFACTS') return;
+      setIsLoadingMore(true);
+      const nextPage = feedPage + 1;
+      const items = await db.loadFeedBatch(nextPage, 12);
+      if (items.length < 12) setHasMore(false);
+      setFeedPage(nextPage);
+      refreshData();
+      setIsLoadingMore(false);
+  }, [feedPage, hasMore, isLoadingMore, feedMode, refreshData]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) loadMore();
+    };
+    if (view === 'FEED') {
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [view, loadMore]);
 
   const handleExhibitClick = async (item: Exhibit) => {
     const sessionKey = `neo_viewed_${item.id}`;
@@ -281,14 +312,9 @@ export default function App() {
             likes: isLiked ? item.likes - 1 : item.likes + 1,
             likedBy: isLiked ? item.likedBy.filter(u => u !== user.username) : [...(item.likedBy || []), user.username]
         };
-        // Optimistic update
         setExhibits(prev => prev.map(ex => ex.id === id ? updatedItem : ex));
         if (selectedExhibit?.id === id) setSelectedExhibit(updatedItem);
-        
-        await db.updateExhibit(updatedItem);
-        if (!isLiked && item.owner !== user.username) {
-            db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
-        }
+        await db.updateExhibit(updatedItem); 
     }
   };
 
@@ -344,18 +370,10 @@ export default function App() {
         {theme === 'dark' && <CRTOverlay />}
         {theme !== 'xp' && theme !== 'winamp' && <PixelSnow theme={theme === 'dark' ? 'dark' : 'light'} />}
         
-        <ToastContainer />
-
-        {/* OFFLINE BANNER */}
-        {isOffline && (
-            <div className="fixed top-16 md:top-20 left-0 right-0 z-40 bg-yellow-500/90 text-black text-center py-1 px-4 text-xs font-bold font-mono flex justify-center items-center gap-2">
-                <WifiOff size={14}/> OFFLINE MODE / SYNCHRONIZING...
-            </div>
-        )}
-
         {/* --- DESKTOP TOP NAVIGATION --- */}
         {user && (
             <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between ${getDesktopNavClasses()}`}>
+                {/* Logo Area */}
                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('FEED')}>
                     <div className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs ${theme === 'winamp' ? 'border border-[#505050] bg-black text-[#00ff00]' : theme === 'xp' ? 'bg-[url(https://upload.wikimedia.org/wikipedia/commons/e/e2/Windows_logo_and_wordmark_-_2001-2006.svg)] bg-contain bg-no-repeat bg-center w-8' : 'bg-green-500 text-black font-pixel'}`}>
                         {theme !== 'xp' && 'NA'}
@@ -363,6 +381,7 @@ export default function App() {
                     <span className={`font-bold tracking-widest ${theme === 'winamp' ? 'text-lg font-winamp' : theme === 'xp' ? 'font-sans italic text-lg drop-shadow' : 'font-pixel text-lg'}`}>NeoArchive</span>
                 </div>
 
+                {/* Desktop Menu Links */}
                 <div className="flex items-center gap-6">
                     <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 hover:opacity-100 transition-opacity ${view === 'FEED' ? 'opacity-100 font-bold' : 'opacity-60'}`}>
                         <LayoutGrid size={18}/> {theme === 'winamp' ? 'LIBRARY' : 'Лента'}
@@ -375,6 +394,7 @@ export default function App() {
                     </button>
                 </div>
 
+                {/* Right Actions */}
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigateTo('SEARCH')} className="opacity-70 hover:opacity-100"><Search size={20}/></button>
                     <button onClick={() => navigateTo('ACTIVITY')} className="relative opacity-70 hover:opacity-100">
@@ -390,7 +410,9 @@ export default function App() {
             </nav>
         )}
 
+        {/* Adjust padding for desktop top nav */}
         <div className="md:pt-16">
+            
             {view === 'FEED' && user && (
                 <FeedView 
                     theme={theme}
@@ -457,20 +479,12 @@ export default function App() {
                         const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] };
                         setSelectedExhibit(updatedExhibit);
                         await db.updateExhibit(updatedExhibit);
-                        
-                        // Notify Owner
-                        if (selectedExhibit.owner !== user.username) {
-                            db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title);
-                        }
                     }}
                     onCommentLike={async (commentId) => {
                         if (!user) return;
                         const updatedComments = selectedExhibit.comments.map(c => {
                             if (c.id === commentId) {
                                 const isLiked = c.likedBy?.includes(user.username);
-                                if (!isLiked && c.author !== user.username) {
-                                    db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30));
-                                }
                                 return {
                                     ...c,
                                     likes: isLiked ? c.likes - 1 : c.likes + 1,
@@ -490,14 +504,7 @@ export default function App() {
                         await db.updateExhibit(updatedExhibit);
                     }}
                     onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })}
-                    onFollow={(u) => { 
-                        if(user) {
-                            db.toggleFollow(user.username, u);
-                            if (!user.following.includes(u)) { 
-                                db.createNotification(u, 'FOLLOW', user.username);
-                            }
-                        }
-                    }}
+                    onFollow={(u) => { if(user) db.toggleFollow(user.username, u); }}
                     onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }}
                     onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }}
                     onEdit={(item) => navigateTo('EDIT_ARTIFACT', { item })}
@@ -513,6 +520,7 @@ export default function App() {
                 />
             )}
 
+            {/* Other views */}
             {view === 'COLLECTION_DETAIL' && selectedCollection && (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <CollectionDetailPage 
@@ -524,7 +532,7 @@ export default function App() {
                         onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
                         currentUser={user?.username || ''}
                         onDelete={async (id) => { await db.deleteCollection(id); handleBack(); }}
-                        onLike={async (id) => { }}
+                        onLike={async (id) => { /* Collection like logic */ }}
                     />
                 </div>
             )}
@@ -547,7 +555,6 @@ export default function App() {
                     currentUser={user.username}
                     onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
                     onDelete={async (id) => { await db.deleteWishlistItem(id); handleBack(); }}
-                    userInventory={exhibits.filter(e => e.owner === user.username)}
                 />
             )}
 
@@ -661,8 +668,7 @@ export default function App() {
                         theme={theme} 
                         onBack={handleBack} 
                         onSave={async (item) => { 
-                            if (!user) return;
-                            const newItem = { ...item, id: crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; 
+                            const newItem = { ...item, id: crypto.randomUUID(), owner: user!.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; 
                             await db.saveExhibit(newItem); 
                             handleBack(); 
                         }}
@@ -690,11 +696,10 @@ export default function App() {
                 <div className="p-4 pb-24">
                     <CreateCollectionView 
                         theme={theme} 
-                        userArtifacts={exhibits.filter(e => e.owner === user?.username && !e.isDraft)}
+                        userArtifacts={exhibits.filter(e => e.owner === user!.username && !e.isDraft)}
                         onBack={handleBack} 
                         onSave={async (col) => { 
-                            if (!user) return;
-                            const newCol = { ...col, id: crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0 } as Collection;
+                            const newCol = { ...col, id: crypto.randomUUID(), owner: user!.username, timestamp: new Date().toLocaleString(), likes: 0 } as Collection;
                             await db.saveCollection(newCol); 
                             handleBack(); 
                         }}
@@ -708,8 +713,7 @@ export default function App() {
                         theme={theme}
                         onBack={handleBack}
                         onSave={async (item) => {
-                            if (!user) return;
-                            const newItem = { ...item, owner: user.username };
+                            const newItem = { ...item, owner: user!.username };
                             await db.saveWishlistItem(newItem);
                             handleBack();
                         }}
@@ -717,6 +721,149 @@ export default function App() {
                 </div>
             )}
 
+            {view === 'USER_PROFILE' && user && (
+                <div className="pb-24">
+                    <UserProfileView 
+                        user={user}
+                        viewedProfileUsername={viewedProfileUsername || user.username}
+                        exhibits={exhibits}
+                        collections={collections}
+                        guestbook={guestbook}
+                        theme={theme}
+                        onBack={handleBack}
+                        onLogout={db.logoutUser}
+                        onFollow={(u) => db.toggleFollow(user.username, u)}
+                        onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })}
+                        onExhibitClick={handleExhibitClick}
+                        onLike={handleLike}
+                        onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
+                        onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }}
+                        onShareCollection={() => {}}
+                        onViewHallOfFame={() => setView('HALL_OF_FAME')}
+                        onGuestbookPost={async (text) => {
+                            const entry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false };
+                            await db.saveGuestbookEntry(entry);
+                            refreshData();
+                        }}
+                        refreshData={refreshData}
+                        isEditingProfile={isEditingProfile}
+                        setIsEditingProfile={setIsEditingProfile}
+                        editTagline={editTagline}
+                        setEditTagline={setEditTagline}
+                        editBio={editBio}
+                        setEditBio={setEditBio}
+                        editStatus={editStatus}
+                        setEditStatus={setEditStatus}
+                        editTelegram={editTelegram}
+                        setEditTelegram={setEditTelegram}
+                        editPassword={editPassword}
+                        setEditPassword={setEditPassword}
+                        onSaveProfile={async () => {
+                            const updatedUser = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram };
+                            if (editPassword) updatedUser.password = editPassword;
+                            await db.updateUserProfile(updatedUser);
+                            setIsEditingProfile(false);
+                        }}
+                        onProfileImageUpload={async (e) => {
+                            if (e.target.files?.[0]) {
+                                const b64 = await db.fileToBase64(e.target.files[0]);
+                                const updated = { ...user, avatarUrl: b64 };
+                                await db.updateUserProfile(updated);
+                                setUser(updated);
+                            }
+                        }}
+                        onProfileCoverUpload={async (e) => {
+                            if (e.target.files?.[0]) {
+                                const b64 = await db.fileToBase64(e.target.files[0]);
+                                const updated = { ...user, coverUrl: b64 };
+                                await db.updateUserProfile(updated);
+                                setUser(updated);
+                            }
+                        }}
+                        guestbookInput={guestbookInput}
+                        setGuestbookInput={setGuestbookInput}
+                        guestbookInputRef={guestbookInputRef}
+                        profileTab={profileTab}
+                        setProfileTab={setProfileTab}
+                        onOpenSocialList={(u, type) => {
+                            setSocialListType(type);
+                            navigateTo('SOCIAL_LIST', { username: u });
+                        }}
+                        onThemeChange={(t) => setTheme(t)}
+                        onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }}
+                    />
+                </div>
+            )}
+
+            {view === 'HALL_OF_FAME' && user && (
+                <div className="p-4 pb-24">
+                    <HallOfFame 
+                        theme={theme} 
+                        achievements={user.achievements} 
+                        onBack={handleBack} 
+                    />
+                </div>
+            )}
+
+            {/* BOTTOM NAVIGATION - Mobile Only */}
+            {user && (
+                <div className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t safe-area-pb ${theme === 'winamp' ? 'bg-[#292929] border-[#505050]' : theme === 'dark' ? 'bg-black/90 border-white/10 backdrop-blur-md' : 'bg-white/90 border-black/10 backdrop-blur-md'}`}>
+                    {theme === 'winamp' ? (
+                        <div className="flex justify-around items-center p-2">
+                            {/* Prev / Feed */}
+                            <button onClick={() => navigateTo('FEED')} className={`w-10 h-8 flex items-center justify-center border-t border-l border-[#505050] border-b border-r border-black active:border-t-black active:border-l-black active:border-b-[#505050] active:border-r-[#505050] bg-[#191919] ${view === 'FEED' ? 'text-wa-green' : 'text-gray-500'}`}>
+                                <SkipBack size={16} fill="currentColor"/>
+                            </button>
+                            
+                            {/* Play / Community */}
+                            <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`w-10 h-8 flex items-center justify-center border-t border-l border-[#505050] border-b border-r border-black active:border-t-black active:border-l-black active:border-b-[#505050] active:border-r-[#505050] bg-[#191919] ${view === 'COMMUNITY_HUB' ? 'text-wa-green' : 'text-gray-500'}`}>
+                                <Play size={16} fill="currentColor"/>
+                            </button>
+
+                            {/* Create (Thunder) */}
+                            <button onClick={() => navigateTo('CREATE_HUB')} className={`w-10 h-8 flex items-center justify-center border-t border-l border-[#505050] border-b border-r border-black active:border-t-black active:border-l-black active:border-b-[#505050] active:border-r-[#505050] bg-[#191919] ${view.includes('CREATE') ? 'text-wa-gold' : 'text-gray-500'}`}>
+                                <span className="font-winamp text-xl">⚡</span>
+                            </button>
+
+                            {/* Pause / Activity */}
+                            <button onClick={() => navigateTo('ACTIVITY')} className={`w-10 h-8 flex items-center justify-center border-t border-l border-[#505050] border-b border-r border-black active:border-t-black active:border-l-black active:border-b-[#505050] active:border-r-[#505050] bg-[#191919] relative ${view === 'ACTIVITY' ? 'text-wa-green' : 'text-gray-500'}`}>
+                                <Pause size={16} fill="currentColor"/>
+                                {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />}
+                            </button>
+
+                            {/* Eject / Profile */}
+                            <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`w-10 h-8 flex items-center justify-center border-t border-l border-[#505050] border-b border-r border-black active:border-t-black active:border-l-black active:border-b-[#505050] active:border-r-[#505050] bg-[#191919] ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'text-wa-green' : 'text-gray-500'}`}>
+                                <User size={16} fill="currentColor" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex justify-around items-center p-3">
+                            <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 ${view === 'FEED' ? 'text-green-500' : 'opacity-50'}`}>
+                                <LayoutGrid size={20} />
+                            </button>
+                            <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 ${view === 'COMMUNITY_HUB' ? 'text-green-500' : 'opacity-50'}`}>
+                                <Globe size={20} />
+                            </button>
+                            <button onClick={() => navigateTo('CREATE_HUB')} className="flex flex-col items-center justify-center -mt-8">
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 bg-green-500 text-black`}>
+                                    <Plus size={28} />
+                                </div>
+                            </button>
+                            <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 relative ${view === 'ACTIVITY' ? 'text-green-500' : 'opacity-50'}`}>
+                                <Bell size={20} />
+                                {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-0 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+                            </button>
+                            <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'text-green-500' : 'opacity-50'}`}>
+                                <div className={`w-6 h-6 rounded-full overflow-hidden border ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'border-green-500' : 'border-transparent'}`}>
+                                    <img src={user.avatarUrl} className="w-full h-full object-cover" />
+                                </div>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Modals for Add to Collection */}
             {isAddingToCollection && user && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4">
                     <div className={`w-full max-w-sm rounded-xl p-6 ${theme === 'winamp' ? 'bg-[#292929] border border-[#505050] text-gray-300' : 'bg-dark-surface border border-white/10 text-white'}`}>
@@ -729,10 +876,6 @@ export default function App() {
                                         if(col.exhibitIds.includes(isAddingToCollection)) return;
                                         const updated = { ...col, exhibitIds: [...col.exhibitIds, isAddingToCollection] };
                                         await db.updateCollection(updated);
-                                        const item = exhibits.find(e => e.id === isAddingToCollection);
-                                        if (item && item.owner !== user.username) {
-                                            db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title + " (Saved)");
-                                        }
                                         setIsAddingToCollection(null);
                                         alert('Добавлено!');
                                     }}
@@ -746,89 +889,6 @@ export default function App() {
                         <button onClick={() => setIsAddingToCollection(null)} className="w-full py-3 bg-white/10 rounded font-bold text-xs">ОТМЕНА</button>
                     </div>
                 </div>
-            )}
-            
-            {view === 'USER_PROFILE' && user && (
-                <UserProfileView 
-                    user={user}
-                    viewedProfileUsername={viewedProfileUsername}
-                    exhibits={exhibits}
-                    collections={collections}
-                    guestbook={guestbook}
-                    theme={theme}
-                    onBack={handleBack}
-                    onLogout={() => { db.logoutUser(); setView('AUTH'); }}
-                    onFollow={(u) => { 
-                        if(user) {
-                            db.toggleFollow(user.username, u);
-                            if (!user.following.includes(u)) { 
-                                db.createNotification(u, 'FOLLOW', user.username);
-                            }
-                        }
-                    }}
-                    onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })}
-                    onExhibitClick={handleExhibitClick}
-                    onLike={handleLike}
-                    onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
-                    onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }}
-                    onShareCollection={() => {}}
-                    onViewHallOfFame={() => setView('HALL_OF_FAME')}
-                    onGuestbookPost={async (text) => {
-                        if (!user) return;
-                        const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false };
-                        await db.saveGuestbookEntry(entry);
-                        if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username);
-                    }}
-                    refreshData={refreshData}
-                    isEditingProfile={isEditingProfile}
-                    setIsEditingProfile={setIsEditingProfile}
-                    editTagline={editTagline}
-                    setEditTagline={setEditTagline}
-                    editBio={editBio}
-                    setEditBio={setEditBio}
-                    editStatus={editStatus}
-                    setEditStatus={setEditStatus}
-                    editTelegram={editTelegram}
-                    setEditTelegram={setEditTelegram}
-                    editPassword={editPassword}
-                    setEditPassword={setEditPassword}
-                    onSaveProfile={async () => {
-                        if (!user) return;
-                        const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram };
-                        if (editPassword) updated.password = editPassword;
-                        await db.updateUserProfile(updated);
-                        setIsEditingProfile(false);
-                        setEditPassword('');
-                    }}
-                    onProfileImageUpload={async (e) => {
-                        if (e.target.files?.[0] && user) {
-                            const b64 = await db.fileToBase64(e.target.files[0]);
-                            await db.updateUserProfile({ ...user, avatarUrl: b64 });
-                        }
-                    }}
-                    onProfileCoverUpload={async (e) => {
-                        if (e.target.files?.[0] && user) {
-                            const b64 = await db.fileToBase64(e.target.files[0]);
-                            await db.updateUserProfile({ ...user, coverUrl: b64 });
-                        }
-                    }}
-                    guestbookInput={guestbookInput}
-                    setGuestbookInput={setGuestbookInput}
-                    guestbookInputRef={guestbookInputRef}
-                    profileTab={profileTab}
-                    setProfileTab={setProfileTab}
-                    onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }}
-                    onThemeChange={(t) => setTheme(t)}
-                    onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }}
-                />
-            )}
-
-            {view === 'HALL_OF_FAME' && user && (
-                 <HallOfFame 
-                    theme={theme}
-                    achievements={user.achievements}
-                    onBack={handleBack}
-                 />
             )}
         </div>
     </div>
