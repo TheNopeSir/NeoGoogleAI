@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -104,7 +105,8 @@ api.post('/auth/register', async (req, res) => {
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
     try {
-        const check = await query(`SELECT * FROM users WHERE username = $1 OR email = $2`, [username, email]);
+        // Use ID for username or check email in JSONB
+        const check = await query(`SELECT * FROM users WHERE id = $1 OR data->>'email' = $2`, [username, email]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
         const newUser = {
@@ -121,9 +123,10 @@ api.post('/auth/register', async (req, res) => {
             isAdmin: false
         };
 
+        // Insert into generic table structure: id = username, data = full object
         await query(
-            `INSERT INTO users (username, email, data) VALUES ($1, $2, $3) RETURNING *`, 
-            [username, email, newUser]
+            `INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
+            [username, newUser]
         );
         
         try {
@@ -150,8 +153,9 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
+        // Query by ID (username) or Email inside JSON data
         const result = await query(
-            `SELECT * FROM users WHERE username = $1 OR email = $1`, 
+            `SELECT * FROM users WHERE id = $1 OR data->>'email' = $1`, 
             [identifier]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
@@ -169,14 +173,16 @@ api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email обязателен" });
     try {
-        const result = await query(`SELECT * FROM users WHERE email = $1`, [email]);
+        const result = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
         if (result.rows.length === 0) return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
 
         const rawUser = result.rows[0];
         const user = mapRow(rawUser);
         const newPass = crypto.randomBytes(4).toString('hex');
         user.password = newPass;
-        await query(`UPDATE users SET data = $1 WHERE email = $2`, [user, email]);
+        
+        // Update JSON data
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE id = $2`, [user, user.username]);
 
         if (process.env.SMTP_USER) {
             try {
@@ -205,7 +211,9 @@ api.post('/auth/recover', async (req, res) => {
 // FEED
 api.get('/feed', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM exhibits ORDER BY created_at DESC LIMIT 100`);
+        // Assuming created_at exists, if not fallback to updated_at
+        // Using updated_at is safer for generic tables
+        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100`);
         const items = result.rows.map(mapRow);
         res.json(items);
     } catch (e) {
@@ -219,8 +227,10 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        const userRes = await query(`SELECT * FROM users WHERE username = $1`, [username]);
-        const colsRes = await query(`SELECT * FROM collections WHERE owner = $1`, [username]);
+        // Users by ID
+        const userRes = await query(`SELECT * FROM users WHERE id = $1`, [username]);
+        // Collections by owner inside JSON data
+        const colsRes = await query(`SELECT * FROM collections WHERE data->>'owner' = $1`, [username]);
         res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
     } catch(e) {
         res.status(500).json({ error: e.message });
