@@ -105,8 +105,8 @@ api.post('/auth/register', async (req, res) => {
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
     try {
-        // Use ID for username or check email in JSONB
-        const check = await query(`SELECT * FROM users WHERE id = $1 OR data->>'email' = $2`, [username, email]);
+        // Use USERNAME for users table
+        const check = await query(`SELECT * FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
         const newUser = {
@@ -123,9 +123,9 @@ api.post('/auth/register', async (req, res) => {
             isAdmin: false
         };
 
-        // Insert into generic table structure: id = username, data = full object
+        // Insert into users table using username column
         await query(
-            `INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
+            `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
             [username, newUser]
         );
         
@@ -153,9 +153,9 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        // Query by ID (username) or Email inside JSON data
+        // Query by USERNAME or Email inside JSON data
         const result = await query(
-            `SELECT * FROM users WHERE id = $1 OR data->>'email' = $1`, 
+            `SELECT * FROM users WHERE username = $1 OR data->>'email' = $1`, 
             [identifier]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
@@ -164,7 +164,7 @@ api.post('/auth/login', async (req, res) => {
         res.json(user);
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: "Ошибка сервера при входе" });
+        res.status(500).json({ error: "Ошибка сервера при входе: " + e.message });
     }
 });
 
@@ -181,8 +181,8 @@ api.post('/auth/recover', async (req, res) => {
         const newPass = crypto.randomBytes(4).toString('hex');
         user.password = newPass;
         
-        // Update JSON data
-        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE id = $2`, [user, user.username]);
+        // Update users table via username
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
         if (process.env.SMTP_USER) {
             try {
@@ -211,8 +211,7 @@ api.post('/auth/recover', async (req, res) => {
 // FEED
 api.get('/feed', async (req, res) => {
     try {
-        // Assuming created_at exists, if not fallback to updated_at
-        // Using updated_at is safer for generic tables
+        // Updated_at should exist on exhibits table
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100`);
         const items = result.rows.map(mapRow);
         res.json(items);
@@ -227,8 +226,8 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        // Users by ID
-        const userRes = await query(`SELECT * FROM users WHERE id = $1`, [username]);
+        // Users by USERNAME
+        const userRes = await query(`SELECT * FROM users WHERE username = $1`, [username]);
         // Collections by owner inside JSON data
         const colsRes = await query(`SELECT * FROM collections WHERE data->>'owner' = $1`, [username]);
         res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
@@ -237,7 +236,30 @@ api.get('/sync', async (req, res) => {
     }
 });
 
-// CRUD Helper
+// USERS CRUD (Special handling for 'username' PK)
+api.post('/users', async (req, res) => {
+    try {
+        // Expecting full user object in body. 
+        // frontend sends { id: username, ... } but we use 'username' as PK
+        const userData = req.body;
+        const username = userData.username || userData.id;
+        
+        if (!username) return res.status(400).json({ error: "Username required" });
+
+        await query(`
+            INSERT INTO users (username, data, updated_at) 
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()
+        `, [username, userData]);
+        
+        res.json({ success: true });
+    } catch (e) { 
+        console.error(`Save users error:`, e.message);
+        res.status(500).json({ success: false, error: e.message }); 
+    }
+});
+
+// GENERIC CRUD Helper (For tables with 'id' PK)
 const createCrudRoutes = (router, table) => {
     router.get(`/${table}/:id`, async (req, res) => {
         try {
