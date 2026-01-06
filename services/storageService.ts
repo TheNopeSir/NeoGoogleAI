@@ -176,7 +176,7 @@ const hydrateCache = async () => {
         const db = await Promise.race([
             getDB(),
             new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => 
-                setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 3000)
+                setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 2000) // Reduced timeout for speed
             )
         ]);
         
@@ -220,6 +220,108 @@ const deleteGeneric = async (id: string) => {
     await db.delete('generic', id);
 };
 
+// BACKGROUND SYNC LOGIC (Non-Blocking)
+const performBackgroundSync = async (activeUserUsername?: string) => {
+    if (!navigator.onLine) return;
+    
+    console.log("🔄 [Sync] Starting background sync...");
+    try {
+        // Prepare promises for parallel fetching
+        const promises: Promise<any>[] = [
+            apiCall('/feed'),
+            apiCall('/users'),
+            apiCall('/wishlist'),
+            apiCall('/collections'),
+            apiCall('/guestbook')
+        ];
+
+        // If user is logged in, fetch sync data in parallel
+        if (activeUserUsername) {
+            promises.push(apiCall(`/sync?username=${activeUserUsername}`));
+        }
+
+        // Await ALL data
+        const results = await Promise.all(promises);
+        
+        const feed = results[0];
+        const globalUsers = results[1];
+        const globalWishlist = results[2];
+        const globalCollections = results[3];
+        const globalGuestbook = results[4];
+        const syncData = activeUserUsername ? results[5] : null;
+
+        const db = await getDB();
+        const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
+
+        // Save Feed
+        if (Array.isArray(feed)) {
+            feed.forEach(item => tx.objectStore('exhibits').put(item));
+        }
+
+        // Save Global Users
+        if (Array.isArray(globalUsers)) {
+            globalUsers.forEach(u => tx.objectStore('users').put(u));
+        }
+
+        // Save Global Wishlist
+        if (Array.isArray(globalWishlist)) {
+            globalWishlist.forEach(w => tx.objectStore('generic').put({ id: w.id, table: 'wishlist', data: w }));
+        }
+
+        // Save Global Collections
+        if (Array.isArray(globalCollections)) {
+            globalCollections.forEach(c => tx.objectStore('collections').put(c));
+        }
+
+        // Save Global Guestbook
+        if (Array.isArray(globalGuestbook)) {
+            globalGuestbook.forEach(g => tx.objectStore('generic').put({ id: g.id, table: 'guestbook', data: g }));
+        }
+
+        // Save Private Sync Data
+        if (syncData) {
+            if (syncData.users && Array.isArray(syncData.users)) {
+                syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
+            }
+            if (syncData.collections && Array.isArray(syncData.collections)) {
+                syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
+            }
+        }
+        
+        await tx.done;
+
+        // Sync Notifications & Messages
+        if (activeUserUsername) {
+            try {
+                const [notifs, msgs] = await Promise.all([
+                    apiCall(`/notifications?username=${activeUserUsername}`),
+                    apiCall(`/messages?username=${activeUserUsername}`)
+                ]);
+
+                if(Array.isArray(notifs)) {
+                    const txNotif = db.transaction('notifications', 'readwrite');
+                    await Promise.all(notifs.map((n: Notification) => txNotif.store.put(n)));
+                    await txNotif.done;
+                }
+
+                if(Array.isArray(msgs)) {
+                    const txMsg = db.transaction('messages', 'readwrite');
+                    await Promise.all(msgs.map((m: Message) => txMsg.store.put(m)));
+                    await txMsg.done;
+                }
+            } catch (e) {
+                console.error("Failed to sync personal data (non-fatal):", e);
+            }
+        }
+        
+        // Re-hydrate to reflect new server data in UI
+        await hydrateCache();
+        console.log("✅ [Sync] Background sync complete");
+    } catch (e) {
+        console.warn("[Sync] Server unreachable or timeout:", e);
+    }
+};
+
 export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 0. CLEANUP OLD LEGACY CACHE
     try { localStorage.removeItem('neo_archive_db_cache_v2'); } catch(e){}
@@ -230,16 +332,13 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("⚠️ FORCE CLEARING CACHE FOR UPDATE");
         try {
             const db = await getDB();
-            // Clear all data stores but keep 'system' (login session) if possible
             await db.clear('exhibits');
             await db.clear('collections');
             await db.clear('users');
             await db.clear('notifications');
             await db.clear('messages');
             await db.clear('generic');
-            
             localStorage.setItem('neo_force_reset_key', FORCE_RESET_TOKEN);
-            console.log("✅ CACHE RESET COMPLETE");
         } catch (e) {
             console.error("Cache reset failed:", e);
         }
@@ -257,106 +356,11 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 2. Background Sync
-    if (navigator.onLine) {
-        try {
-            // Prepare promises for parallel fetching
-            const promises: Promise<any>[] = [
-                apiCall('/feed'),
-                apiCall('/users'),
-                apiCall('/wishlist'),
-                apiCall('/collections'),
-                apiCall('/guestbook')
-            ];
+    // 2. Trigger Background Sync (Optimistic UI Pattern)
+    // We do NOT await this. It happens in the background.
+    performBackgroundSync(activeUserUsername);
 
-            // If user is logged in, fetch sync data in parallel
-            if (activeUserUsername) {
-                promises.push(apiCall(`/sync?username=${activeUserUsername}`));
-            }
-
-            // Await ALL data before opening a transaction to prevent InvalidStateError
-            const results = await Promise.all(promises);
-            
-            const feed = results[0];
-            const globalUsers = results[1];
-            const globalWishlist = results[2];
-            const globalCollections = results[3];
-            const globalGuestbook = results[4];
-            // If activeUserUsername was present, syncData is at index 5, otherwise undefined
-            const syncData = activeUserUsername ? results[5] : null;
-
-            const db = await getDB();
-            const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
-
-            // Save Feed
-            if (Array.isArray(feed)) {
-                feed.forEach(item => tx.objectStore('exhibits').put(item));
-            }
-
-            // Save Global Users (Fixes avatar and "user not found" issues)
-            if (Array.isArray(globalUsers)) {
-                globalUsers.forEach(u => tx.objectStore('users').put(u));
-            }
-
-            // Save Global Wishlist (Fixes empty wishlist feed)
-            if (Array.isArray(globalWishlist)) {
-                globalWishlist.forEach(w => tx.objectStore('generic').put({ id: w.id, table: 'wishlist', data: w }));
-            }
-
-            // Save Global Collections (Fixes empty collections search)
-            if (Array.isArray(globalCollections)) {
-                globalCollections.forEach(c => tx.objectStore('collections').put(c));
-            }
-
-            // Save Global Guestbook
-            if (Array.isArray(globalGuestbook)) {
-                globalGuestbook.forEach(g => tx.objectStore('generic').put({ id: g.id, table: 'guestbook', data: g }));
-            }
-
-            // Save Private Sync Data (User Profile & Collections)
-            if (syncData) {
-                if (syncData.users && Array.isArray(syncData.users)) {
-                    syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
-                }
-                
-                if (syncData.collections && Array.isArray(syncData.collections)) {
-                    syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
-                }
-            }
-            
-            await tx.done;
-
-            // Sync Notifications & Messages separately to avoid blocking big transaction if fails
-            if (activeUserUsername) {
-                try {
-                    const [notifs, msgs] = await Promise.all([
-                        apiCall(`/notifications?username=${activeUserUsername}`),
-                        apiCall(`/messages?username=${activeUserUsername}`)
-                    ]);
-
-                    if(Array.isArray(notifs)) {
-                        const txNotif = db.transaction('notifications', 'readwrite');
-                        await Promise.all(notifs.map((n: Notification) => txNotif.store.put(n)));
-                        await txNotif.done;
-                    }
-
-                    if(Array.isArray(msgs)) {
-                        const txMsg = db.transaction('messages', 'readwrite');
-                        await Promise.all(msgs.map((m: Message) => txMsg.store.put(m)));
-                        await txMsg.done;
-                    }
-                } catch (e) {
-                    console.error("Failed to sync personal data (non-fatal):", e);
-                }
-            }
-            
-            // Re-hydrate to reflect new server data
-            await hydrateCache();
-        } catch (e) {
-            console.warn("[Sync] Server unreachable or timeout (running in offline mode):", e);
-        }
-    }
-
+    // 3. Return user immediately from local cache if present
     if (activeUserUsername) {
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
@@ -377,6 +381,8 @@ export const loginUser = async (identifier: string, password: string): Promise<U
     if (idx !== -1) hotCache.users[idx] = user; else hotCache.users.push(user);
     
     notifyListeners();
+    // Trigger sync after login to get fresh data
+    performBackgroundSync(user.username);
     return user;
 };
 
@@ -387,6 +393,7 @@ export const registerUser = async (username: string, password: string, tagline: 
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
+    performBackgroundSync(user.username);
     return user;
 };
 
@@ -403,6 +410,7 @@ export const loginViaTelegram = async (tgUser: any) => {
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
+    performBackgroundSync(user.username);
     return user;
 };
 

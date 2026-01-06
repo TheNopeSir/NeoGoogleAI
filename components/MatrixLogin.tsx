@@ -20,7 +20,6 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
-  // Tagline removed from state for registration as it's not required
   const [rememberMe, setRememberMe] = useState(true);
   const telegramWrapperRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
@@ -63,9 +62,18 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault(); setIsLoading(true); setError(''); setInfoMessage('');
-      // Send identifier as-is, server handles case insensitivity
-      try { const user = await db.loginUser(email, password); onLogin(user, rememberMe); } 
-      catch (err: any) { setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ'); setIsLoading(false); }
+      
+      const cleanEmail = email.trim();
+      const cleanPassword = password.trim();
+
+      try { 
+          const user = await db.loginUser(cleanEmail, cleanPassword); 
+          onLogin(user, rememberMe); 
+      } 
+      catch (err: any) { 
+          setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ'); 
+          setIsLoading(false); 
+      }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -74,13 +82,15 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
     
     setIsLoading(true); setError(''); setShowRecoverOption(false);
     
-    // Always lowercase email for consistency
-    const cleanEmail = email.toLowerCase();
+    // Trim everything
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
     const defaultTagline = 'Новый пользователь';
 
     try { 
-        await db.registerUser(username, password, defaultTagline, cleanEmail); 
-        setInfoMessage('ПИСЬМО ОТПРАВЛЕНО'); 
+        await db.registerUser(cleanUsername, cleanPassword, defaultTagline, cleanEmail); 
+        setInfoMessage('УСПЕШНО. ТЕПЕРЬ ВОЙДИТЕ.'); 
         setStep('LOGIN'); 
         setPassword(''); 
     } 
@@ -96,7 +106,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
     if (!email) { setError('УКАЖИТЕ EMAIL'); return; }
     setIsLoading(true); setError(''); setInfoMessage('');
     try {
-        await db.recoverPassword(email.toLowerCase());
+        await db.recoverPassword(email.trim().toLowerCase());
         setInfoMessage('НОВЫЙ ПАРОЛЬ ОТПРАВЛЕН НА EMAIL');
         setStep('LOGIN');
     } catch (err: any) {
