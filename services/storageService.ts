@@ -45,6 +45,7 @@ const DB_NAME = 'NeoArchive_V3_Turbo';
 const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
+const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V1'; // Changing this clears DB for everyone
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
 // Mimics Redis on the client side for instant UI updates
@@ -183,6 +184,27 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 0. CLEANUP OLD LEGACY CACHE
     try { localStorage.removeItem('neo_archive_db_cache_v2'); } catch(e){}
 
+    // 0.1 FORCE RESET CHECK
+    const lastReset = localStorage.getItem('neo_force_reset_key');
+    if (lastReset !== FORCE_RESET_TOKEN) {
+        console.warn("⚠️ FORCE CLEARING CACHE FOR UPDATE");
+        try {
+            const db = await getDB();
+            // Clear all data stores but keep 'system' (login session) if possible
+            await db.clear('exhibits');
+            await db.clear('collections');
+            await db.clear('users');
+            await db.clear('notifications');
+            await db.clear('messages');
+            await db.clear('generic');
+            
+            localStorage.setItem('neo_force_reset_key', FORCE_RESET_TOKEN);
+            console.log("✅ CACHE RESET COMPLETE");
+        } catch (e) {
+            console.error("Cache reset failed:", e);
+        }
+    }
+
     // 1. Load Local Data Fast
     await hydrateCache();
     
@@ -194,11 +216,12 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     if (navigator.onLine) {
         try {
             // Parallel Fetch of all global data needed for correct display
-            const [feed, globalUsers, globalWishlist, globalCollections] = await Promise.all([
+            const [feed, globalUsers, globalWishlist, globalCollections, globalGuestbook] = await Promise.all([
                 apiCall('/feed'),
                 apiCall('/users'),
                 apiCall('/wishlist'),
-                apiCall('/collections')
+                apiCall('/collections'),
+                apiCall('/guestbook')
             ]);
 
             const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
@@ -223,6 +246,11 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
                 globalCollections.forEach(c => tx.objectStore('collections').put(c));
             }
 
+            // Save Global Guestbook
+            if (Array.isArray(globalGuestbook)) {
+                globalGuestbook.forEach(g => tx.objectStore('generic').put({ id: g.id, table: 'guestbook', data: g }));
+            }
+
             // Fetch User Data if logged in (for private data sync)
             if (activeUserUsername) {
                 const syncData = await apiCall(`/sync?username=${activeUserUsername}`);
@@ -235,22 +263,32 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
                 if (syncData.collections && Array.isArray(syncData.collections)) {
                     syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
                 }
-
-                // Sync Notifications (handled separately usually but good to do here)
             }
             
             await tx.done;
 
-            // Sync Notifications separately to avoid blocking big transaction if fails
+            // Sync Notifications & Messages separately to avoid blocking big transaction if fails
             if (activeUserUsername) {
                 try {
-                    const notifs = await apiCall(`/notifications?username=${activeUserUsername}`);
+                    const [notifs, msgs] = await Promise.all([
+                        apiCall(`/notifications?username=${activeUserUsername}`),
+                        apiCall(`/messages?username=${activeUserUsername}`)
+                    ]);
+
                     if(Array.isArray(notifs)) {
                         const txNotif = db.transaction('notifications', 'readwrite');
                         await Promise.all(notifs.map((n: Notification) => txNotif.store.put(n)));
                         await txNotif.done;
                     }
-                } catch (e) {}
+
+                    if(Array.isArray(msgs)) {
+                        const txMsg = db.transaction('messages', 'readwrite');
+                        await Promise.all(msgs.map((m: Message) => txMsg.store.put(m)));
+                        await txMsg.done;
+                    }
+                } catch (e) {
+                    console.error("Failed to sync personal data:", e);
+                }
             }
             
             // Re-hydrate to reflect new server data

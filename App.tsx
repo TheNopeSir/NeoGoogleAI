@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
-  Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle
+  Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
+  ListMusic, Radio, Zap, Activity, Disc, // Winamp Icons
+  LayoutTemplate, FilePlus2, Flag, UserCheck // XP Icons
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -346,6 +348,36 @@ export default function App() {
       }
   };
 
+  // Helper to get theme-specific icons
+  const getNavIcon = (viewName: ViewState) => {
+      if (theme === 'winamp') {
+          switch(viewName) {
+              case 'FEED': return <ListMusic size={24} />;
+              case 'COMMUNITY_HUB': return <Radio size={24} />;
+              case 'CREATE_HUB': return <Zap size={24} />;
+              case 'ACTIVITY': return <Activity size={24} />;
+              default: return null; 
+          }
+      }
+      if (theme === 'xp') {
+          switch(viewName) {
+              case 'FEED': return <LayoutTemplate size={24} />;
+              case 'COMMUNITY_HUB': return <Globe size={24} />;
+              case 'CREATE_HUB': return <FilePlus2 size={24} />;
+              case 'ACTIVITY': return <Flag size={24} />;
+              default: return null;
+          }
+      }
+      // Default / Dark / Light
+      switch(viewName) {
+          case 'FEED': return <LayoutGrid size={24} />;
+          case 'COMMUNITY_HUB': return <Globe size={24} />;
+          case 'CREATE_HUB': return <Plus size={24} />;
+          case 'ACTIVITY': return <Bell size={24} />;
+          default: return null;
+      }
+  };
+
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
         <SEO title="NeoArchive" />
@@ -407,36 +439,54 @@ export default function App() {
                         onClick={() => navigateTo('FEED')} 
                         className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <LayoutGrid size={24} />
+                        {getNavIcon('FEED')}
                     </button>
                     <button 
                         onClick={() => navigateTo('COMMUNITY_HUB')} 
                         className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <Globe size={24} />
+                        {getNavIcon('COMMUNITY_HUB')}
                     </button>
                     <button 
                         onClick={() => navigateTo('CREATE_HUB')} 
                         className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}
                     >
-                        <div className={`rounded-full p-2 ${theme === 'winamp' ? 'border border-[#00ff00]' : 'bg-green-500 text-black shadow-lg'}`}>
-                            <Plus size={24} />
-                        </div>
+                        {theme === 'winamp' ? (
+                            <div className="rounded-full p-2 border border-[#00ff00] text-[#00ff00] bg-black">
+                                <Zap size={24} />
+                            </div>
+                        ) : theme === 'xp' ? (
+                            <div className="rounded-sm p-1 bg-white border border-[#003C74] shadow-sm">
+                                <FilePlus2 size={24} className="text-[#003C74]" />
+                            </div>
+                        ) : (
+                            <div className="rounded-full p-2 bg-green-500 text-black shadow-lg">
+                                <Plus size={24} />
+                            </div>
+                        )}
                     </button>
                     <button 
                         onClick={() => navigateTo('ACTIVITY')} 
                         className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <Bell size={24} />
+                        {getNavIcon('ACTIVITY')}
                         {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
                     </button>
                     <button 
                         onClick={() => navigateTo('USER_PROFILE', { username: user.username })} 
                         className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <div className={`w-6 h-6 rounded-full overflow-hidden border ${theme === 'winamp' ? 'border-[#00ff00]' : 'border-current'}`}>
-                            <img src={user.avatarUrl} className="w-full h-full object-cover" />
-                        </div>
+                        {theme === 'winamp' ? (
+                            <Disc size={26} className={view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'text-wa-gold animate-spin' : ''} />
+                        ) : theme === 'xp' ? (
+                            <div className="flex flex-col items-center">
+                                <UserCheck size={24} />
+                            </div>
+                        ) : (
+                            <div className="w-6 h-6 rounded-full overflow-hidden border border-current">
+                                <img src={user.avatarUrl} className="w-full h-full object-cover" />
+                            </div>
+                        )}
                     </button>
                 </div>
             </nav>

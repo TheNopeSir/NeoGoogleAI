@@ -147,12 +147,16 @@ api.post('/auth/register', async (req, res) => {
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
     try {
-        const check = await query(`SELECT * FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
+        // Case insensitive check for existence
+        const check = await query(
+            `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($2)`, 
+            [username, email]
+        );
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
         const newUser = {
             username,
-            email,
+            email, // Store original case
             password, 
             tagline: tagline || "Новый пользователь",
             avatarUrl: `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
@@ -193,11 +197,14 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
+        // Case insensitive lookup for username OR email
         const result = await query(
-            `SELECT * FROM users WHERE username = $1 OR data->>'email' = $1`, 
+            `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($1)`, 
             [identifier]
         );
+        
         if (result.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
+        
         const user = mapRow(result.rows[0]);
         if (user.password !== password) return res.status(401).json({ error: "Неверный пароль" });
         res.json(user);
@@ -215,8 +222,8 @@ api.post('/auth/telegram', async (req, res) => {
     try {
         const username = tgUser.username || `user_${tgUser.id}`;
         
-        // Check if user exists
-        const check = await query(`SELECT * FROM users WHERE username = $1`, [username]);
+        // Check if user exists (Case insensitive)
+        const check = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
         
         let user;
         if (check.rows.length > 0) {
@@ -225,7 +232,7 @@ api.post('/auth/telegram', async (req, res) => {
             // Update Avatar if changed
             if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
                 user.avatarUrl = tgUser.photo_url;
-                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, username]);
+                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
             }
         } else {
             // REGISTER NEW
@@ -262,7 +269,7 @@ api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email обязателен" });
     try {
-        const result = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
+        const result = await query(`SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`, [email]);
         if (result.rows.length === 0) return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
 
         const rawUser = result.rows[0];
@@ -366,6 +373,33 @@ api.get('/collections', async (req, res) => {
         cache.set(cacheKey, items, 60);
         res.json(items);
     } catch (e) { res.status(500).json({error: e.message}); }
+});
+
+// GET MESSAGES (For User)
+api.get('/messages', async (req, res) => {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: "Username required" });
+    try {
+        // Fetch sent or received messages
+        const result = await query(
+            `SELECT * FROM messages WHERE data->>'sender' = $1 OR data->>'receiver' = $1 ORDER BY updated_at DESC LIMIT 200`, 
+            [username]
+        );
+        res.json(result.rows.map(mapRow));
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET GUESTBOOK (For Profile or All)
+api.get('/guestbook', async (req, res) => {
+    try {
+        // Fetch all guestbook entries (or optimize to filter by user if provided)
+        const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 200`);
+        res.json(result.rows.map(mapRow));
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // SYNC (Active User Data)
