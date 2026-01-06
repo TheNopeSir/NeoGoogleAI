@@ -215,14 +215,30 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 2. Background Sync
     if (navigator.onLine) {
         try {
-            // Parallel Fetch of all global data needed for correct display
-            const [feed, globalUsers, globalWishlist, globalCollections, globalGuestbook] = await Promise.all([
+            // Prepare promises for parallel fetching
+            const promises: Promise<any>[] = [
                 apiCall('/feed'),
                 apiCall('/users'),
                 apiCall('/wishlist'),
                 apiCall('/collections'),
                 apiCall('/guestbook')
-            ]);
+            ];
+
+            // If user is logged in, fetch sync data in parallel
+            if (activeUserUsername) {
+                promises.push(apiCall(`/sync?username=${activeUserUsername}`));
+            }
+
+            // Await ALL data before opening a transaction to prevent InvalidStateError
+            const results = await Promise.all(promises);
+            
+            const feed = results[0];
+            const globalUsers = results[1];
+            const globalWishlist = results[2];
+            const globalCollections = results[3];
+            const globalGuestbook = results[4];
+            // If activeUserUsername was present, syncData is at index 5, otherwise undefined
+            const syncData = activeUserUsername ? results[5] : null;
 
             const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
 
@@ -251,12 +267,9 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
                 globalGuestbook.forEach(g => tx.objectStore('generic').put({ id: g.id, table: 'guestbook', data: g }));
             }
 
-            // Fetch User Data if logged in (for private data sync)
-            if (activeUserUsername) {
-                const syncData = await apiCall(`/sync?username=${activeUserUsername}`);
-                
+            // Save Private Sync Data (User Profile & Collections)
+            if (syncData) {
                 if (syncData.users && Array.isArray(syncData.users)) {
-                    // Sync active user profile specifically (might have sensitive fields if needed later)
                     syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
                 }
                 
