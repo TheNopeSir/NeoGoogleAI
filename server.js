@@ -207,6 +207,56 @@ api.post('/auth/login', async (req, res) => {
     }
 });
 
+// AUTH: TELEGRAM
+api.post('/auth/telegram', async (req, res) => {
+    const tgUser = req.body;
+    if (!tgUser || !tgUser.id) return res.status(400).json({ error: "Invalid Telegram data" });
+
+    try {
+        const username = tgUser.username || `user_${tgUser.id}`;
+        
+        // Check if user exists
+        const check = await query(`SELECT * FROM users WHERE username = $1`, [username]);
+        
+        let user;
+        if (check.rows.length > 0) {
+            // LOGIN EXISTING
+            user = mapRow(check.rows[0]);
+            // Update Avatar if changed
+            if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
+                user.avatarUrl = tgUser.photo_url;
+                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, username]);
+            }
+        } else {
+            // REGISTER NEW
+            user = {
+                username,
+                email: `tg_${tgUser.id}@neoarchive.placeholder`,
+                password: crypto.randomBytes(16).toString('hex'),
+                tagline: `Странник из Telegram`,
+                avatarUrl: tgUser.photo_url || `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
+                joinedDate: new Date().toLocaleDateString(),
+                following: [],
+                followers: [],
+                achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+                settings: { theme: 'dark' },
+                isAdmin: false,
+                telegramId: tgUser.id
+            };
+            
+            await query(
+                `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
+                [username, user]
+            );
+        }
+        
+        res.json(user);
+    } catch (e) {
+        console.error("Telegram Auth Error:", e);
+        res.status(500).json({ error: "Server error during Telegram auth: " + e.message });
+    }
+});
+
 // AUTH: RECOVER
 api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
@@ -265,7 +315,60 @@ api.get('/feed', async (req, res) => {
     }
 });
 
-// SYNC
+// GET ALL USERS (CACHED, Public Data Only)
+api.get('/users', async (req, res) => {
+    const cacheKey = 'users_global';
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    try {
+        // Return mostly full objects but frontend will filter sensitive
+        // We select data directly. 
+        const result = await query('SELECT username, data FROM users LIMIT 200');
+        const users = result.rows.map(row => {
+            const u = mapRow(row);
+            // sanitize server-side just in case
+            if(u) {
+                delete u.password;
+                delete u.email;
+                delete u.settings;
+            }
+            return u;
+        });
+        cache.set(cacheKey, users, 60);
+        res.json(users);
+    } catch (e) { res.status(500).json({error: e.message}); }
+});
+
+// GET GLOBAL WISHLIST
+api.get('/wishlist', async (req, res) => {
+    const cacheKey = 'wishlist_global';
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    try {
+        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT 100');
+        const items = result.rows.map(mapRow);
+        cache.set(cacheKey, items, 60);
+        res.json(items);
+    } catch (e) { res.status(500).json({error: e.message}); }
+});
+
+// GET GLOBAL COLLECTIONS
+api.get('/collections', async (req, res) => {
+    const cacheKey = 'collections_global';
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    try {
+        const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 50');
+        const items = result.rows.map(mapRow);
+        cache.set(cacheKey, items, 60);
+        res.json(items);
+    } catch (e) { res.status(500).json({error: e.message}); }
+});
+
+// SYNC (Active User Data)
 api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
@@ -292,6 +395,7 @@ api.post('/users', async (req, res) => {
             ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()
         `, [username, userData]);
         
+        cache.del('users_global'); // Invalidate global list
         res.json({ success: true });
     } catch (e) { 
         console.error(`Save users error:`, e.message);
@@ -321,10 +425,10 @@ const createCrudRoutes = (router, table) => {
                 ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
             `, [recordId, req.body]);
             
-            // Invalidate Feed Cache on new exhibit
-            if (table === 'exhibits') {
-                cache.del('feed_global');
-            }
+            // Invalidate Caches
+            if (table === 'exhibits') cache.del('feed_global');
+            if (table === 'wishlist') cache.del('wishlist_global');
+            if (table === 'collections') cache.del('collections_global');
 
             res.json({ success: true });
         } catch (e) { 
@@ -336,10 +440,10 @@ const createCrudRoutes = (router, table) => {
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
-            // Invalidate Feed Cache on delete
-            if (table === 'exhibits') {
-                cache.del('feed_global');
-            }
+            // Invalidate Caches
+            if (table === 'exhibits') cache.del('feed_global');
+            if (table === 'wishlist') cache.del('wishlist_global');
+            if (table === 'collections') cache.del('collections_global');
             res.json({ success: true });
         } catch (e) { res.status(500).json({ success: false, error: e.message }); }
     });
