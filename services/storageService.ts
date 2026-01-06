@@ -94,6 +94,20 @@ const getDB = () => {
                     db.createObjectStore('generic', { keyPath: 'id' });
                 }
             },
+            blocked() {
+                // Handle Chrome specific "tab blocking" issue
+                console.warn("Database blocked: please close other tabs with this app open.");
+            },
+            blocking() {
+                // If this tab is blocking another version, close connection
+                if (dbPromise) {
+                    dbPromise.then(db => db.close());
+                    dbPromise = null;
+                }
+            },
+            terminated() {
+                console.error("Database terminated unexpectedly");
+            }
         });
     }
     return dbPromise;
@@ -115,22 +129,37 @@ export const subscribeToToasts = (listener: ToastListener) => {
 };
 const notifyListeners = () => listeners.forEach(l => l());
 
-// --- API HELPER ---
+// --- API HELPER WITH TIMEOUT ---
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
+    const controller = new AbortController();
+    // 8 second timeout. If server doesn't respond, we fail and use local DB.
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
         const headers: any = { 'Content-Type': 'application/json' };
-        const options: RequestInit = { method, headers };
+        const options: RequestInit = { 
+            method, 
+            headers,
+            signal: controller.signal 
+        };
         if (body) options.body = JSON.stringify(body);
         
         const fullPath = `${API_BASE}${endpoint}`;
         const res = await fetch(fullPath, options);
         
+        clearTimeout(timeoutId);
+
         if (!res.ok) {
             const errText = await res.text();
             throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
         }
         return await res.json();
     } catch (e: any) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            console.warn(`[API] Timeout on ${endpoint} - switching to offline mode logic`);
+            throw new Error('Network timeout');
+        }
         console.error(`❌ API Call Failed [${endpoint}]:`, e.message);
         throw e;
     }
@@ -142,31 +171,42 @@ export const isOffline = () => !navigator.onLine;
 
 // Load everything from IndexedDB to RAM (Hot Cache)
 const hydrateCache = async () => {
-    const db = await getDB();
-    
-    const [exhibits, collections, users, notifications, messages, generic] = await Promise.all([
-        db.getAll('exhibits'),
-        db.getAll('collections'),
-        db.getAll('users'),
-        db.getAll('notifications'),
-        db.getAll('messages'),
-        db.getAll('generic')
-    ]);
+    try {
+        // Add a race condition to prevent getDB from hanging forever on Chrome
+        const db = await Promise.race([
+            getDB(),
+            new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => 
+                setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 3000)
+            )
+        ]);
+        
+        const [exhibits, collections, users, notifications, messages, generic] = await Promise.all([
+            db.getAll('exhibits'),
+            db.getAll('collections'),
+            db.getAll('users'),
+            db.getAll('notifications'),
+            db.getAll('messages'),
+            db.getAll('generic')
+        ]);
 
-    hotCache.exhibits = exhibits.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    hotCache.collections = collections;
-    hotCache.users = users;
-    hotCache.notifications = notifications;
-    hotCache.messages = messages;
-    
-    // Unpack generic tables
-    hotCache.wishlist = generic.filter((i:any) => i.table === 'wishlist').map((i:any) => i.data);
-    hotCache.guestbook = generic.filter((i:any) => i.table === 'guestbook').map((i:any) => i.data);
-    hotCache.guilds = generic.filter((i:any) => i.table === 'guilds').map((i:any) => i.data);
-    hotCache.tradeRequests = generic.filter((i:any) => i.table === 'tradeRequests').map((i:any) => i.data);
+        hotCache.exhibits = exhibits.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        hotCache.collections = collections;
+        hotCache.users = users;
+        hotCache.notifications = notifications;
+        hotCache.messages = messages;
+        
+        // Unpack generic tables
+        hotCache.wishlist = generic.filter((i:any) => i.table === 'wishlist').map((i:any) => i.data);
+        hotCache.guestbook = generic.filter((i:any) => i.table === 'guestbook').map((i:any) => i.data);
+        hotCache.guilds = generic.filter((i:any) => i.table === 'guilds').map((i:any) => i.data);
+        hotCache.tradeRequests = generic.filter((i:any) => i.table === 'tradeRequests').map((i:any) => i.data);
 
-    notifyListeners();
-    console.log(`[NeoDB] Hydrated: ${exhibits.length} items, ${users.length} users.`);
+        notifyListeners();
+        console.log(`[NeoDB] Hydrated: ${exhibits.length} items, ${users.length} users.`);
+    } catch (e) {
+        console.error("Hydration failed (using empty cache):", e);
+        // If DB fails, we proceed with empty cache to let the app at least render the error or auth screen
+    }
 };
 
 // Generic DB Helper for things that don't have their own store
@@ -208,9 +248,14 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 1. Load Local Data Fast
     await hydrateCache();
     
-    const db = await getDB();
-    const storedSession = await db.get('system', SESSION_USER_KEY);
-    const activeUserUsername = storedSession?.value;
+    let activeUserUsername: string | undefined;
+    try {
+        const db = await getDB();
+        const storedSession = await db.get('system', SESSION_USER_KEY);
+        activeUserUsername = storedSession?.value;
+    } catch (e) {
+        console.warn("Could not read session from DB");
+    }
 
     // 2. Background Sync
     if (navigator.onLine) {
@@ -240,6 +285,7 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
             // If activeUserUsername was present, syncData is at index 5, otherwise undefined
             const syncData = activeUserUsername ? results[5] : null;
 
+            const db = await getDB();
             const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
 
             // Save Feed
@@ -300,14 +346,14 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
                         await txMsg.done;
                     }
                 } catch (e) {
-                    console.error("Failed to sync personal data:", e);
+                    console.error("Failed to sync personal data (non-fatal):", e);
                 }
             }
             
             // Re-hydrate to reflect new server data
             await hydrateCache();
         } catch (e) {
-            console.warn("[Sync] Server unreachable or sync error:", e);
+            console.warn("[Sync] Server unreachable or timeout (running in offline mode):", e);
         }
     }
 
