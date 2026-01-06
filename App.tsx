@@ -714,8 +714,8 @@ export default function App() {
                     currentUser={user}
                     partnerUsername={viewedProfileUsername}
                     messages={messages.filter(m => 
-                        (m.sender === user.username && m.receiver === viewedProfileUsername) || 
-                        (m.sender === viewedProfileUsername && m.receiver === user.username)
+                        (m.sender.toLowerCase() === user.username.toLowerCase() && m.receiver.toLowerCase() === viewedProfileUsername.toLowerCase()) || 
+                        (m.sender.toLowerCase() === viewedProfileUsername.toLowerCase() && m.receiver.toLowerCase() === user.username.toLowerCase())
                     )}
                     onBack={handleBack}
                     onSendMessage={async (text) => {
