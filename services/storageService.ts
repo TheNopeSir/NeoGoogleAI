@@ -49,7 +49,25 @@ const notifyListeners = () => listeners.forEach(l => l());
 const saveCacheToLocal = () => {
     try {
         localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache));
-    } catch (e) { console.error("Cache save failed", e); }
+    } catch (e: any) { 
+        console.error("Cache save failed", e);
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+            // Safe fallback: Save only essential metadata to keep login session
+            try {
+                const liteCache = {
+                    ...cache,
+                    exhibits: [], // Do not cache exhibits locally if quota exceeded
+                    collections: [],
+                    messages: [],
+                    users: cache.users.map(u => ({...u, avatarUrl: u.avatarUrl?.length > 500 ? '' : u.avatarUrl})), // Strip heavy avatars
+                };
+                localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(liteCache));
+                console.warn("Storage Full: Saved lite cache version.");
+            } catch (retryErr) {
+                console.error("Critical: Failed to save even lite cache.", retryErr);
+            }
+        }
+    }
 };
 
 const loadCacheFromLocal = () => {
@@ -155,7 +173,7 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
                 return freshUser;
             }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.warn("Background sync failed - showing cached data", e);
     }
     
