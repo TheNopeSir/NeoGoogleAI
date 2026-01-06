@@ -72,7 +72,11 @@ const SocialListView: React.FC<SocialListViewProps> = ({
                             <div 
                                 key={uName} 
                                 onClick={() => onUserClick(uName)}
-                                className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer hover:bg-white/5 ${isWinamp ? 'bg-[#191919] border-[#505050]' : theme === 'dark' ? 'bg-dark-surface border-white/10' : 'bg-white border-black/10'}`}
+                                className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer hover:bg-white/5 
+                                    ${isWinamp 
+                                        ? 'bg-[#191919] border-[#505050] text-[#00ff00]' 
+                                        : theme === 'dark' ? 'bg-dark-surface border-white/10 text-gray-200' : 'bg-white border-black/10 text-gray-800'}`
+                                }
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20">

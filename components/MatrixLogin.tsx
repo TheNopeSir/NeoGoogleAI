@@ -63,7 +63,8 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault(); setIsLoading(true); setError(''); setInfoMessage('');
-      try { const user = await db.loginUser(email.toLowerCase(), password); onLogin(user, rememberMe); } 
+      // Send identifier as-is, server handles case insensitivity
+      try { const user = await db.loginUser(email, password); onLogin(user, rememberMe); } 
       catch (err: any) { setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ'); setIsLoading(false); }
   };
 
@@ -141,7 +142,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
             <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4 w-full">
                  {infoMessage && <div className="text-green-500 text-[10px] font-mono text-center mb-2">{infoMessage}</div>}
                  <div className="flex items-center gap-2 border-b p-3 border-white/20">
-                    <User size={16} className="text-white/50" /><input value={email} onChange={e => setEmail(e.target.value)} type="text" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="EMAIL" required />
+                    <User size={16} className="text-white/50" /><input value={email} onChange={e => setEmail(e.target.value)} type="text" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="LOGIN / EMAIL" required />
                  </div>
                  <div className="flex items-center gap-2 border-b p-3 border-white/20">
                     <Lock size={16} className="text-white/50" />
