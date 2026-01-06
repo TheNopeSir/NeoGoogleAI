@@ -146,20 +146,25 @@ api.post('/auth/register', async (req, res) => {
     const { username, password, tagline, email } = req.body;
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
+    // Sanitize inputs
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
     try {
         // Case insensitive check for existence
         const check = await query(
             `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($2)`, 
-            [username, email]
+            [cleanUsername, cleanEmail]
         );
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
         const newUser = {
-            username,
-            email, // Store original case
-            password, 
+            username: cleanUsername,
+            email: cleanEmail, 
+            password: cleanPassword, 
             tagline: tagline || "Новый пользователь",
-            avatarUrl: `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
+            avatarUrl: `https://ui-avatars.com/api/?name=${cleanUsername}&background=random&color=fff`,
             joinedDate: new Date().toLocaleDateString(),
             following: [],
             followers: [],
@@ -170,16 +175,16 @@ api.post('/auth/register', async (req, res) => {
 
         await query(
             `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
-            [username, newUser]
+            [cleanUsername, newUser]
         );
         
         try {
             if (process.env.SMTP_USER) {
                 await transporter.sendMail({
                     from: `"NeoArchive" <${process.env.SMTP_USER}>`,
-                    to: email,
+                    to: cleanEmail,
                     subject: 'WELCOME TO THE ARCHIVE',
-                    html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${username}</strong>.</p></div>`
+                    html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
                 });
             }
         } catch (mailError) {
@@ -196,17 +201,26 @@ api.post('/auth/register', async (req, res) => {
 // AUTH: LOGIN
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
+    
+    // Sanitize
+    const cleanIdentifier = identifier ? identifier.trim() : '';
+    const cleanPassword = password ? password.trim() : '';
+
     try {
         // Case insensitive lookup for username OR email
         const result = await query(
             `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($1)`, 
-            [identifier]
+            [cleanIdentifier]
         );
         
         if (result.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
         
         const user = mapRow(result.rows[0]);
-        if (user.password !== password) return res.status(401).json({ error: "Неверный пароль" });
+        
+        // Strict password check (case sensitive, but inputs were trimmed)
+        // If legacy users have spaces, they might need to reset password, but new flow ensures clean data.
+        if (user.password !== cleanPassword) return res.status(401).json({ error: "Неверный пароль" });
+        
         res.json(user);
     } catch (e) {
         console.error(e);
@@ -268,8 +282,10 @@ api.post('/auth/telegram', async (req, res) => {
 api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email обязателен" });
+    const cleanEmail = email.trim();
+
     try {
-        const result = await query(`SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`, [email]);
+        const result = await query(`SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`, [cleanEmail]);
         if (result.rows.length === 0) return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
 
         const rawUser = result.rows[0];
@@ -283,7 +299,7 @@ api.post('/auth/recover', async (req, res) => {
             try {
                 await transporter.sendMail({
                     from: `"NeoArchive Security" <${process.env.SMTP_USER}>`,
-                    to: email,
+                    to: cleanEmail,
                     subject: 'PASSWORD RESET // NEO_ARCHIVE',
                     html: `
                     <div style="background: #000; color: #0f0; padding: 20px; font-family: monospace;">

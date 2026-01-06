@@ -253,7 +253,8 @@ export default function App() {
           setView('AUTH'); 
       } finally { 
           setIsInitializing(false); 
-          setTimeout(() => setShowSplash(false), 500); 
+          // Reduce splash delay to almost zero for "instant" feel
+          setTimeout(() => setShowSplash(false), 50); 
       }
     };
     init();
