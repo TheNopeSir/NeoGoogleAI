@@ -36,6 +36,9 @@ import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, Gue
 import { getArtifactTier } from './constants';
 import useSwipe from './hooks/useSwipe';
 
+// Bump this version to force PWA refresh for all users
+const CACHE_VERSION = 'v4.0_FORCE_REFRESH';
+
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');
   const [view, setView] = useState<ViewState>('AUTH');
@@ -239,6 +242,21 @@ export default function App() {
   // Initial Boot
   useEffect(() => {
     const init = async () => {
+      // PWA CACHE BUSTER
+      const currentVersion = localStorage.getItem('neo_pwa_version');
+      if (currentVersion !== CACHE_VERSION) {
+          console.log(`[PWA] Updating from ${currentVersion} to ${CACHE_VERSION}`);
+          if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (const registration of registrations) {
+                  await registration.unregister();
+              }
+          }
+          localStorage.setItem('neo_pwa_version', CACHE_VERSION);
+          window.location.reload();
+          return;
+      }
+
       try {
           const activeUser = await db.initializeDatabase();
           refreshData(); 
