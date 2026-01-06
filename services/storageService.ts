@@ -42,7 +42,7 @@ interface NeoArchiveDB extends DBSchema {
 }
 
 const DB_NAME = 'NeoArchive_V3_Turbo';
-const DB_VERSION = 2; // Bumped version to ensure schema integrity
+const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
 
@@ -68,10 +68,8 @@ const getDB = () => {
     if (!dbPromise) {
         dbPromise = openDB<NeoArchiveDB>(DB_NAME, DB_VERSION, {
             upgrade(db) {
-                // System Store (Settings, Session)
                 if (!db.objectStoreNames.contains('system')) db.createObjectStore('system');
                 
-                // Content Stores
                 if (!db.objectStoreNames.contains('exhibits')) {
                     const store = db.createObjectStore('exhibits', { keyPath: 'id' });
                     store.createIndex('by-owner', 'owner');
@@ -195,33 +193,56 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 2. Background Sync
     if (navigator.onLine) {
         try {
-            // Fetch Feed
-            const feed = await apiCall('/feed');
+            // Parallel Fetch of all global data needed for correct display
+            const [feed, globalUsers, globalWishlist, globalCollections] = await Promise.all([
+                apiCall('/feed'),
+                apiCall('/users'),
+                apiCall('/wishlist'),
+                apiCall('/collections')
+            ]);
+
+            const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
+
+            // Save Feed
             if (Array.isArray(feed)) {
-                const tx = db.transaction('exhibits', 'readwrite');
-                // Smart merge: Update existing, add new.
-                // We trust server timestamp more than local unless it's a draft
-                await Promise.all(feed.map(item => tx.store.put(item)));
-                await tx.done;
+                feed.forEach(item => tx.objectStore('exhibits').put(item));
             }
 
-            // Fetch User Data if logged in
+            // Save Global Users (Fixes avatar and "user not found" issues)
+            if (Array.isArray(globalUsers)) {
+                globalUsers.forEach(u => tx.objectStore('users').put(u));
+            }
+
+            // Save Global Wishlist (Fixes empty wishlist feed)
+            if (Array.isArray(globalWishlist)) {
+                globalWishlist.forEach(w => tx.objectStore('generic').put({ id: w.id, table: 'wishlist', data: w }));
+            }
+
+            // Save Global Collections (Fixes empty collections search)
+            if (Array.isArray(globalCollections)) {
+                globalCollections.forEach(c => tx.objectStore('collections').put(c));
+            }
+
+            // Fetch User Data if logged in (for private data sync)
             if (activeUserUsername) {
                 const syncData = await apiCall(`/sync?username=${activeUserUsername}`);
                 
-                if (syncData.users) {
-                    const txUser = db.transaction('users', 'readwrite');
-                    await Promise.all(syncData.users.map((u: UserProfile) => txUser.store.put(u)));
-                    await txUser.done;
+                if (syncData.users && Array.isArray(syncData.users)) {
+                    // Sync active user profile specifically (might have sensitive fields if needed later)
+                    syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
                 }
                 
-                if (syncData.collections) {
-                    const txCol = db.transaction('collections', 'readwrite');
-                    await Promise.all(syncData.collections.map((c: Collection) => txCol.store.put(c)));
-                    await txCol.done;
+                if (syncData.collections && Array.isArray(syncData.collections)) {
+                    syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
                 }
 
-                // Sync Notifications
+                // Sync Notifications (handled separately usually but good to do here)
+            }
+            
+            await tx.done;
+
+            // Sync Notifications separately to avoid blocking big transaction if fails
+            if (activeUserUsername) {
                 try {
                     const notifs = await apiCall(`/notifications?username=${activeUserUsername}`);
                     if(Array.isArray(notifs)) {
@@ -235,7 +256,7 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
             // Re-hydrate to reflect new server data
             await hydrateCache();
         } catch (e) {
-            console.warn("[Sync] Server unreachable, using local data.");
+            console.warn("[Sync] Server unreachable or sync error:", e);
         }
     }
 
@@ -251,7 +272,6 @@ export const loginUser = async (identifier: string, password: string): Promise<U
     const user = await apiCall('/auth/login', 'POST', { identifier, password });
     
     const db = await getDB();
-    // System store is key-value, must provide key explicitely
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
     
