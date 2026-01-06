@@ -17,10 +17,52 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ==========================================
+// 🚀 SERVER-SIDE CACHING (REDIS-LIKE)
+// ==========================================
+class ServerCache {
+    constructor(ttlSeconds = 60) {
+        this.cache = new Map();
+        this.ttl = ttlSeconds * 1000;
+    }
+
+    get(key) {
+        const item = this.cache.get(key);
+        if (!item) return null;
+        if (Date.now() > item.expiry) {
+            this.cache.delete(key);
+            return null;
+        }
+        return item.value;
+    }
+
+    set(key, value, customTtl = null) {
+        const t = customTtl ? customTtl * 1000 : this.ttl;
+        this.cache.set(key, {
+            value,
+            expiry: Date.now() + t
+        });
+    }
+
+    del(key) {
+        this.cache.delete(key);
+    }
+    
+    // Pattern match delete (e.g., delete all 'exhibit:*')
+    flushPattern(prefix) {
+        for (const key of this.cache.keys()) {
+            if (key.startsWith(prefix)) {
+                this.cache.delete(key);
+            }
+        }
+    }
+}
+
+const cache = new ServerCache(60); // Default 1 minute cache
+
+// ==========================================
 // ⚙️ НАСТРОЙКИ СЕРВЕРА
 // ==========================================
 
-// Enforce port 3002 to match vite.config.ts proxy
 const PORT = 3002;
 const app = express();
 
@@ -96,7 +138,7 @@ api.get('/', (req, res) => res.json({ status: 'NeoArchive API Online' }));
 
 // HEALTH CHECK
 api.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date(), port: PORT });
+    res.json({ status: 'ok', timestamp: new Date(), port: PORT, cacheSize: cache.cache.size });
 });
 
 // AUTH: REGISTER
@@ -105,7 +147,6 @@ api.post('/auth/register', async (req, res) => {
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
     try {
-        // Use USERNAME for users table
         const check = await query(`SELECT * FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
@@ -123,7 +164,6 @@ api.post('/auth/register', async (req, res) => {
             isAdmin: false
         };
 
-        // Insert into users table using username column
         await query(
             `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
             [username, newUser]
@@ -153,7 +193,6 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        // Query by USERNAME or Email inside JSON data
         const result = await query(
             `SELECT * FROM users WHERE username = $1 OR data->>'email' = $1`, 
             [identifier]
@@ -181,7 +220,6 @@ api.post('/auth/recover', async (req, res) => {
         const newPass = crypto.randomBytes(4).toString('hex');
         user.password = newPass;
         
-        // Update users table via username
         await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
         if (process.env.SMTP_USER) {
@@ -208,12 +246,18 @@ api.post('/auth/recover', async (req, res) => {
     }
 });
 
-// FEED
+// FEED (CACHED)
 api.get('/feed', async (req, res) => {
+    const cacheKey = 'feed_global';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+        return res.json(cached);
+    }
+
     try {
-        // Updated_at should exist on exhibits table
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100`);
         const items = result.rows.map(mapRow);
+        cache.set(cacheKey, items, 30); // Cache for 30 seconds
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -226,9 +270,7 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        // Users by USERNAME
         const userRes = await query(`SELECT * FROM users WHERE username = $1`, [username]);
-        // Collections by owner inside JSON data
         const colsRes = await query(`SELECT * FROM collections WHERE data->>'owner' = $1`, [username]);
         res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
     } catch(e) {
@@ -236,11 +278,9 @@ api.get('/sync', async (req, res) => {
     }
 });
 
-// USERS CRUD (Special handling for 'username' PK)
+// USERS CRUD
 api.post('/users', async (req, res) => {
     try {
-        // Expecting full user object in body. 
-        // frontend sends { id: username, ... } but we use 'username' as PK
         const userData = req.body;
         const username = userData.username || userData.id;
         
@@ -259,7 +299,7 @@ api.post('/users', async (req, res) => {
     }
 });
 
-// GENERIC CRUD Helper (For tables with 'id' PK)
+// GENERIC CRUD Helper
 const createCrudRoutes = (router, table) => {
     router.get(`/${table}/:id`, async (req, res) => {
         try {
@@ -281,6 +321,11 @@ const createCrudRoutes = (router, table) => {
                 ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
             `, [recordId, req.body]);
             
+            // Invalidate Feed Cache on new exhibit
+            if (table === 'exhibits') {
+                cache.del('feed_global');
+            }
+
             res.json({ success: true });
         } catch (e) { 
             console.error(`Save ${table} error:`, e.message);
@@ -291,6 +336,10 @@ const createCrudRoutes = (router, table) => {
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
+            // Invalidate Feed Cache on delete
+            if (table === 'exhibits') {
+                cache.del('feed_global');
+            }
             res.json({ success: true });
         } catch (e) { res.status(500).json({ success: false, error: e.message }); }
     });
@@ -315,16 +364,13 @@ app.use('/api', api);
 // STATIC FILES & SPA FALLBACK
 // ==========================================
 
-// Serve static files from 'dist' (if exists)
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Catch-all for SPA
 app.get('*', (req, res) => {
     const filePath = path.join(__dirname, 'dist', 'index.html');
     if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
     } else {
-        // Fallback info if build is missing
         res.status(200).send(`
             <style>body{background:#000;color:#0f0;font-family:monospace;padding:2rem;}</style>
             <h1>NeoArchive Server Online</h1>
