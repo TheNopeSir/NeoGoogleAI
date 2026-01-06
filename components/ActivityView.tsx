@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
@@ -21,12 +22,12 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
 
     const myNotifs = useMemo(() => {
-        let list = notifications.filter(n => n.recipient === currentUser.username);
+        let list = notifications.filter(n => n.recipient.toLowerCase() === currentUser.username.toLowerCase());
         if (filter === 'UNREAD') list = list.filter(n => !n.isRead);
         return list.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [notifications, currentUser.username, filter]);
 
-    const myMessages = messages.filter(m => m.sender === currentUser.username || m.receiver === currentUser.username);
+    const myMessages = messages.filter(m => m.sender.toLowerCase() === currentUser.username.toLowerCase() || m.receiver.toLowerCase() === currentUser.username.toLowerCase());
     const trades = getMyTradeRequests();
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
@@ -197,8 +198,45 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {activeTab === 'MESSAGES' && (
                 <div className="space-y-2">
-                    {/* Render messages logic (simplified for brevity, assume groupedMessages logic from previous code) */}
-                    <div className="text-center opacity-30 py-10 font-pixel text-xs">РАЗДЕЛ СООБЩЕНИЙ</div>
+                    {myMessages.length === 0 ? (
+                        <div className="text-center py-20 opacity-30 font-pixel text-xs">НЕТ СООБЩЕНИЙ</div>
+                    ) : (
+                        (() => {
+                            // Group messages by partner
+                            const chats: { [key: string]: Message[] } = {};
+                            myMessages.forEach(m => {
+                                const partner = m.sender.toLowerCase() === currentUser.username.toLowerCase() ? m.receiver : m.sender;
+                                if (!chats[partner]) chats[partner] = [];
+                                chats[partner].push(m);
+                            });
+
+                            return Object.entries(chats).map(([partner, msgs]) => {
+                                const lastMsg = msgs.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                                const hasUnread = msgs.some(m => !m.isRead && m.sender.toLowerCase() === partner.toLowerCase());
+
+                                return (
+                                    <div 
+                                        key={partner} 
+                                        onClick={() => onChatClick(partner)}
+                                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
+                                    >
+                                        <img src={getUserAvatar(partner)} className="w-10 h-10 rounded-full border border-white/20" />
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
+                                                <span className="text-[9px] opacity-40 font-mono">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className={`text-xs font-mono truncate ${hasUnread ? 'text-white' : 'opacity-60'}`}>
+                                                {lastMsg.sender.toLowerCase() === currentUser.username.toLowerCase() && <span className="opacity-50">Вы: </span>}
+                                                {lastMsg.text}
+                                            </div>
+                                        </div>
+                                        {hasUnread && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>}
+                                    </div>
+                                );
+                            });
+                        })()
+                    )}
                 </div>
             )}
 

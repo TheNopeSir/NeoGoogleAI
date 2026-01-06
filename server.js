@@ -375,14 +375,14 @@ api.get('/collections', async (req, res) => {
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
-// GET MESSAGES (For User)
+// GET MESSAGES (For User) - Case Insensitive
 api.get('/messages', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        // Fetch sent or received messages
+        // Fetch sent or received messages using case-insensitive check
         const result = await query(
-            `SELECT * FROM messages WHERE data->>'sender' = $1 OR data->>'receiver' = $1 ORDER BY updated_at DESC LIMIT 200`, 
+            `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 200`, 
             [username]
         );
         res.json(result.rows.map(mapRow));
@@ -407,8 +407,8 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        const userRes = await query(`SELECT * FROM users WHERE username = $1`, [username]);
-        const colsRes = await query(`SELECT * FROM collections WHERE data->>'owner' = $1`, [username]);
+        const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
+        const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
         res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
     } catch(e) {
         res.status(500).json({ error: e.message });
@@ -485,12 +485,12 @@ const createCrudRoutes = (router, table) => {
 
 ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
 
-// Notifications Fallback
+// Notifications Fallback - Case Insensitive
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        const result = await query(`SELECT * FROM notifications WHERE data->>'recipient' = $1`, [username]);
+        const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1)`, [username]);
         res.json(result.rows.map(mapRow));
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
