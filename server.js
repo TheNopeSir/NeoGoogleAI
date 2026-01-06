@@ -72,7 +72,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // Логгер запросов
 app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    // console.log(`[REQUEST] ${req.method} ${req.url}`); // Reduced logging spam
     next();
 });
 
@@ -217,9 +217,15 @@ api.post('/auth/login', async (req, res) => {
         
         const user = mapRow(result.rows[0]);
         
-        // Strict password check (case sensitive, but inputs were trimmed)
-        // If legacy users have spaces, they might need to reset password, but new flow ensures clean data.
-        if (user.password !== cleanPassword) return res.status(401).json({ error: "Неверный пароль" });
+        // Robust Password Check:
+        // 1. Strict match
+        // 2. Trimmed DB match (fixes legacy users with accidental trailing spaces)
+        let passIsValid = user.password === cleanPassword;
+        if (!passIsValid && user.password && user.password.trim() === cleanPassword) {
+            passIsValid = true;
+        }
+
+        if (!passIsValid) return res.status(401).json({ error: "Неверный пароль" });
         
         res.json(user);
     } catch (e) {
@@ -518,11 +524,24 @@ app.use('/api', api);
 // STATIC FILES & SPA FALLBACK
 // ==========================================
 
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serve static files with Cache-Control headers to fix PWA/caching issues
+app.use(express.static(path.join(__dirname, 'dist'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
+            // Prevent caching of entry point and service worker to ensure updates
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+            // Cache static assets (images, js chunks)
+            res.setHeader('Cache-Control', 'public, max-age=31536000');
+        }
+    }
+}));
 
 app.get('*', (req, res) => {
     const filePath = path.join(__dirname, 'dist', 'index.html');
     if (fs.existsSync(filePath)) {
+        // Prevent caching of index.html
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(filePath);
     } else {
         res.status(200).send(`

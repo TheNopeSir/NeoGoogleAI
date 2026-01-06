@@ -169,31 +169,41 @@ export const isOffline = () => !navigator.onLine;
 
 // --- CORE FUNCTIONS ---
 
-// Load everything from IndexedDB to RAM (Hot Cache)
-const hydrateCache = async () => {
+// 1. FAST Hydration (Users & Metadata only) - Blocks UI for minimal time
+const hydrateCritical = async () => {
     try {
-        // Add a race condition to prevent getDB from hanging forever on Chrome
         const db = await Promise.race([
             getDB(),
-            new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => 
-                setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 2000) // Reduced timeout for speed
-            )
+            new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 2000))
         ]);
         
-        const [exhibits, collections, users, notifications, messages, generic] = await Promise.all([
-            db.getAll('exhibits'),
-            db.getAll('collections'),
+        const [users, notifications, messages] = await Promise.all([
             db.getAll('users'),
             db.getAll('notifications'),
             db.getAll('messages'),
+        ]);
+
+        hotCache.users = users;
+        hotCache.notifications = notifications;
+        hotCache.messages = messages;
+        // Don't notify listeners yet, main app will check cache manually on init
+    } catch (e) {
+        console.warn("Critical hydration failed (clean slate?):", e);
+    }
+};
+
+// 2. SLOW Hydration (Exhibits with images) - Runs in background
+const hydrateContent = async () => {
+    try {
+        const db = await getDB();
+        const [exhibits, collections, generic] = await Promise.all([
+            db.getAll('exhibits'),
+            db.getAll('collections'),
             db.getAll('generic')
         ]);
 
         hotCache.exhibits = exhibits.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         hotCache.collections = collections;
-        hotCache.users = users;
-        hotCache.notifications = notifications;
-        hotCache.messages = messages;
         
         // Unpack generic tables
         hotCache.wishlist = generic.filter((i:any) => i.table === 'wishlist').map((i:any) => i.data);
@@ -201,11 +211,10 @@ const hydrateCache = async () => {
         hotCache.guilds = generic.filter((i:any) => i.table === 'guilds').map((i:any) => i.data);
         hotCache.tradeRequests = generic.filter((i:any) => i.table === 'tradeRequests').map((i:any) => i.data);
 
-        notifyListeners();
-        console.log(`[NeoDB] Hydrated: ${exhibits.length} items, ${users.length} users.`);
+        console.log(`[NeoDB] Content Hydrated: ${exhibits.length} items`);
+        notifyListeners(); // Update UI when heavy content is ready
     } catch (e) {
-        console.error("Hydration failed (using empty cache):", e);
-        // If DB fails, we proceed with empty cache to let the app at least render the error or auth screen
+        console.error("Content hydration failed:", e);
     }
 };
 
@@ -315,7 +324,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         }
         
         // Re-hydrate to reflect new server data in UI
-        await hydrateCache();
+        await hydrateContent(); 
         console.log("✅ [Sync] Background sync complete");
     } catch (e) {
         console.warn("[Sync] Server unreachable or timeout:", e);
@@ -344,9 +353,12 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         }
     }
 
-    // 1. Load Local Data Fast
-    await hydrateCache();
+    // 1. Load Critical Data Fast (Users, Session)
+    await hydrateCritical();
     
+    // 2. Start Heavy Load (Exhibits) in Background
+    hydrateContent();
+
     let activeUserUsername: string | undefined;
     try {
         const db = await getDB();
@@ -356,11 +368,10 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 2. Trigger Background Sync (Optimistic UI Pattern)
-    // We do NOT await this. It happens in the background.
+    // 3. Trigger Background Sync (Optimistic UI Pattern)
     performBackgroundSync(activeUserUsername);
 
-    // 3. Return user immediately from local cache if present
+    // 4. Return user immediately from local cache if present
     if (activeUserUsername) {
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
