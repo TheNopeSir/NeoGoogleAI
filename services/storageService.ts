@@ -42,7 +42,7 @@ interface NeoArchiveDB extends DBSchema {
 }
 
 const DB_NAME = 'NeoArchive_V3_Turbo';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped version to ensure schema integrity
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
 
@@ -251,7 +251,8 @@ export const loginUser = async (identifier: string, password: string): Promise<U
     const user = await apiCall('/auth/login', 'POST', { identifier, password });
     
     const db = await getDB();
-    await db.put('system', { key: SESSION_USER_KEY, value: user.username });
+    // System store is key-value, must provide key explicitely
+    await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
     
     // Update Hot Cache
@@ -265,7 +266,7 @@ export const loginUser = async (identifier: string, password: string): Promise<U
 export const registerUser = async (username: string, password: string, tagline: string, email: string): Promise<UserProfile> => {
     const user = await apiCall('/auth/register', 'POST', { username, password, tagline, email });
     const db = await getDB();
-    await db.put('system', { key: SESSION_USER_KEY, value: user.username });
+    await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
@@ -281,7 +282,7 @@ export const logoutUser = async () => {
 export const loginViaTelegram = async (tgUser: any) => {
     const user = await apiCall('/auth/telegram', 'POST', tgUser);
     const db = await getDB();
-    await db.put('system', { key: SESSION_USER_KEY, value: user.username });
+    await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
@@ -376,9 +377,6 @@ export const createNotification = async (r:string, t:NotificationType, a:string,
         timestamp: new Date().toISOString(),
         isRead: false
     };
-    // Local optimisic? No, usually notifications come from server logic, but for self-actions we can push locally?
-    // Actually, we don't display outgoing notifications, only incoming.
-    // So we just push to server.
     await apiCall('/notifications', 'POST', notif);
 };
 
@@ -529,12 +527,10 @@ export const markNotificationsRead = async (u:string) => {
     hotCache.notifications.forEach(n => { 
         if(n.recipient === u && !n.isRead) {
             n.isRead = true;
-            // Async update DB
             const dbPromise = getDB().then(db => db.put('notifications', n));
         }
     });
     notifyListeners();
-    // Batch API call ideally, or just individual
 };
 
 export const toggleFollow = async (me:string, them:string) => {
