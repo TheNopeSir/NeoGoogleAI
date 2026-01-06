@@ -122,7 +122,7 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     // 2. BACKGROUND SYNC
     try {
         // Health Check
-        try { await apiCall('/health'); } catch(e) { console.warn("Backend offline or proxy error:", e.message); }
+        try { await apiCall('/health'); } catch(e: any) { console.warn("Backend offline or proxy error:", e.message); }
 
         // Fetch global feed
         const feed = await apiCall('/feed');
