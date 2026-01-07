@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
@@ -951,5 +952,6 @@ export default function App() {
                  />
             )}
         </div>
-    );
+    </div>
+  );
 }
