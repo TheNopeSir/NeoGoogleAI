@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, Reply, Trash2, Check, X, Wand2, Eye, EyeOff, Camera, Palette, Settings, Search, Terminal, Sun, Package, Archive, FolderPlus, BookOpen, Heart, Share2, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, Reply, Trash2, Check, X, Wand2, Eye, EyeOff, Camera, Palette, Settings, Search, Terminal, Sun, Package, Archive, FolderPlus, BookOpen, Heart, Share2, ExternalLink, Link as LinkIcon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
 import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
@@ -168,6 +168,26 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         const url = `${window.location.origin}/u/${viewedProfileUsername}/wishlist`;
         navigator.clipboard.writeText(url);
         alert('Ссылка на вишлист скопирована в буфер обмена!');
+    };
+
+    // HARD RESET FOR PWA ISSUES
+    const handleHardReset = async () => {
+        if (!confirm("ВНИМАНИЕ! Это полностью очистит локальные данные приложения, кэш и перезагрузит страницу. Используйте, если приложение работает некорректно.")) return;
+        
+        // 1. Unregister SW
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of regs) await reg.unregister();
+        }
+        // 2. Clear Caches
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        // 3. Clear IndexedDB via helper
+        await db.clearLocalCache();
+        // 4. Force Reload
+        window.location.reload();
     };
 
     return (
@@ -499,11 +519,24 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     ) : (
                         <div>
                             <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><Palette size={14}/> Интерфейс / Visuals</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                                 <button onClick={() => updateSetting('theme', 'dark')} className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${localSettings.theme === 'dark' ? 'border-green-500 bg-green-500/10' : 'border-transparent bg-black/5 hover:bg-black/10'}`}><div className="w-8 h-8 bg-black rounded-full border border-gray-700 flex items-center justify-center text-green-500"><Terminal size={16}/></div><span className="font-pixel text-[10px]">MATRIX</span></button>
                                 <button onClick={() => updateSetting('theme', 'light')} className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${localSettings.theme === 'light' ? 'border-blue-500 bg-blue-500/10' : 'border-transparent bg-gray-100 hover:bg-gray-200'}`}><div className="w-8 h-8 bg-white rounded-full border border-gray-300 flex items-center justify-center text-black"><Sun size={16}/></div><span className="font-pixel text-[10px]">OFFICE</span></button>
                                 <button onClick={() => updateSetting('theme', 'xp')} className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${localSettings.theme === 'xp' ? 'border-blue-600 bg-blue-50' : 'border-transparent bg-blue-50/50 hover:bg-blue-100'}`}><div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full border border-white flex items-center justify-center text-white italic font-serif shadow">XP</div><span className="font-pixel text-[10px]">LUNA</span></button>
                                 <button onClick={() => updateSetting('theme', 'winamp')} className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${localSettings.theme === 'winamp' ? 'border-[#00ff00] bg-[#191919]' : 'border-transparent bg-[#191919] hover:border-[#505050]'}`}><div className="w-8 h-8 bg-[#282828] rounded-full border border-[#505050] flex items-center justify-center text-[#00ff00]"><Terminal size={16}/></div><span className="font-pixel text-[10px]">WINAMP</span></button>
+                            </div>
+
+                            <div className="pt-6 border-t border-white/10">
+                                <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70 text-red-500"><AlertTriangle size={14}/> Зона опасности</h3>
+                                <button 
+                                    onClick={handleHardReset}
+                                    className="w-full py-4 border-2 border-red-500/50 text-red-500 rounded-xl hover:bg-red-500/10 transition-all font-bold text-xs flex items-center justify-center gap-2 uppercase"
+                                >
+                                    <RefreshCw size={16}/> ПОЛНЫЙ СБРОС (HARD RESET)
+                                </button>
+                                <p className="text-[10px] opacity-50 mt-2 text-center">
+                                    Нажмите, если приложение "зависло", не обновляется или показывает старые данные. Это перезагрузит PWA и очистит кэш.
+                                </p>
                             </div>
                         </div>
                     )}

@@ -36,8 +36,8 @@ import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, Gue
 import { getArtifactTier } from './constants';
 import useSwipe from './hooks/useSwipe';
 
-// Bump this version to force PWA refresh for all users
-const CACHE_VERSION = 'v4.0_FORCE_REFRESH';
+// CHANGING THIS CONSTANT FORCES A HARD RESET FOR ALL USERS
+const CACHE_VERSION = 'v5.0_NUCLEAR_RESET';
 
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');
@@ -239,19 +239,29 @@ export default function App() {
     };
   }, [refreshData]);
 
-  // Initial Boot
+  // Initial Boot & PWA Check
   useEffect(() => {
     const init = async () => {
-      // PWA CACHE BUSTER
+      // FORCE CACHE & SW CLEANUP ON VERSION CHANGE
       const currentVersion = localStorage.getItem('neo_pwa_version');
       if (currentVersion !== CACHE_VERSION) {
-          console.log(`[PWA] Updating from ${currentVersion} to ${CACHE_VERSION}`);
+          console.log(`[PWA] Critical Update: ${currentVersion} -> ${CACHE_VERSION}`);
+          
+          // 1. Unregister Service Workers
           if ('serviceWorker' in navigator) {
               const registrations = await navigator.serviceWorker.getRegistrations();
               for (const registration of registrations) {
                   await registration.unregister();
               }
           }
+
+          // 2. Delete All Caches (Asset Cache, Image Cache, etc.)
+          if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(key => caches.delete(key)));
+          }
+
+          // 3. Set new version and Reload
           localStorage.setItem('neo_pwa_version', CACHE_VERSION);
           window.location.reload();
           return;
@@ -271,7 +281,6 @@ export default function App() {
           setView('AUTH'); 
       } finally { 
           setIsInitializing(false); 
-          // Reduce splash delay to almost zero for "instant" feel
           setTimeout(() => setShowSplash(false), 50); 
       }
     };
