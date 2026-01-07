@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
@@ -14,7 +13,6 @@ import UserProfileView from './components/UserProfileView';
 import ExhibitDetailPage from './components/ExhibitDetailPage';
 import CommunityHub from './components/CommunityHub'; 
 import RetroLoader from './components/RetroLoader';
-import PixelSnow from './components/PixelSnow';
 import ActivityView from './components/ActivityView';
 import SEO from './components/SEO';
 import HallOfFame from './components/HallOfFame';
@@ -26,13 +24,13 @@ import CreateWishlistItemView from './components/CreateWishlistItemView';
 import WishlistDetailView from './components/WishlistDetailView';
 import SocialListView from './components/SocialListView';
 import SearchView from './components/SearchView';
-import GuildDetailView from './components/GuildDetailView';
 import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
+import MyCollection from './components/MyCollection';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, Guild, UserStatus } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus } from './types';
 import { getArtifactTier } from './constants';
 import useSwipe from './hooks/useSwipe';
 
@@ -54,11 +52,11 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [guestbook, setGuestbook] = useState<GuestbookEntry[]>([]);
+  const [tradeRequests, setTradeRequests] = useState<TradeRequest[]>([]);
   
   const [selectedExhibit, setSelectedExhibit] = useState<Exhibit | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [selectedWishlistItem, setSelectedWishlistItem] = useState<WishlistItem | null>(null);
-  const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [viewedProfileUsername, setViewedProfileUsername] = useState<string>('');
   const [highlightCommentId, setHighlightCommentId] = useState<string | undefined>(undefined);
 
@@ -114,6 +112,8 @@ export default function App() {
           setView('SEARCH');
       } else if (root === 'create') {
           setView('CREATE_HUB');
+      } else if (root === 'my-collection') {
+          setView('MY_COLLECTION');
       } else if (root === 'u' || root === 'profile') {
           const username = segments[1];
           if (username) {
@@ -146,13 +146,6 @@ export default function App() {
               setSelectedCollection(col);
               setView('COLLECTION_DETAIL');
           }
-      } else if (root === 'guild') {
-          const id = segments[1];
-          const guild = db.getFullDatabase().guilds.find(g => g.id === id);
-          if (guild) {
-              setSelectedGuild(guild);
-              setView('GUILD_DETAIL');
-          }
       } else {
           setView('FEED');
       }
@@ -166,7 +159,7 @@ export default function App() {
       return () => window.removeEventListener('popstate', handlePopState);
   }, [syncFromUrl]);
 
-  const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; guild?: Guild; highlightCommentId?: string }) => {
+  const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
       if (params?.item) {
           setSelectedExhibit(params.item);
@@ -174,7 +167,6 @@ export default function App() {
       }
       if (params?.collection) setSelectedCollection(params.collection);
       if (params?.wishlistItem) setSelectedWishlistItem(params.wishlistItem);
-      if (params?.guild) setSelectedGuild(params.guild);
       
       setView(newView);
 
@@ -183,11 +175,11 @@ export default function App() {
       else if (newView === 'USER_WISHLIST') path = `/u/${params?.username || viewedProfileUsername}/wishlist`;
       else if (newView === 'EXHIBIT') path = `/artifact/${params?.item?.id || selectedExhibit?.id}`;
       else if (newView === 'COLLECTION_DETAIL') path = `/collection/${params?.collection?.id || selectedCollection?.id}`;
-      else if (newView === 'GUILD_DETAIL') path = `/guild/${params?.guild?.id || selectedGuild?.id}`;
       else if (newView === 'COMMUNITY_HUB') path = '/community';
       else if (newView === 'ACTIVITY') path = '/activity';
       else if (newView === 'SEARCH') path = '/search';
       else if (newView === 'CREATE_HUB') path = '/create';
+      else if (newView === 'MY_COLLECTION') path = '/my-collection';
       
       window.history.pushState({ view: newView, params }, '', path);
       window.scrollTo(0, 0);
@@ -220,6 +212,7 @@ export default function App() {
     setNotifications(data.notifications || []);
     setMessages(data.messages || []);
     setGuestbook(data.guestbook || []);
+    setTradeRequests([...(data.tradeRequests || [])]);
     
     // Check offline status helper
     setIsOffline(db.isOffline());
@@ -411,7 +404,6 @@ export default function App() {
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
-        {theme !== 'xp' && theme !== 'winamp' && <PixelSnow theme={theme === 'dark' ? 'dark' : 'light'} />}
         
         <ToastContainer />
 
@@ -563,6 +555,25 @@ export default function App() {
                 </div>
             )}
             
+            {view === 'MY_COLLECTION' && user && (
+                <MyCollection 
+                    theme={theme}
+                    user={user}
+                    exhibits={exhibits.filter(e => e.owner === user.username)}
+                    allExhibits={exhibits}
+                    collections={collections.filter(c => c.owner === user.username)}
+                    wishlist={wishlist}
+                    onBack={() => navigateTo('FEED')}
+                    onExhibitClick={(item) => {
+                        if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item });
+                        else handleExhibitClick(item);
+                    }}
+                    onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })}
+                    onLike={handleLike}
+                    onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }}
+                />
+            )}
+
             {view === 'EXHIBIT' && selectedExhibit && (
                 <ExhibitDetailPage 
                     exhibit={selectedExhibit} 
@@ -630,7 +641,7 @@ export default function App() {
                     }}
                     onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }}
                     onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }}
-                    onEdit={(item) => navigateTo('EDIT_ARTIFACT', { item })}
+                    onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })}
                     onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)}
                     onExhibitClick={handleExhibitClick}
                     isFollowing={user?.following?.includes(selectedExhibit.owner) || false}
@@ -657,16 +668,6 @@ export default function App() {
                         onLike={async (id) => { }}
                     />
                 </div>
-            )}
-
-            {view === 'GUILD_DETAIL' && selectedGuild && user && (
-                <GuildDetailView
-                    guild={selectedGuild}
-                    currentUser={user}
-                    theme={theme}
-                    onBack={handleBack}
-                    onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })}
-                />
             )}
 
             {view === 'WISHLIST_DETAIL' && selectedWishlistItem && user && (
@@ -730,7 +731,6 @@ export default function App() {
                         onExhibitClick={handleExhibitClick}
                         onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })}
                         onBack={() => navigateTo('FEED')}
-                        onGuildClick={(g) => { setSelectedGuild(g); navigateTo('GUILD_DETAIL', { guild: g }); }}
                         currentUser={user}
                     />
                 </div>
@@ -760,21 +760,21 @@ export default function App() {
                         <h2 className="font-pixel text-lg">СОЗДАТЬ</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
-                        <button onClick={() => setView('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all">
+                        <button onClick={() => navigateTo('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all">
                             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><Plus size={24}/></div>
                             <div className="text-left">
                                 <div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div>
                                 <div className="text-xs opacity-50">Добавить предмет в коллекцию</div>
                             </div>
                         </button>
-                        <button onClick={() => setView('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all">
+                        <button onClick={() => navigateTo('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all">
                             <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><FolderPlus size={24}/></div>
                             <div className="text-left">
                                 <div className="font-pixel text-sm font-bold">НОВАЯ КОЛЛЕКЦИЯ</div>
                                 <div className="text-xs opacity-50">Объединить предметы в альбом</div>
                             </div>
                         </button>
-                        <button onClick={() => setView('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all">
+                        <button onClick={() => navigateTo('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all">
                             <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-500"><Search size={24}/></div>
                             <div className="text-left">
                                 <div className="font-pixel text-sm font-bold">В ПОИСКЕ (WISHLIST)</div>
@@ -792,25 +792,12 @@ export default function App() {
                         onBack={handleBack} 
                         onSave={async (item) => { 
                             if (!user) return;
-                            const newItem = { ...item, id: crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; 
-                            await db.saveExhibit(newItem); 
+                            const newItem = { ...item, id: item.id || crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; 
+                            if (item.id) await db.updateExhibit(newItem);
+                            else await db.saveExhibit(newItem); 
                             handleBack(); 
                         }}
-                        userArtifacts={exhibits.filter(e => e.owner === user?.username)}
-                    />
-                </div>
-            )}
-
-            {view === 'EDIT_ARTIFACT' && selectedExhibit && (
-                <div className="p-4 pb-24">
-                    <CreateArtifactView 
-                        theme={theme} 
                         initialData={selectedExhibit}
-                        onBack={handleBack} 
-                        onSave={async (item) => { 
-                            await db.updateExhibit(item); 
-                            handleBack(); 
-                        }}
                         userArtifacts={exhibits.filter(e => e.owner === user?.username)}
                     />
                 </div>
@@ -824,10 +811,13 @@ export default function App() {
                         onBack={handleBack} 
                         onSave={async (col) => { 
                             if (!user) return;
-                            const newCol = { ...col, id: crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0 } as Collection;
-                            await db.saveCollection(newCol); 
+                            const newCol = { ...col, id: col.id || crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString() } as Collection;
+                            if (col.id) await db.updateCollection(newCol);
+                            else await db.saveCollection(newCol); 
                             handleBack(); 
                         }}
+                        initialData={selectedCollection}
+                        onDelete={async (id) => { await db.deleteCollection(id); handleBack(); }}
                     />
                 </div>
             )}
@@ -961,6 +951,5 @@ export default function App() {
                  />
             )}
         </div>
-    </div>
-  );
+    );
 }
