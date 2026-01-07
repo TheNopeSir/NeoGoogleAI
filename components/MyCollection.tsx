@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
-import { Package, FolderPlus, ArrowLeft, Archive, Heart } from 'lucide-react';
-import { UserProfile, Exhibit, Collection } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Package, FolderPlus, ArrowLeft, Archive, Heart, Zap, RefreshCw, ArrowRight } from 'lucide-react';
+import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
+import TradeOfferModal from './TradeOfferModal';
+import { getFullDatabase, getUserAvatar } from '../services/storageService';
 
 interface MyCollectionProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -11,6 +13,7 @@ interface MyCollectionProps {
     exhibits: Exhibit[]; // Owned items
     allExhibits?: Exhibit[]; // All items for favorites filtering
     collections: Collection[];
+    wishlist?: WishlistItem[]; // Global wishlist
     onBack: () => void;
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
@@ -21,39 +24,93 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     theme, 
     user, 
     exhibits,
-    allExhibits = [], // Default to empty if not provided 
+    allExhibits = [], 
     collections, 
+    wishlist = [],
     onBack, 
     onExhibitClick, 
     onCollectionClick, 
     onLike 
 }) => {
-    const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES'>('MY_ITEMS');
+    const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'MATCHES' | 'DRAFTS' | 'FAVORITES'>('MY_ITEMS');
+    const [tradeModalTarget, setTradeModalTarget] = useState<{ item: Exhibit, user: UserProfile, isWishlist: boolean } | null>(null);
 
     // Separate drafts and published items from owned list
     const drafts = exhibits.filter(e => e.isDraft);
     const published = exhibits.filter(e => !e.isDraft);
-    
-    // Filter favorites: items where user's name is in likedBy
     const favorites = allExhibits.filter(e => e.likedBy?.includes(user.username));
 
     const isWinamp = theme === 'winamp';
 
-    const renderTabButton = (tab: typeof activeTab, label: string) => (
+    // --- MATCHER ALGORITHM ---
+    const matches = useMemo(() => {
+        // 1. THEY WANT WHAT YOU HAVE (Incoming Demand)
+        // Find wishlist items from OTHERS that match MY published exhibits
+        const incoming = wishlist
+            .filter(w => w.owner !== user.username) // Exclude my own wishes
+            .map(w => {
+                // Simple fuzzy match: Title containment + Category match
+                const match = published.find(ex => 
+                    ex.category === w.category && 
+                    (ex.title.toLowerCase().includes(w.title.toLowerCase()) || w.title.toLowerCase().includes(ex.title.toLowerCase()))
+                );
+                return match ? { wish: w, exhibit: match, type: 'INCOMING' } : null;
+            })
+            .filter(Boolean) as { wish: WishlistItem, exhibit: Exhibit, type: 'INCOMING' }[];
+
+        // 2. YOU WANT WHAT THEY HAVE (Outgoing Opportunities)
+        // Find exhibits from OTHERS that match MY wishlist
+        const myWishes = wishlist.filter(w => w.owner === user.username);
+        const outgoing = myWishes
+            .map(w => {
+                const match = allExhibits.find(ex => 
+                    ex.owner !== user.username && // Exclude my items
+                    !ex.isDraft &&
+                    (ex.tradeStatus === 'FOR_TRADE' || ex.tradeStatus === 'FOR_SALE') && // Only tradable items
+                    ex.category === w.category &&
+                    (ex.title.toLowerCase().includes(w.title.toLowerCase()) || w.title.toLowerCase().includes(ex.title.toLowerCase()))
+                );
+                return match ? { wish: w, exhibit: match, type: 'OUTGOING' } : null;
+            })
+            .filter(Boolean) as { wish: WishlistItem, exhibit: Exhibit, type: 'OUTGOING' }[];
+
+        return { incoming, outgoing };
+    }, [wishlist, published, allExhibits, user.username]);
+
+    const renderTabButton = (tab: typeof activeTab, label: string, icon?: any) => (
         <button 
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1 text-[10px] font-bold font-pixel uppercase transition-all ${
+            className={`px-3 py-2 flex items-center gap-2 text-[10px] font-bold font-pixel uppercase transition-all whitespace-nowrap ${
                 activeTab === tab 
-                ? (isWinamp ? 'text-wa-gold border-b-2 border-wa-gold' : 'text-green-500 border-b-2 border-green-500') 
+                ? (isWinamp ? 'text-wa-gold border-b-2 border-wa-gold bg-[#292929]' : 'text-green-500 border-b-2 border-green-500') 
                 : 'opacity-50 hover:opacity-100 border-b-2 border-transparent'
             }`}
         >
+            {icon && React.createElement(icon, { size: 14 })}
             {isWinamp ? `[ ${label} ]` : label}
         </button>
     );
 
+    const handleStartTrade = (exhibit: Exhibit, partnerUsername: string, isWishlistMode: boolean) => {
+        const partner = getFullDatabase().users.find(u => u.username === partnerUsername) || { username: partnerUsername } as UserProfile;
+        setTradeModalTarget({ item: exhibit, user: partner, isWishlist: isWishlistMode });
+    };
+
     return (
         <div className={`max-w-4xl mx-auto animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+            
+            {tradeModalTarget && (
+                <TradeOfferModal 
+                    recipient={tradeModalTarget.user}
+                    currentUser={user}
+                    userInventory={exhibits}
+                    targetItem={tradeModalTarget.isWishlist ? undefined : tradeModalTarget.item}
+                    onClose={() => setTradeModalTarget(null)}
+                    isWishlist={tradeModalTarget.isWishlist}
+                    // For outgoing, we want their item (targetItem). For incoming (wishlist fulfillment), we give our item.
+                />
+            )}
+
             <div className="flex items-center justify-between mb-6">
                 <button onClick={onBack} className={`flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={16} /> НАЗАД
@@ -66,16 +123,95 @@ const MyCollection: React.FC<MyCollectionProps> = ({
 
             {/* Navigation Tabs */}
             <div 
-                className={`flex gap-2 overflow-x-auto pb-2 mb-8 ${isWinamp ? 'border-b border-[#505050]' : 'border-b border-white/10'}`}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchMove={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
+                className={`flex gap-2 overflow-x-auto pb-2 mb-8 scrollbar-hide ${isWinamp ? 'border-b border-[#505050]' : 'border-b border-white/10'}`}
             >
                 {renderTabButton('MY_ITEMS', 'ПРЕДМЕТЫ')}
+                {renderTabButton('MATCHES', `СОВПАДЕНИЯ (${matches.incoming.length + matches.outgoing.length})`, Zap)}
                 {renderTabButton('COLLECTIONS', 'АЛЬБОМЫ')}
                 {renderTabButton('FAVORITES', 'ИЗБРАННОЕ')}
                 {renderTabButton('DRAFTS', 'ЧЕРНОВИКИ')}
             </div>
+
+            {/* MATCHES SECTION */}
+            {activeTab === 'MATCHES' && (
+                <div className="animate-in slide-in-from-right-4 space-y-8">
+                    {/* INCOMING DEMAND */}
+                    <div>
+                        <h3 className="font-pixel text-xs mb-4 text-green-500 uppercase tracking-widest flex items-center gap-2">
+                            <Zap size={14}/> ВАШИ ПРЕДМЕТЫ ИЩУТ ({matches.incoming.length})
+                        </h3>
+                        {matches.incoming.length === 0 ? (
+                            <div className="text-xs opacity-40 font-mono italic">Пока никто не ищет ваши предметы.</div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {matches.incoming.map((m, idx) => (
+                                    <div key={idx} className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-green-500/5 border-green-500/20'}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded bg-black/20 overflow-hidden shrink-0 border border-white/10">
+                                                <img src={m.exhibit.imageUrls[0]} className="w-full h-full object-cover"/>
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] font-pixel opacity-70">У ВАС ЕСТЬ:</div>
+                                                <div className="font-bold text-sm">{m.exhibit.title}</div>
+                                                <div className="text-xs flex items-center gap-2 mt-1">
+                                                    <ArrowRight size={12} className="text-green-500"/> 
+                                                    <img src={getUserAvatar(m.wish.owner)} className="w-4 h-4 rounded-full"/>
+                                                    <span className="font-bold text-green-500">@{m.wish.owner}</span> хочет это
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleStartTrade(m.exhibit, m.wish.owner, true)}
+                                            className="px-4 py-2 bg-green-500 text-black font-bold font-pixel text-[10px] rounded uppercase hover:bg-green-400"
+                                        >
+                                            ПРЕДЛОЖИТЬ
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* OUTGOING OPPORTUNITIES */}
+                    <div>
+                        <h3 className="font-pixel text-xs mb-4 text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <RefreshCw size={14}/> НАЙДЕНО ИЗ ВИШЛИСТА ({matches.outgoing.length})
+                        </h3>
+                        {matches.outgoing.length === 0 ? (
+                            <div className="text-xs opacity-40 font-mono italic">В продаже нет предметов из вашего вишлиста.</div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {matches.outgoing.map((m, idx) => (
+                                    <div key={idx} className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-blue-500/5 border-blue-500/20'}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded bg-black/20 overflow-hidden shrink-0 border border-white/10 relative">
+                                                <img src={m.exhibit.imageUrls[0]} className="w-full h-full object-cover"/>
+                                                {m.exhibit.tradeStatus === 'FOR_SALE' && <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-[8px] px-1 font-bold">$$$</div>}
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] font-pixel opacity-70">ВЫ ИСКАЛИ:</div>
+                                                <div className="font-bold text-sm">{m.wish.title}</div>
+                                                <div className="text-xs flex items-center gap-2 mt-1">
+                                                    <div className="flex items-center gap-1 opacity-70">
+                                                        Найдено у <img src={getUserAvatar(m.exhibit.owner)} className="w-4 h-4 rounded-full"/> 
+                                                        <span className="font-bold">@{m.exhibit.owner}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleStartTrade(m.exhibit, m.exhibit.owner, false)}
+                                            className="px-4 py-2 bg-blue-500 text-white font-bold font-pixel text-[10px] rounded uppercase hover:bg-blue-400"
+                                        >
+                                            {m.exhibit.tradeStatus === 'FOR_SALE' ? 'КУПИТЬ' : 'ОБМЕНЯТЬ'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* DRAFTS SECTION */}
             {activeTab === 'DRAFTS' && (

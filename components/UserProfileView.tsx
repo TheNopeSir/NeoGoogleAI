@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, Reply, Trash2, Check, X, Wand2, Eye, EyeOff, Camera, Palette, Settings, Search, Terminal, Sun, Package, Archive, FolderPlus, BookOpen, Heart, Share2, ExternalLink, Link as LinkIcon, RefreshCw, AlertTriangle } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, Reply, Trash2, Check, X, Wand2, Eye, EyeOff, Camera, Palette, Settings, Search, Terminal, Sun, Package, Archive, FolderPlus, BookOpen, Heart, Share2, ExternalLink, Link as LinkIcon, RefreshCw, AlertTriangle, Star, History } from 'lucide-react';
+import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, TradeRequest } from '../types';
 import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
-import { getUserAvatar } from '../services/storageService';
+import { getUserAvatar, getFullDatabase } from '../services/storageService';
 import WishlistCard from './WishlistCard';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
@@ -100,6 +100,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         if (section === 'favorites') return 'FAVORITES';
         if (section === 'logs') return 'LOGS';
         if (section === 'wishlist') return 'WISHLIST';
+        if (section === 'history') return 'HISTORY';
         if (section === 'config' && isCurrentUser) return 'CONFIG';
         return 'SHELF';
     };
@@ -111,7 +112,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         return 'ARTIFACTS';
     };
 
-    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST'>(getInitialSection);
+    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST' | 'HISTORY'>(getInitialSection);
     const [localProfileTab, setLocalProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>(getInitialShelfTab);
 
     // Sync URL with tabs
@@ -150,6 +151,27 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     const drafts = isCurrentUser ? userExhibits.filter(e => e.isDraft) : [];
     const publishedExhibits = userExhibits.filter(e => !e.isDraft);
+
+    // --- REPUTATION & HISTORY CALCULATION ---
+    const tradeRequests = db.getFullDatabase().tradeRequests || [];
+    const completedTrades = useMemo(() => 
+        tradeRequests.filter(tr => 
+            tr.status === 'COMPLETED' && 
+            (tr.sender === viewedProfileUsername || tr.recipient === viewedProfileUsername)
+        ).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    , [tradeRequests, viewedProfileUsername]);
+
+    const reputationScore = useMemo(() => {
+        if (completedTrades.length === 0) return 0;
+        // Mock rating calc: Assume 5 stars if completed for now, or use stats if available
+        // In real app, we would sum up tr.ratings
+        const total = completedTrades.reduce((acc, tr) => {
+            const myRating = tr.sender === viewedProfileUsername ? (tr.ratings?.recipient || 5) : (tr.ratings?.sender || 5);
+            return acc + myRating; // actually we want rating GIVEN TO me. 
+            // If I am sender, I get rated by recipient.
+        }, 0);
+        return (total / completedTrades.length).toFixed(1);
+    }, [completedTrades, viewedProfileUsername]);
 
     const handleEditEntry = (entry: GuestbookEntry) => { setEditingEntryId(entry.id); setEditEntryText(entry.text); };
     const handleSaveEntry = async (entry: GuestbookEntry) => { if (!editEntryText.trim()) return; const updated = { ...entry, text: editEntryText }; await db.updateGuestbookEntry(updated); setEditingEntryId(null); refreshData(); };
@@ -207,6 +229,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             <div className="flex-1 space-y-1">
                                 <div className="text-[14px] text-wa-gold">{profileUser.username}</div>
                                 <div className="text-[12px] opacity-80">{profileUser.tagline}</div>
+                                <div className="text-[12px] text-wa-green flex items-center gap-1">REPUTATION: {reputationScore} ★ ({completedTrades.length})</div>
                                 {profileUser.telegram && (
                                     <a href={`https://t.me/${profileUser.telegram}`} target="_blank" rel="noopener noreferrer" className="text-[12px] text-blue-300 hover:text-blue-200 hover:underline block">
                                         TG: @{profileUser.telegram}
@@ -253,6 +276,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <div>
                                             <h2 className={`text-3xl font-pixel font-bold flex items-center gap-2 ${theme === 'xp' ? 'text-black' : ''}`}>@{profileUser.username}{profileUser.status && (<div className={`w-3 h-3 rounded-full ${STATUS_OPTIONS[profileUser.status].color.replace('text-', 'bg-')}`} title={STATUS_OPTIONS[profileUser.status].label} />)}</h2>
                                             <div className="flex flex-col gap-1 mt-1">
+                                                <div className="flex items-center gap-2 text-yellow-500 font-bold text-xs">
+                                                    <Star size={12} fill="currentColor"/> {reputationScore} ({completedTrades.length} сделок)
+                                                </div>
                                                 <p className="text-xs font-mono opacity-60">Регистрация: {profileUser.joinedDate}</p>
                                                 {profileUser.telegram && (
                                                     <a 
@@ -370,23 +396,25 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 )}
             </div>
 
-            {/* TABS - Converted to Icons Only for standard themes */}
-            <div className={`flex mb-4 ${isWinamp ? 'gap-1' : 'border-b border-gray-500/30'}`}>
+            {/* TABS */}
+            <div className={`flex mb-4 overflow-x-auto scrollbar-hide ${isWinamp ? 'gap-1' : 'border-b border-gray-500/30'}`}>
                 {isWinamp ? (
                     <>
                         <button onClick={() => setActiveSection('SHELF')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'SHELF' ? 'text-wa-gold' : ''}`}>[ SHELF ]</button>
                         <button onClick={() => setActiveSection('FAVORITES')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'FAVORITES' ? 'text-wa-gold' : ''}`}>[ FAV ]</button>
                         <button onClick={() => setActiveSection('LOGS')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'LOGS' ? 'text-wa-gold' : ''}`}>[ LOGS ]</button>
                         <button onClick={() => setActiveSection('WISHLIST')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'WISHLIST' ? 'text-wa-gold' : ''}`}>[ WISH ]</button>
+                        <button onClick={() => setActiveSection('HISTORY')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'HISTORY' ? 'text-wa-gold' : ''}`}>[ HIST ]</button>
                         {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`px-3 py-1 text-[12px] bg-[#292929] border-t border-l border-r border-[#505050] ${activeSection === 'CONFIG' ? 'text-wa-gold' : ''}`}>[ CFG ]</button>}
                     </>
                 ) : (
                     <>
-                        <button onClick={() => setActiveSection('SHELF')} title="Полка" className={`flex-1 pb-3 text-center transition-colors flex items-center justify-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Package size={20} /></button>
-                        <button onClick={() => setActiveSection('FAVORITES')} title="Избранное" className={`flex-1 pb-3 text-center transition-colors flex items-center justify-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Heart size={20} /></button>
-                        <button onClick={() => setActiveSection('LOGS')} title="Гостевая" className={`flex-1 pb-3 text-center transition-colors flex items-center justify-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><MessageSquare size={20} /></button>
-                        <button onClick={() => setActiveSection('WISHLIST')} title="Вишлист" className={`flex-1 pb-3 text-center transition-colors flex items-center justify-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Search size={20} /></button>
-                        {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} title="Настройки" className={`flex-1 pb-3 text-center transition-colors flex items-center justify-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Settings size={20} /></button>}
+                        <button onClick={() => setActiveSection('SHELF')} title="Полка" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Package size={20} /></button>
+                        <button onClick={() => setActiveSection('FAVORITES')} title="Избранное" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Heart size={20} /></button>
+                        <button onClick={() => setActiveSection('LOGS')} title="Гостевая" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><MessageSquare size={20} /></button>
+                        <button onClick={() => setActiveSection('WISHLIST')} title="Вишлист" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Search size={20} /></button>
+                        <button onClick={() => setActiveSection('HISTORY')} title="История сделок" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'HISTORY' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><History size={20} /></button>
+                        {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} title="Настройки" className={`flex-1 pb-3 min-w-[50px] text-center transition-colors flex items-center justify-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50 hover:opacity-100'}`}><Settings size={20} /></button>}
                     </>
                 )}
             </div>
@@ -452,6 +480,47 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             {wishlistItems.map(item => (
                                 <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onAuthorClick} />
                             ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeSection === 'HISTORY' && (
+                <div className="space-y-4 animate-in fade-in">
+                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4">История сделок ({completedTrades.length})</h3>
+                    {completedTrades.length === 0 ? (
+                        <div className="text-center opacity-50 py-10 font-mono text-xs border-2 border-dashed border-white/10 rounded-xl">
+                            У этого пользователя пока нет завершенных сделок.
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {completedTrades.map(trade => {
+                                const isSender = trade.sender === viewedProfileUsername;
+                                const partner = isSender ? trade.recipient : trade.sender;
+                                const role = isSender ? 'SENDER' : 'RECIPIENT';
+                                
+                                return (
+                                    <div key={trade.id} className={`p-4 rounded-xl border flex items-center justify-between ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${trade.type === 'MONEY' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'}`}>
+                                                    {trade.type}
+                                                </span>
+                                                <span className="text-xs font-mono opacity-50">{new Date(trade.updatedAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className="text-sm font-bold flex items-center gap-1">
+                                                Сделка с <span className="text-green-500 cursor-pointer hover:underline" onClick={() => onAuthorClick(partner)}>@{partner}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-[10px] opacity-50 uppercase">СТАТУС</div>
+                                            <div className="text-green-500 font-bold text-xs flex items-center justify-end gap-1">
+                                                <Check size={12}/> COMPLETED
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
