@@ -4,10 +4,10 @@ import {
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings, 
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
-    AlertTriangle, RefreshCw, Clock, Crown, Users, Grid, List
+    AlertTriangle, RefreshCw, Crown
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
-import { STATUS_OPTIONS, TRADE_STATUS_CONFIG } from '../constants';
+import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
 import WishlistCard from './WishlistCard';
@@ -134,24 +134,16 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     // --- WIDGET DATA CALCULATION ---
     
-    // 1. Latest Arrivals
-    const latestArrivals = useMemo(() => {
-        return [...publishedExhibits]
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-            .slice(0, 4);
-    }, [publishedExhibits]);
-
-    // 2. Showcase Item (Pride of Collection)
-    // Logic: Highest combined score of Likes + Views
+    // Showcase Item (Pride of Collection) - Compact Logic
     const showcaseItem = useMemo(() => {
         if (publishedExhibits.length === 0) return null;
+        // Simple heuristic: Most liked item
         return [...publishedExhibits].sort((a, b) => (b.likes * 2 + b.views) - (a.likes * 2 + a.views))[0];
     }, [publishedExhibits]);
 
-    // 3. Visitor Counter
+    // Visitor Counter
     const totalViews = useMemo(() => {
         const itemViews = publishedExhibits.reduce((acc, curr) => acc + (curr.views || 0), 0);
-        // Add fake "profile views" based on followers to make it look active
         return itemViews + (profileUser.followers?.length || 0) * 15 + 1337;
     }, [publishedExhibits, profileUser]);
 
@@ -186,12 +178,12 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     };
 
     return (
-        <div className={`max-w-4xl mx-auto space-y-6 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
+        <div className={`max-w-4xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
             <SEO title={`@${profileUser.username} | Профиль`} />
 
-            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs"><ArrowLeft size={16} /> НАЗАД</button>}
+            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-4 md:px-0"><ArrowLeft size={16} /> НАЗАД</button>}
             
-            <div className={isWinamp ? '' : `rounded-3xl border overflow-hidden relative ${theme === 'dark' ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
+            <div className={isWinamp ? '' : `md:rounded-3xl border-b md:border overflow-hidden relative ${theme === 'dark' ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
                 {/* PROFILE HEADER */}
                 {isWinamp ? (
                     <WinampWindow title={`USER: ${profileUser.username}`}>
@@ -217,33 +209,39 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </WinampWindow>
                 ) : (
                     <>
-                        <div className="h-40 md:h-52 bg-gray-800 relative group">
+                        {/* Cover Image */}
+                        <div className="h-32 md:h-52 bg-gray-800 relative group">
                             {profileUser.coverUrl ? <img src={profileUser.coverUrl} className="w-full h-full object-cover" /> : <div className={`w-full h-full ${theme === 'dark' ? 'bg-gradient-to-r from-green-900/20 to-black' : 'bg-gradient-to-r from-gray-100 to-gray-300'}`}></div>}
                             {isEditingProfile && isCurrentUser && (
                                 <label className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-xl cursor-pointer hover:bg-black/70 border border-white/20 flex items-center gap-2 backdrop-blur-sm"><Camera size={16} /> <span className="text-[10px] font-pixel">ОБЛОЖКА</span><input type="file" accept="image/*" className="hidden" onChange={onProfileCoverUpload} /></label>
                             )}
-                            <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                                <span className="text-[9px] font-pixel text-white opacity-70">VISITORS:</span>
+                            <div className="absolute bottom-2 right-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10">
+                                <span className="text-[9px] font-pixel text-white opacity-70 hidden md:inline">VISITORS:</span>
                                 <RetroCounter count={totalViews} />
                             </div>
                         </div>
-                        <div className="px-6 pb-6 relative">
-                            <div className="flex flex-col md:flex-row items-start md:items-end -mt-16 md:-mt-12 gap-6 mb-4">
+
+                        {/* Avatar & Info Container */}
+                        <div className="px-4 pb-6 relative">
+                            <div className="flex flex-col items-start -mt-10 md:-mt-12 gap-4 mb-2">
+                                {/* Avatar */}
                                 <div className="relative group">
-                                    <div className={`w-32 h-32 rounded-3xl overflow-hidden border-4 bg-black ${theme === 'dark' ? 'border-dark-surface' : 'border-white'}`}>
+                                    <div className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 bg-black shadow-lg ${theme === 'dark' ? 'border-dark-surface' : 'border-white'}`}>
                                         <img src={profileUser.avatarUrl} className="w-full h-full object-cover"/>
                                     </div>
                                     {isEditingProfile && isCurrentUser && (
                                         <label className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"><Camera size={24} className="text-white" /><input type="file" accept="image/*" className="hidden" onChange={onProfileImageUpload} /></label>
                                     )}
                                 </div>
-                                <div className="flex-1">
+
+                                {/* Username & Stats */}
+                                <div className="flex-1 w-full">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div>
-                                            <h2 className="text-3xl font-pixel font-bold flex items-center gap-2">@{profileUser.username}</h2>
+                                            <h2 className="text-2xl md:text-3xl font-pixel font-bold flex items-center gap-2">@{profileUser.username}</h2>
                                             <p className="text-xs font-mono opacity-60 mt-1">В сети с {profileUser.joinedDate}</p>
                                         </div>
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-6 border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'followers')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.followers?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Фолловеры</span></button>
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'following')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.following?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Подписки</span></button>
                                             <button onClick={onViewHallOfFame} className="flex flex-col items-center group"><Trophy size={18} className="group-hover:text-yellow-500" /><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Награды</span></button>
@@ -252,7 +250,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                 </div>
                             </div>
                             
-                            {/* Profile Info & Edit Mode */}
+                            {/* Bio & Actions */}
                             <div className="space-y-4">
                                 {isEditingProfile && isCurrentUser ? (
                                     <div className="space-y-4 bg-black/5 p-4 rounded-xl border border-dashed border-white/10">
@@ -270,24 +268,24 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <p className="font-mono font-bold text-sm">{profileUser.tagline}</p>
-                                            <div className="flex gap-2">
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                            <p className="font-mono font-bold text-sm leading-tight">{profileUser.tagline}</p>
+                                            <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                                                 {isCurrentUser ? (
                                                     <>
-                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setIsEditingProfile(true); }} className="px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center gap-2"><Edit2 size={12} /> Ред.</button>
+                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setIsEditingProfile(true); }} className="flex-1 md:flex-none px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center justify-center gap-2"><Edit2 size={12} /> Ред.</button>
                                                         <button onClick={onLogout} className="px-3 py-1.5 border border-red-500/30 text-red-500 rounded-lg"><LogOut size={12} /></button>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <button onClick={() => onFollow(profileUser.username)} className={`px-4 py-1.5 rounded-lg font-bold font-pixel text-[10px] uppercase transition-all ${isSubscribed ? 'border border-white/20 opacity-60' : 'bg-green-500 text-black border-green-500'}`}>{isSubscribed ? 'Подписан' : 'Подписаться'}</button>
-                                                        <button onClick={() => onChat(profileUser.username)} className="px-3 py-1.5 border rounded-lg hover:bg-white/10"><MessageSquare size={14} /></button>
+                                                        <button onClick={() => onFollow(profileUser.username)} className={`flex-1 md:flex-none px-4 py-2 md:py-1.5 rounded-lg font-bold font-pixel text-[10px] uppercase transition-all ${isSubscribed ? 'border border-white/20 opacity-60' : 'bg-green-500 text-black border-green-500'}`}>{isSubscribed ? 'Подписан' : 'Подписаться'}</button>
+                                                        <button onClick={() => onChat(profileUser.username)} className="px-4 py-2 md:py-1.5 border rounded-lg hover:bg-white/10"><MessageSquare size={14} /></button>
                                                     </>
                                                 )}
                                             </div>
                                         </div>
-                                        {profileUser.bio && <p className="font-mono text-sm opacity-70 whitespace-pre-wrap leading-relaxed max-w-2xl">{profileUser.bio}</p>}
+                                        {profileUser.bio && <p className="font-mono text-xs opacity-70 whitespace-pre-wrap leading-relaxed max-w-2xl">{profileUser.bio}</p>}
                                     </div>
                                 )}
                             </div>
@@ -296,75 +294,39 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 )}
             </div>
 
-            {/* WIDGETS SECTION */}
-            {activeSection === 'SHELF' && !isEditingProfile && (
-                <div className="space-y-6">
-                    {/* 1. Showcase (Гордость коллекции) */}
-                    {showcaseItem && (
-                        <div className={`rounded-2xl overflow-hidden border relative group ${isWinamp ? 'border-[#505050] bg-[#191919]' : 'border-yellow-500/30 bg-gradient-to-br from-yellow-900/10 to-transparent'}`}>
-                            <div className="absolute top-3 left-4 z-20 flex items-center gap-2">
-                                <Crown size={16} className="text-yellow-500 fill-current animate-pulse"/>
-                                <span className={`text-[10px] font-pixel font-bold tracking-widest uppercase ${isWinamp ? 'text-[#00ff00]' : 'text-yellow-500'}`}>Гордость коллекции</span>
-                            </div>
-                            <div className="flex flex-col md:flex-row">
-                                <div className="w-full md:w-2/5 aspect-square md:aspect-[4/3] relative bg-black overflow-hidden">
-                                    <img src={showcaseItem.imageUrls[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"/>
-                                </div>
-                                <div className="p-5 flex-1 flex flex-col justify-center relative">
-                                    <h3 className={`font-pixel text-xl md:text-2xl font-bold mb-2 leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{showcaseItem.title}</h3>
-                                    <p className="font-mono text-xs opacity-70 line-clamp-3 mb-6">{showcaseItem.description}</p>
-                                    
-                                    <div className="flex items-center gap-6 text-xs font-mono opacity-60 mb-6">
-                                        <span className="flex items-center gap-1.5"><Heart size={14} className="text-red-500"/> {showcaseItem.likes}</span>
-                                        <span className="flex items-center gap-1.5"><Eye size={14} className="text-blue-400"/> {showcaseItem.views}</span>
-                                        <span className="px-2 py-0.5 border rounded text-[9px] uppercase">{showcaseItem.category}</span>
-                                    </div>
-
-                                    <button 
-                                        onClick={() => onExhibitClick(showcaseItem)}
-                                        className={`w-full md:w-auto px-6 py-3 rounded-xl font-pixel text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 ${isWinamp ? 'border border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00] hover:text-black' : 'bg-white/10 hover:bg-white/20 hover:scale-105'}`}
-                                    >
-                                        Открыть досье
-                                    </button>
-                                </div>
+            {/* SHOWCASE COMPACT WIDGET */}
+            {activeSection === 'SHELF' && !isEditingProfile && showcaseItem && (
+                <div className="px-0 md:px-0">
+                    <div className={`relative overflow-hidden border rounded-xl flex h-28 md:h-32 group cursor-pointer ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gradient-to-r from-yellow-900/20 to-transparent border-yellow-500/20 hover:border-yellow-500/40'}`} onClick={() => onExhibitClick(showcaseItem)}>
+                        {/* Compact Image Left */}
+                        <div className="w-24 md:w-32 h-full relative flex-shrink-0 bg-black">
+                            <img src={showcaseItem.imageUrls[0]} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute top-0 left-0 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded-br-lg z-10 font-pixel">
+                                <Crown size={8} className="inline mr-0.5"/> SHOWCASE
                             </div>
                         </div>
-                    )}
-
-                    {/* 2. Latest Arrivals */}
-                    {latestArrivals.length > 0 && (
-                        <div>
-                            <div className="flex items-center justify-between mb-3 px-2">
-                                <div className="flex items-center gap-2 opacity-60">
-                                    <Clock size={14} />
-                                    <span className="text-[10px] font-pixel font-bold tracking-widest uppercase">Свежие поступления</span>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {latestArrivals.map(item => (
-                                    <div 
-                                        key={item.id} 
-                                        onClick={() => onExhibitClick(item)}
-                                        className={`group relative aspect-square rounded-xl overflow-hidden border cursor-pointer ${isWinamp ? 'border-[#505050] bg-black' : 'border-white/10 hover:border-white/30 bg-black/20'}`}
-                                    >
-                                        <img src={item.imageUrls[0]} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-80 group-hover:opacity-100" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className={`text-[9px] font-pixel font-bold truncate ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>{item.title}</span>
-                                            <span className="text-[8px] font-mono opacity-60">{item.timestamp.split(',')[0]}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                        
+                        {/* Compact Details Right */}
+                        <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                            <div className={`text-[9px] uppercase tracking-widest mb-1 ${isWinamp ? 'text-[#00ff00]' : 'text-yellow-500 opacity-70'}`}>ГОРДОСТЬ КОЛЛЕКЦИИ</div>
+                            <h3 className={`font-pixel text-sm md:text-lg font-bold truncate mb-1 ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>{showcaseItem.title}</h3>
+                            <div className="flex items-center gap-3 text-[10px] font-mono opacity-50">
+                                <span className="flex items-center gap-1"><Heart size={10} className="text-red-500"/> {showcaseItem.likes}</span>
+                                <span className="flex items-center gap-1"><Eye size={10} className="text-blue-400"/> {showcaseItem.views}</span>
+                                <span className="truncate max-w-[80px] border border-white/10 px-1 rounded">{showcaseItem.category}</span>
                             </div>
                         </div>
-                    )}
+                        
+                        {/* Arrow Hint */}
+                        <div className="w-8 flex items-center justify-center border-l border-white/5 opacity-50 group-hover:opacity-100 group-hover:bg-white/5">
+                            <div className="border-t-2 border-r-2 border-white w-2 h-2 rotate-45 transform"></div>
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* NAVIGATION TABS */}
-            <div className={`flex mb-4 mt-8 ${isWinamp ? 'gap-1' : 'border-b border-gray-500/30'}`}>
-                {/* ... Tabs implementation ... */}
-                {/* Simplified for brevity but functionality preserved from previous version */}
+            <div className={`flex mb-4 mt-2 px-0 md:px-0 ${isWinamp ? 'gap-1' : 'border-b border-gray-500/30'}`}>
                 <button onClick={() => setActiveSection('SHELF')} className={`flex-1 pb-3 text-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Package size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Heart size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><MessageSquare size={20} className="mx-auto"/></button>
@@ -375,23 +337,23 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {/* SECTIONS CONTENT */}
             
             {activeSection === 'SHELF' && (
-                <div className="space-y-8 animate-in fade-in">
-                    <div className="flex items-center gap-4 mb-4">
+                <div className="space-y-6 animate-in fade-in px-0 md:px-0">
+                    <div className="flex items-center gap-4 mb-4 px-2 md:px-0">
                         <button onClick={() => setLocalProfileTab('ARTIFACTS')} className={`text-xs font-pixel uppercase ${localProfileTab === 'ARTIFACTS' ? 'text-green-500 font-bold' : 'opacity-50'}`}>Предметы ({publishedExhibits.length})</button>
                         <button onClick={() => setLocalProfileTab('COLLECTIONS')} className={`text-xs font-pixel uppercase ${localProfileTab === 'COLLECTIONS' ? 'text-green-500 font-bold' : 'opacity-50'}`}>Коллекции ({userCollections.length})</button>
                     </div>
 
                     {localProfileTab === 'ARTIFACTS' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs">Нет предметов</div>}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                            {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет предметов</div>}
                             {publishedExhibits.map(item => (
                                 <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={item.likedBy?.includes(user?.username || '') || false} onLike={(e) => onLike(item.id, e)} onAuthorClick={() => {}} />
                             ))}
                         </div>
                     )}
                     {localProfileTab === 'COLLECTIONS' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {userCollections.length === 0 && <div className="col-span-full text-center opacity-50 text-xs">Нет коллекций</div>}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {userCollections.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет коллекций</div>}
                             {userCollections.map(col => (
                                 <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={onShareCollection} />
                             ))}
@@ -401,20 +363,20 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             )}
 
             {activeSection === 'FAVORITES' && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-in fade-in">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
                         <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={true} onLike={(e) => onLike(item.id, e)} onAuthorClick={onAuthorClick} />
                     ))}
-                    {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50">Пусто</div>}
+                    {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 py-8 text-xs uppercase">Пусто</div>}
                 </div>
             )}
 
             {activeSection === 'WISHLIST' && (
-                <div className="space-y-6 animate-in fade-in">
+                <div className="space-y-6 animate-in fade-in px-0 md:px-0">
                     <button onClick={handleShareWishlist} className={`w-full flex items-center justify-center gap-2 text-xs font-bold uppercase py-3 rounded-xl border-2 border-dashed ${isWinamp ? 'border-[#00ff00] text-[#00ff00]' : 'border-white/20 opacity-80 hover:opacity-100'}`}>
                         <LinkIcon size={16}/> СКОПИРОВАТЬ ССЫЛКУ
                     </button>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                         {wishlistItems.map(item => (
                             <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onAuthorClick} />
                         ))}
@@ -423,7 +385,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             )}
 
             {activeSection === 'LOGS' && (
-                <div className="space-y-6 animate-in fade-in">
+                <div className="space-y-6 animate-in fade-in px-0 md:px-0">
                     <div className={`p-4 rounded-xl border flex gap-3 ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
                         <input ref={guestbookInputRef} value={guestbookInput} onChange={(e) => setGuestbookInput(e.target.value)} placeholder="Оставить запись..." className="flex-1 bg-transparent border-none outline-none text-sm font-mono"/>
                         <button onClick={handleGuestbookSubmit} className="text-green-500"><Send size={16}/></button>
@@ -443,13 +405,13 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             )}
 
             {isCurrentUser && activeSection === 'CONFIG' && (
-                <div className="p-6 rounded-xl border flex flex-col gap-6 animate-in fade-in bg-white/5 border-white/10">
+                <div className="p-6 rounded-xl border flex flex-col gap-6 animate-in fade-in bg-white/5 border-white/10 mx-0 md:mx-0">
                     <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><Palette size={14}/> Внешний вид</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <button onClick={() => updateSetting('theme', 'dark')} className="p-4 border rounded hover:bg-white/10">Matrix</button>
-                        <button onClick={() => updateSetting('theme', 'light')} className="p-4 border rounded hover:bg-white/10">Light</button>
-                        <button onClick={() => updateSetting('theme', 'xp')} className="p-4 border rounded hover:bg-white/10">Windows XP</button>
-                        <button onClick={() => updateSetting('theme', 'winamp')} className="p-4 border rounded hover:bg-white/10 text-green-500 border-green-500">Winamp</button>
+                        <button onClick={() => updateSetting('theme', 'dark')} className="p-4 border rounded hover:bg-white/10 text-xs">Matrix</button>
+                        <button onClick={() => updateSetting('theme', 'light')} className="p-4 border rounded hover:bg-white/10 text-xs">Light</button>
+                        <button onClick={() => updateSetting('theme', 'xp')} className="p-4 border rounded hover:bg-white/10 text-xs">Windows XP</button>
+                        <button onClick={() => updateSetting('theme', 'winamp')} className="p-4 border rounded hover:bg-white/10 text-green-500 border-green-500 text-xs">Winamp</button>
                     </div>
                     <div className="pt-6 border-t border-white/10">
                         <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Danger Zone</h3>
