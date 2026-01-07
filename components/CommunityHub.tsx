@@ -1,9 +1,9 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Trophy, TrendingUp, Users, RefreshCw, Shield, Flame, Lock, UserPlus, Camera } from 'lucide-react';
-import { UserProfile, Exhibit, Guild } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Trophy, TrendingUp, Users, RefreshCw, Flame } from 'lucide-react';
+import { UserProfile, Exhibit } from '../types';
 import ExhibitCard from './ExhibitCard';
-import { getUserAvatar, getFullDatabase, createGuild, joinGuild, fileToBase64 } from '../services/storageService';
+import { getUserAvatar } from '../services/storageService';
 
 interface CommunityHubProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -12,7 +12,6 @@ interface CommunityHubProps {
     onExhibitClick: (item: Exhibit) => void;
     onUserClick: (username: string) => void;
     onBack?: () => void;
-    onGuildClick?: (guild: Guild) => void; 
     currentUser?: UserProfile | null;
 }
 
@@ -29,34 +28,24 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
     </div>
 );
 
-const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, onGuildClick, currentUser }) => {
+const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser }) => {
     // Read initial tab from URL
     const getInitialTab = () => {
         const params = new URLSearchParams(window.location.search);
         const t = params.get('tab');
         if (t === 'trade') return 'TRADE';
-        if (t === 'guilds') return 'GUILDS';
         return 'TRENDS';
     };
 
-    const [tab, setTab] = useState<'TRENDS' | 'TRADE' | 'GUILDS'>(getInitialTab);
-    const [showCreateGuild, setShowCreateGuild] = useState(false);
-    const [newGuildName, setNewGuildName] = useState('');
-    const [newGuildDesc, setNewGuildDesc] = useState('');
-    const [newGuildRules, setNewGuildRules] = useState('');
-    const [newGuildAvatar, setNewGuildAvatar] = useState('');
-    const [joinCode, setJoinCode] = useState('');
-    const avatarInputRef = useRef<HTMLInputElement>(null);
+    const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab);
     
     const isWinamp = theme === 'winamp';
-    const activeGuilds = getFullDatabase().guilds || [];
 
     // Sync tab changes to URL
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (tab === 'TRENDS') params.delete('tab');
         else if (tab === 'TRADE') params.set('tab', 'trade');
-        else if (tab === 'GUILDS') params.set('tab', 'guilds');
         
         const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
         window.history.replaceState({ ...window.history.state }, '', newUrl);
@@ -77,44 +66,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
 
     const trendingExhibits = exhibits.sort((a,b) => (b.likes + b.views) - (a.likes + a.views)).slice(0, 6);
     const tradeExhibits = exhibits.filter(e => e.tradeStatus === 'FOR_SALE' || e.tradeStatus === 'FOR_TRADE');
-
-    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const b64 = await fileToBase64(e.target.files[0]);
-            setNewGuildAvatar(b64);
-        }
-    };
-
-    const handleCreateGuild = () => {
-        if(!newGuildName || !currentUser) return;
-        const newGuild: Guild = {
-            id: crypto.randomUUID(),
-            name: newGuildName,
-            description: newGuildDesc,
-            leader: currentUser.username, 
-            members: [currentUser.username],
-            isPrivate: false,
-            rules: newGuildRules,
-            bannerUrl: newGuildAvatar
-        };
-        createGuild(newGuild);
-        setShowCreateGuild(false);
-        setNewGuildName('');
-        setNewGuildDesc('');
-        setNewGuildRules('');
-        setNewGuildAvatar('');
-    };
-
-    const handleJoinByCode = async () => {
-        if (!joinCode || !currentUser) return;
-        const success = await joinGuild(joinCode, currentUser.username);
-        if (success) {
-            alert('Вы вступили в гильдию!');
-            setJoinCode('');
-        } else {
-            alert('Неверный код или вы уже участник');
-        }
-    };
 
     const renderTabButton = (id: typeof tab, icon: any, label: string) => (
         <button 
@@ -141,7 +92,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
             ) : (
                 <div className="p-6 mb-6 border-b border-white/10">
                     <h1 className="text-2xl font-pixel font-bold flex items-center gap-3"><Users size={28} /> СООБЩЕСТВО</h1>
-                    <p className="text-xs opacity-60 mt-1 font-mono">Центр обмена, рейтинги и гильдии коллекционеров.</p>
+                    <p className="text-xs opacity-60 mt-1 font-mono">Центр обмена и рейтинги коллекционеров.</p>
                 </div>
             )}
 
@@ -149,7 +100,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
             <div className={`flex mb-8 sticky top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
                 {renderTabButton('TRENDS', TrendingUp, 'ТРЕНДЫ')}
                 {renderTabButton('TRADE', RefreshCw, 'ОБМЕН')}
-                {renderTabButton('GUILDS', Shield, 'ГИЛЬДИИ')}
             </div>
 
             {/* Content Area */}
@@ -230,102 +180,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                                 ))
                             )}
                         </div>
-                    </div>
-                )}
-
-                {tab === 'GUILDS' && (
-                    <div className="animate-in slide-in-from-right-4">
-                        {!showCreateGuild ? (
-                            <div className="space-y-6">
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => setShowCreateGuild(true)}
-                                        className={`flex-1 py-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-all ${isWinamp ? 'border-[#505050] text-wa-green' : 'border-white/20'}`}
-                                    >
-                                        <UserPlus size={16}/> <span className="font-pixel text-xs">СОЗДАТЬ ГИЛЬДИЮ</span>
-                                    </button>
-                                    <div className={`flex-1 border-2 border-dashed rounded-xl flex items-center px-4 gap-2 ${isWinamp ? 'border-[#505050]' : 'border-white/20'}`}>
-                                        <input 
-                                            value={joinCode}
-                                            onChange={(e) => setJoinCode(e.target.value)}
-                                            placeholder="Код приглашения..."
-                                            className="bg-transparent text-xs w-full outline-none"
-                                        />
-                                        <button onClick={handleJoinByCode} className="text-xs uppercase font-bold text-green-500">Войти</button>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-4">
-                                    {activeGuilds.map(guild => (
-                                        <div 
-                                            key={guild.id} 
-                                            onClick={() => onGuildClick ? onGuildClick(guild) : null}
-                                            className={`p-6 border rounded-xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all ${isWinamp ? 'bg-[#292929] border-[#505050]' : 'bg-white/5 border-white/10'}`}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                {guild.bannerUrl ? (
-                                                    <img src={guild.bannerUrl} className="w-12 h-12 rounded-lg object-cover" />
-                                                ) : (
-                                                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${isWinamp ? 'bg-[#101010] border border-[#505050] text-wa-gold' : 'bg-gradient-to-br from-green-500 to-blue-500 text-black'}`}>
-                                                        {guild.name[0]}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <h3 className="font-bold font-pixel flex items-center gap-2">
-                                                        {guild.name}
-                                                        {guild.isPrivate && <Lock size={12} className="opacity-50"/>}
-                                                    </h3>
-                                                    <p className="text-[10px] opacity-60 font-mono">{(guild.members?.length || 0)} Участников • Лидер: {guild.leader}</p>
-                                                </div>
-                                            </div>
-                                            <button 
-                                                className={`px-4 py-2 text-[10px] border rounded uppercase opacity-50 hover:opacity-100 ${isWinamp ? 'border-wa-green text-wa-green' : ''}`}
-                                            >
-                                                ОТКРЫТЬ
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={`p-6 border rounded-xl space-y-4 ${isWinamp ? 'bg-[#292929] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                                <h3 className="font-pixel text-lg">СОЗДАНИЕ ГИЛЬДИИ</h3>
-                                
-                                <div className="flex items-center gap-4">
-                                    <div 
-                                        onClick={() => avatarInputRef.current?.click()}
-                                        className="w-16 h-16 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer hover:bg-white/5 overflow-hidden relative"
-                                    >
-                                        {newGuildAvatar ? <img src={newGuildAvatar} className="w-full h-full object-cover" /> : <Camera size={20} className="opacity-50"/>}
-                                    </div>
-                                    <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarUpload} />
-                                    <div className="text-[10px] opacity-50">Нажмите, чтобы загрузить аватарку</div>
-                                </div>
-
-                                <input 
-                                    className={`w-full p-3 rounded border bg-transparent ${isWinamp ? 'border-[#505050] text-[#00ff00]' : 'border-white/10'}`}
-                                    placeholder="Название гильдии"
-                                    value={newGuildName}
-                                    onChange={(e) => setNewGuildName(e.target.value)}
-                                />
-                                <input 
-                                    className={`w-full p-3 rounded border bg-transparent ${isWinamp ? 'border-[#505050] text-[#00ff00]' : 'border-white/10'}`}
-                                    placeholder="Краткое описание"
-                                    value={newGuildDesc}
-                                    onChange={(e) => setNewGuildDesc(e.target.value)}
-                                />
-                                <textarea
-                                    className={`w-full p-3 rounded border bg-transparent h-24 resize-none ${isWinamp ? 'border-[#505050] text-[#00ff00]' : 'border-white/10'}`}
-                                    placeholder="Правила гильдии (опционально)..."
-                                    value={newGuildRules}
-                                    onChange={(e) => setNewGuildRules(e.target.value)}
-                                />
-                                <div className="flex gap-2">
-                                    <button onClick={handleCreateGuild} className="bg-green-500 text-black px-6 py-2 rounded font-bold text-xs uppercase">СОЗДАТЬ</button>
-                                    <button onClick={() => setShowCreateGuild(false)} className="border border-white/20 px-6 py-2 rounded hover:bg-white/10 text-xs uppercase">ОТМЕНА</button>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>

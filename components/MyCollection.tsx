@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
-import { Package, FolderPlus, ArrowLeft, Archive, Heart } from 'lucide-react';
-import { UserProfile, Exhibit, Collection } from '../types';
+import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
+import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
+import WishlistCard from './WishlistCard';
 
 interface MyCollectionProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -11,10 +11,12 @@ interface MyCollectionProps {
     exhibits: Exhibit[]; // Owned items
     allExhibits?: Exhibit[]; // All items for favorites filtering
     collections: Collection[];
+    wishlist?: WishlistItem[];
     onBack: () => void;
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
     onLike: (id: string, e?: React.MouseEvent) => void;
+    onWishlistClick?: (item: WishlistItem) => void;
 }
 
 const MyCollection: React.FC<MyCollectionProps> = ({ 
@@ -22,13 +24,15 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     user, 
     exhibits,
     allExhibits = [], // Default to empty if not provided 
-    collections, 
+    collections,
+    wishlist = [],
     onBack, 
     onExhibitClick, 
     onCollectionClick, 
-    onLike 
+    onLike,
+    onWishlistClick
 }) => {
-    const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES'>('MY_ITEMS');
+    const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES' | 'WISHLIST'>('MY_ITEMS');
 
     // Separate drafts and published items from owned list
     const drafts = exhibits.filter(e => e.isDraft);
@@ -36,6 +40,9 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     
     // Filter favorites: items where user's name is in likedBy
     const favorites = allExhibits.filter(e => e.likedBy?.includes(user.username));
+
+    // Filter wishlist for current user
+    const myWishlist = wishlist.filter(w => w.owner === user.username);
 
     const isWinamp = theme === 'winamp';
 
@@ -73,6 +80,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             >
                 {renderTabButton('MY_ITEMS', 'ПРЕДМЕТЫ')}
                 {renderTabButton('COLLECTIONS', 'АЛЬБОМЫ')}
+                {renderTabButton('WISHLIST', 'ВИШЛИСТ')}
                 {renderTabButton('FAVORITES', 'ИЗБРАННОЕ')}
                 {renderTabButton('DRAFTS', 'ЧЕРНОВИКИ')}
             </div>
@@ -126,6 +134,32 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                     isLiked={item.likedBy?.includes(user.username) || false}
                                     onLike={(e) => onLike(item.id, e)}
                                     onAuthorClick={() => {}}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* WISHLIST SECTION */}
+            {activeTab === 'WISHLIST' && (
+                <div className="animate-in slide-in-from-right-4">
+                    <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
+                        <Search size={16} /> Вишлист ({myWishlist.length})
+                    </h3>
+                    {myWishlist.length === 0 ? (
+                        <div className={`p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'}`}>
+                            <p className="font-mono text-sm uppercase">Вишлист пуст</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                            {myWishlist.map(item => (
+                                <WishlistCard 
+                                    key={item.id} 
+                                    item={item} 
+                                    theme={theme}
+                                    onClick={onWishlistClick}
+                                    onUserClick={() => {}}
                                 />
                             ))}
                         </div>
