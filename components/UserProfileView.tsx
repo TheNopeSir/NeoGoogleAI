@@ -6,7 +6,7 @@ import {
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, Lock, Bell, Shield, Database,
     MapPin, Globe, Instagram, Youtube, UserCheck, Layout, Briefcase, Zap, Video, 
-    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText
+    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText, Mail
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, PrivacySettings, NotificationSettings, ExtendedProfile, FeedSettings, CollectorProfile, ApiKey } from '../types';
 import { STATUS_OPTIONS, DEFAULT_PRIVACY_SETTINGS, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_FEED_SETTINGS, DEFAULT_COLLECTOR_PROFILE } from '../constants';
@@ -114,6 +114,11 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const isCurrentUser = user?.username === viewedProfileUsername;
     const isSubscribed = user?.following?.includes(viewedProfileUsername) || false;
     const isWinamp = theme === 'winamp';
+
+    // Check privacy settings
+    const showEmail = isCurrentUser || profileUser.privacy?.showEmail;
+    const showTelegram = isCurrentUser || profileUser.privacy?.showTelegram;
+    const showOnline = isCurrentUser || profileUser.privacy?.showOnlineStatus;
 
     // Tabs
     const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'ANALYTICS' | 'CONFIG' | 'WISHLIST'>('SHELF');
@@ -329,6 +334,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     <div className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 bg-black shadow-lg ${theme === 'dark' ? 'border-dark-surface' : 'border-white'}`}>
                                         <img src={profileUser.avatarUrl} className="w-full h-full object-cover"/>
                                     </div>
+                                    {showOnline && (
+                                        <div className={`absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-black ${STATUS_OPTIONS[profileUser.status || 'ONLINE'].color.replace('text-', 'bg-')}`}></div>
+                                    )}
                                     {isEditingProfile && isCurrentUser && (
                                         <label className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"><Camera size={24} className="text-white" /><input type="file" accept="image/*" className="hidden" onChange={onProfileImageUpload} /></label>
                                     )}
@@ -355,7 +363,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                                 <div className="flex items-center gap-2 border-l border-white/20 pl-3">
                                                     {profileUser.extended?.socialLinks?.instagram && <a href={profileUser.extended.socialLinks.instagram} target="_blank" className="hover:text-pink-500"><Instagram size={12}/></a>}
                                                     {profileUser.extended?.socialLinks?.youtube && <a href={profileUser.extended.socialLinks.youtube} target="_blank" className="hover:text-red-500"><Youtube size={12}/></a>}
-                                                    {profileUser.telegram && <a href={`https://t.me/${profileUser.telegram}`} target="_blank" className="hover:text-blue-400"><Send size={12}/></a>}
+                                                    {showTelegram && profileUser.telegram && <a href={`https://t.me/${profileUser.telegram}`} target="_blank" className="hover:text-blue-400"><Send size={12}/></a>}
+                                                    {showEmail && profileUser.email && !profileUser.email.includes('@neoarchive.placeholder') && <a href={`mailto:${profileUser.email}`} className="hover:text-green-400"><Mail size={12}/></a>}
                                                 </div>
                                             </div>
                                         </div>
@@ -470,6 +479,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
             )}
 
+            {/* ... Other sections unchanged, settings below ... */}
             {activeSection === 'FAVORITES' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
@@ -512,7 +522,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
             )}
 
-            {/* NEW ANALYTICS SECTION */}
             {activeSection === 'ANALYTICS' && (
                 <div className="space-y-6 animate-in fade-in px-0 md:px-0">
                     {/* Summary Cards */}
