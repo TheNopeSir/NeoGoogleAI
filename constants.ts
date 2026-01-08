@@ -1,5 +1,4 @@
 
-
 import { Exhibit, TierType, TradeStatus, WishlistPriority, PrivacySettings, NotificationSettings, FeedSettings, CollectorProfile } from './types';
 import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target } from 'lucide-react';
 
@@ -183,9 +182,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 
 export const DEFAULT_FEED_SETTINGS: FeedSettings = {
     defaultView: 'GRID',
-    autoplayVideos: true,
     hideNSFW: false,
-    hideSpoilers: false,
     compactMode: false
 };
 

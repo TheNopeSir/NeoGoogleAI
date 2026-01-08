@@ -29,6 +29,7 @@ import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
+import AboutView from './components/AboutView';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus } from './types';
@@ -39,7 +40,7 @@ const CACHE_VERSION = 'v5.1_FINAL_FIX';
 
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');
-  const [view, setView] = useState<ViewState>('AUTH');
+  const [view, setView] = useState<ViewState | 'ABOUT'>('AUTH');
   
   const [isInitializing, setIsInitializing] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
@@ -105,6 +106,7 @@ export default function App() {
       else if (root === 'activity') setView('ACTIVITY');
       else if (root === 'search') setView('SEARCH');
       else if (root === 'create') setView('CREATE_HUB');
+      else if (root === 'about') setView('ABOUT');
       else if (root === 'my-collection') setView('MY_COLLECTION');
       else if (root === 'u' || root === 'profile') {
           const username = segments[1];
@@ -133,7 +135,7 @@ export default function App() {
       return () => window.removeEventListener('popstate', handlePopState);
   }, [syncFromUrl]);
 
-  const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
+  const navigateTo = (newView: ViewState | 'ABOUT', params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
       
       // CRITICAL FIX: Explicitly handle item selection vs new creation
@@ -163,6 +165,7 @@ export default function App() {
       else if (newView === 'ACTIVITY') path = '/activity';
       else if (newView === 'SEARCH') path = '/search';
       else if (newView === 'CREATE_HUB') path = '/create';
+      else if (newView === 'ABOUT') path = '/about';
       else if (newView === 'MY_COLLECTION') path = '/my-collection';
       
       window.history.pushState({ view: newView, params }, '', path);
@@ -490,7 +493,11 @@ export default function App() {
             )}
             
             {view === 'USER_PROFILE' && user && (
-                <UserProfileView user={user} viewedProfileUsername={viewedProfileUsername} exhibits={exhibits} collections={collections} guestbook={guestbook} theme={theme} onBack={handleBack} onLogout={() => { db.logoutUser(); setView('AUTH'); }} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} onExhibitClick={handleExhibitClick} onLike={handleLike} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onShareCollection={() => {}} onViewHallOfFame={() => setView('HALL_OF_FAME')} onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} refreshData={refreshData} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} editTagline={editTagline} setEditTagline={setEditTagline} editBio={editBio} setEditBio={setEditBio} editStatus={editStatus} setEditStatus={setEditStatus} editTelegram={editTelegram} setEditTelegram={setEditTelegram} editPassword={editPassword} setEditPassword={setEditPassword} onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} guestbookInput={guestbookInput} setGuestbookInput={setGuestbookInput} guestbookInputRef={guestbookInputRef} profileTab={profileTab} setProfileTab={setProfileTab} onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} onThemeChange={(t) => setTheme(t)} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <UserProfileView user={user} viewedProfileUsername={viewedProfileUsername} exhibits={exhibits} collections={collections} guestbook={guestbook} theme={theme} onBack={handleBack} onLogout={() => { db.logoutUser(); setView('AUTH'); }} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} onExhibitClick={handleExhibitClick} onLike={handleLike} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onShareCollection={() => {}} onViewHallOfFame={() => setView('HALL_OF_FAME')} onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} refreshData={refreshData} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} editTagline={editTagline} setEditTagline={setEditTagline} editBio={editBio} setEditBio={setEditBio} editStatus={editStatus} setEditStatus={setEditStatus} editTelegram={editTelegram} setEditTelegram={setEditTelegram} editPassword={editPassword} setEditPassword={setEditPassword} onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} guestbookInput={guestbookInput} setGuestbookInput={setGuestbookInput} guestbookInputRef={guestbookInputRef} profileTab={profileTab} setProfileTab={setProfileTab} onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} onThemeChange={(t) => setTheme(t)} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onAboutClick={() => setView('ABOUT')} />
+            )}
+
+            {view === 'ABOUT' && (
+                <AboutView theme={theme} onBack={handleBack} />
             )}
 
             {view === 'HALL_OF_FAME' && user && (

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
@@ -5,7 +6,7 @@ import {
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, Lock, Bell, Shield, Database,
     MapPin, Globe, Instagram, Youtube, UserCheck, Layout, Briefcase, Zap, Video, 
-    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText, Mail
+    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText, Mail, Info
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, PrivacySettings, NotificationSettings, ExtendedProfile, FeedSettings, CollectorProfile, ApiKey } from '../types';
 import { STATUS_OPTIONS, DEFAULT_PRIVACY_SETTINGS, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_FEED_SETTINGS, DEFAULT_COLLECTOR_PROFILE } from '../constants';
@@ -58,6 +59,7 @@ interface UserProfileViewProps {
     onOpenSocialList: (username: string, type: 'followers' | 'following') => void;
     onThemeChange?: (theme: 'dark' | 'light' | 'xp' | 'winamp') => void;
     onWishlistClick: (item: WishlistItem) => void;
+    onAboutClick: () => void;
 }
 
 // --- SUBCOMPONENTS ---
@@ -95,7 +97,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
     onSaveProfile, onProfileImageUpload, onProfileCoverUpload, guestbookInput, setGuestbookInput, guestbookInputRef, profileTab, setProfileTab, refreshData,
-    onOpenSocialList, onThemeChange, onWishlistClick
+    onOpenSocialList, onThemeChange, onWishlistClick, onAboutClick
 }) => {
     const profileUser = db.getFullDatabase().users.find(u => u.username === viewedProfileUsername) || { 
         username: viewedProfileUsername, 
@@ -123,7 +125,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     // Tabs
     const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'ANALYTICS' | 'CONFIG' | 'WISHLIST'>('SHELF');
     const [localProfileTab, setLocalProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>('ARTIFACTS');
-    const [settingsCategory, setSettingsCategory] = useState<'PROFILE' | 'PRIVACY' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY' | 'CONTENT' | 'COLLECTOR' | 'DATA' | 'INTEGRATIONS'>('PROFILE');
+    const [settingsCategory, setSettingsCategory] = useState<'PROFILE' | 'PRIVACY' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY' | 'CONTENT' | 'COLLECTOR' | 'DATA'>('PROFILE');
 
     // Local state for extended settings (so we can save them in bulk)
     const [localPrivacy, setLocalPrivacy] = useState<PrivacySettings>(user?.privacy || DEFAULT_PRIVACY_SETTINGS);
@@ -132,9 +134,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const [localCollector, setLocalCollector] = useState<CollectorProfile>(user?.collector || DEFAULT_COLLECTOR_PROFILE);
     const [localExtended, setLocalExtended] = useState<ExtendedProfile>(user?.extended || {});
     
-    // API Keys State
-    const [apiKeys, setApiKeys] = useState<ApiKey[]>(user?.apiKeys || []);
-
     // Edit State
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
@@ -147,7 +146,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             setLocalFeed(user.settings?.feed || DEFAULT_FEED_SETTINGS);
             setLocalCollector(user.collector || DEFAULT_COLLECTOR_PROFILE);
             setLocalExtended(user.extended || {});
-            setApiKeys(user.apiKeys || []);
         }
     }, [user, isCurrentUser]);
 
@@ -217,7 +215,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             collector: localCollector,
             extended: localExtended,
             settings: newAppSettings,
-            apiKeys: apiKeys
         };
         if (editPassword) updatedUser.password = editPassword;
         
@@ -225,15 +222,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         setIsEditingProfile(false);
         setEditPassword('');
         alert('Настройки профиля обновлены');
-    };
-
-    const handleGenerateApiKey = () => {
-        const newKey = generateApiKey();
-        setApiKeys(prev => [...prev, newKey]);
-    };
-
-    const handleDeleteApiKey = (id: string) => {
-        setApiKeys(prev => prev.filter(k => k.id !== id));
     };
 
     const handleGuestbookSubmit = () => {
@@ -268,7 +256,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 { id: 'PRIVACY', label: 'ПРИВАТНОСТЬ', icon: Lock },
                 { id: 'NOTIFICATIONS', label: 'УВЕДОМЛЕНИЯ', icon: Bell },
                 { id: 'APPEARANCE', label: 'ВИД', icon: Palette },
-                { id: 'INTEGRATIONS', label: 'API & ИНТЕГРАЦИИ', icon: Terminal },
                 { id: 'DATA', label: 'ДАННЫЕ', icon: Database },
                 { id: 'SECURITY', label: 'БЕЗОПАСНОСТЬ', icon: Shield },
             ].map(tab => (
@@ -447,7 +434,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
             {/* SECTIONS CONTENT */}
             
-            {/* ... Shelf, Favorites, Wishlist, Logs (unchanged) ... */}
             {activeSection === 'SHELF' && (
                 <div className="space-y-6 animate-in fade-in px-0 md:px-0">
                     <div className="flex items-center gap-4 mb-4 px-2 md:px-0">
@@ -517,10 +503,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
             )}
 
-            {/* NEW ANALYTICS SECTION */}
             {activeSection === 'ANALYTICS' && (
                 <div className="space-y-6 animate-in fade-in px-0 md:px-0">
-                    {/* Summary Cards */}
                     <div className="grid grid-cols-3 gap-2 md:gap-4">
                         <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                             <div className="text-[10px] font-pixel opacity-50 uppercase mb-1">Ценность</div>
@@ -536,7 +520,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         </div>
                     </div>
 
-                    {/* Category Distribution */}
                     <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                         <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><PieChart size={14}/> Распределение по категориям</h3>
                         <div className="space-y-4">
@@ -558,7 +541,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         </div>
                     </div>
 
-                    {/* Activity Heatmap (Mocked visual) */}
                     <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                         <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={14}/> Активность (Год)</h3>
                         <div className="flex gap-1 flex-wrap justify-center opacity-50">
@@ -581,7 +563,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <div className={`p-4 border-b ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-black/10'}`}>
                         {renderSettingsNav()}
                         
-                        {/* ... Existing Profiles, Content, Collector sections ... */}
                         {settingsCategory === 'PROFILE' && (
                             <div className="space-y-4 animate-in slide-in-from-right-4">
                                 <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Основное</h3>
@@ -620,11 +601,11 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                 <div className={`p-4 border rounded-xl space-y-4 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}>
                                     <div>
                                         <label className="text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Основная специализация</label>
-                                        <input value={localCollector.specialization || ''} onChange={(e) => setLocalCollector({...localCollector, specialization: e.target.value})} className={`w-full bg-transparent border-b py-1 text-xs outline-none focus:border-green-500 ${isDark ? 'border-white/10' : 'border-black/10'}`} placeholder="Например: Nintendo, Apple, VHS..." />
+                                        <input value={localCollector.specialization || ''} onChange={(e) => setLocalCollector({...localCollector, specialization: e.target.value})} className={`w-full bg-transparent border-b py-1 text-xs outline-none focus:border-green-500 ${isDark ? 'border-white/10' : 'border-black/10 text-black'}`} placeholder="Например: Nintendo, Apple, VHS..." />
                                     </div>
                                     <div>
                                         <label className="text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Стаж (Лет)</label>
-                                        <input type="number" value={localCollector.yearsCollecting || ''} onChange={(e) => setLocalCollector({...localCollector, yearsCollecting: parseInt(e.target.value) || 0})} className={`w-full bg-transparent border-b py-1 text-xs outline-none focus:border-green-500 ${isDark ? 'border-white/10' : 'border-black/10'}`} placeholder="0" />
+                                        <input type="number" value={localCollector.yearsCollecting || ''} onChange={(e) => setLocalCollector({...localCollector, yearsCollecting: parseInt(e.target.value) || 0})} className={`w-full bg-transparent border-b py-1 text-xs outline-none focus:border-green-500 ${isDark ? 'border-white/10' : 'border-black/10 text-black'}`} placeholder="0" />
                                     </div>
                                     <div className="pt-2">
                                         <h4 className="text-[10px] opacity-50 uppercase tracking-widest mb-2">Статус торговли</h4>
@@ -649,9 +630,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <button onClick={() => setLocalFeed({...localFeed, defaultView: 'LIST'})} className={`px-2 py-1 text-[10px] rounded ${localFeed.defaultView === 'LIST' ? 'bg-white text-black' : 'opacity-50 text-white'}`}>LIST</button>
                                         </div>
                                     </div>
-                                    <SettingsToggle theme={theme} label="Автовоспроизведение видео" checked={localFeed.autoplayVideos} onChange={(v) => setLocalFeed({...localFeed, autoplayVideos: v})} />
                                     <SettingsToggle theme={theme} label="Скрывать NSFW контент" checked={localFeed.hideNSFW} onChange={(v) => setLocalFeed({...localFeed, hideNSFW: v})} />
-                                    <SettingsToggle theme={theme} label="Скрывать спойлеры" checked={localFeed.hideSpoilers} onChange={(v) => setLocalFeed({...localFeed, hideSpoilers: v})} />
                                     <SettingsToggle theme={theme} label="Компактный режим" checked={localFeed.compactMode} onChange={(v) => setLocalFeed({...localFeed, compactMode: v})} />
                                 </div>
                             </div>
@@ -713,33 +692,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             </div>
                         )}
 
-                        {/* NEW INTEGRATIONS SECTION */}
-                        {settingsCategory === 'INTEGRATIONS' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4">
-                                <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Ключи разработчика (API)</h3>
-                                    <p className="text-[10px] opacity-60 mb-4 font-mono">Используйте ключи для интеграции с внешними приложениями. Никому не сообщайте их.</p>
-                                    
-                                    <div className="space-y-3 mb-4">
-                                        {apiKeys.length === 0 && <div className={`text-center opacity-30 text-[10px] border border-dashed rounded p-4 ${isDark ? 'border-white/10' : 'border-black/10'}`}>Нет активных ключей</div>}
-                                        {apiKeys.map(key => (
-                                            <div key={key.id} className={`p-3 border rounded flex justify-between items-center ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}>
-                                                <div>
-                                                    <div className="text-[10px] font-bold text-green-500">{key.name}</div>
-                                                    <div className="text-[10px] font-mono opacity-50 blur-sm hover:blur-none transition-all cursor-text">{key.key}</div>
-                                                </div>
-                                                <button onClick={() => handleDeleteApiKey(key.id)} className="text-red-500 hover:bg-red-500/10 p-2 rounded"><Trash2 size={14}/></button>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <button onClick={handleGenerateApiKey} className="w-full py-3 border border-green-500/30 text-green-500 rounded font-bold text-xs uppercase hover:bg-green-500/10 flex items-center justify-center gap-2">
-                                        <Key size={14}/> Сгенерировать новый ключ
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {/* NEW DATA SECTION */}
                         {settingsCategory === 'DATA' && (
                             <div className="space-y-6 animate-in slide-in-from-right-4">
@@ -748,6 +700,11 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     <p className="text-[10px] opacity-60 mb-4 font-mono">Скачать полный архив вашего профиля, коллекций и предметов в формате JSON.</p>
                                     <button onClick={handleExportData} className={`w-full py-4 border rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
                                         <Download size={16}/> Скачать архив
+                                    </button>
+                                </div>
+                                <div className={`pt-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                    <button onClick={onAboutClick} className="w-full py-3 flex items-center justify-center gap-2 text-xs font-mono opacity-60 hover:opacity-100 hover:underline">
+                                        <Info size={14}/> О приложении
                                     </button>
                                 </div>
                             </div>

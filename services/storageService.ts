@@ -1,5 +1,4 @@
 
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ApiKey } from '../types';
 
@@ -660,14 +659,18 @@ export const clearLocalCache = async () => {
     window.location.reload();
 };
 
-export const markNotificationsRead = async (u:string) => {
+export const markNotificationsRead = async (u:string, ids?: string[]) => {
     hotCache.notifications.forEach(n => { 
         if(n.recipient === u && !n.isRead) {
-            n.isRead = true;
-            const dbPromise = getDB().then(db => db.put('notifications', n));
+            if (!ids || ids.includes(n.id)) {
+                n.isRead = true;
+                const dbPromise = getDB().then(db => db.put('notifications', n));
+            }
         }
     });
     notifyListeners();
+    
+    // Optional: Sync read status to backend if needed (omitted for brevity as server handles sync on next load)
 };
 
 export const toggleFollow = async (me:string, them:string) => {

@@ -61,11 +61,11 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
 
                 {/* Meta Info - Playlist Style */}
                 <div className="flex justify-between items-end mt-auto font-winamp text-wa-green text-[12px] leading-none">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col overflow-hidden">
                         <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
                         <span className="truncate max-w-[80px]" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                         <button onClick={(e) => { e.stopPropagation(); onLike(e); }} className={`hover:text-wa-gold ${isLiked ? 'text-wa-gold' : 'text-wa-green'}`}>
                             {isLiked ? '★' : '☆'}
                         </button>
@@ -84,7 +84,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
       className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 
         ${isXP 
           ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white' 
-          : `rounded-2xl overflow-hidden border-2 ${isDark ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
+          : `rounded-2xl overflow-hidden border-2 ${isDark ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-gray-300 hover:border-gray-400 shadow-lg'}`
         } 
         ${isCursed ? 'animate-pulse' : ''}`
       }
@@ -114,15 +114,15 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
         
-        {!isXP && !compactMode && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
+        {!isXP && !compactMode && <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded backdrop-blur-md text-[7px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
         
-        <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
-            <Icon size={10} /> {config.name}
+        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded flex items-center gap-1 text-[7px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
+            <Icon size={8} /> {config.name}
         </div>
 
         {tradeStatus !== 'NONE' && (
-            <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
-                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })} 
+            <div className={`absolute bottom-2 left-2 px-2 py-1 rounded flex items-center gap-1 text-[8px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })} 
                 {tradeConfig.badge}
             </div>
         )}
@@ -140,14 +140,14 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
         
         <div className={`mt-auto flex items-center justify-between ${isXP ? 'border-gray-400' : isDark ? 'border-white/10' : 'border-black/5'} ${compactMode ? 'pt-2' : 'pt-4 border-t border-dashed'}`}>
             {!compactMode && (
-                <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author">
-                    <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isDark ? 'border-white/20' : 'border-black/10'}`} />
-                    <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
+                <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author min-w-0 flex-1">
+                    <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border shrink-0 ${isXP ? 'border-gray-400' : isDark ? 'border-white/20' : 'border-black/10'}`} />
+                    <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
                 </div>
             )}
-            {compactMode && <div className="text-[9px] opacity-30 font-pixel uppercase">{item.category}</div>}
+            {compactMode && <div className="text-[9px] opacity-30 font-pixel uppercase truncate flex-1">{item.category}</div>}
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0 ml-2">
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>
                     <Eye size={12} /> <span>{item.views}</span>
                 </div>
