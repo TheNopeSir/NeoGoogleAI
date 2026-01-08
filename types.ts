@@ -107,12 +107,86 @@ export interface AchievementProgress {
   unlocked: boolean;
 }
 
+export interface PrivacySettings {
+  profileVisibility: 'PUBLIC' | 'FRIENDS_ONLY' | 'PRIVATE';
+  showEmail: boolean;
+  showTelegram: boolean;
+  allowDirectMessages: 'EVERYONE' | 'FRIENDS' | 'NONE';
+  allowGuestbook: boolean;
+  showOnlineStatus: boolean;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  email: boolean;
+  push: boolean;
+  types: {
+    likes: boolean;
+    comments: boolean;
+    follows: boolean;
+    messages: boolean;
+    trades: boolean;
+    mentions: boolean;
+  };
+}
+
+export interface FeedSettings {
+  defaultView: 'GRID' | 'LIST';
+  autoplayVideos: boolean;
+  hideNSFW: boolean;
+  hideSpoilers: boolean;
+  compactMode: boolean;
+}
+
+export interface ProfileCustomization {
+  accentColor: string; // Hex or Tailwind class
+  fontChoice: 'DEFAULT' | 'MONO' | 'PIXEL';
+  showBadges: boolean;
+  showStats: boolean;
+}
+
+export interface CollectorProfile {
+  specialization: string; // Text field for now (e.g. "Retro Consoles")
+  yearsCollecting: number;
+  openToTrade: boolean;
+  openToSell: boolean;
+  openToBuy: boolean;
+}
+
+export interface ExtendedProfile {
+  location?: string;
+  website?: string;
+  collectingSince?: string;
+  socialLinks?: {
+    instagram?: string;
+    youtube?: string;
+    vk?: string;
+    discord?: string;
+  };
+}
+
+export interface ApiKey {
+    id: string;
+    key: string;
+    name: string;
+    createdAt: string;
+    lastUsed: string;
+}
+
+export interface UserSession {
+    id: string;
+    device: string;
+    ip: string;
+    lastActive: string;
+    isCurrent: boolean;
+}
+
 export interface AppSettings {
     theme?: 'dark' | 'light' | 'xp' | 'winamp';
-    notificationsEnabled?: boolean;
+    notificationsEnabled?: boolean; // Legacy mapping
     soundEnabled?: boolean;
-    publicProfile?: boolean;
-    showEmail?: boolean;
+    feed?: FeedSettings;
+    customization?: ProfileCustomization;
 }
 
 export interface UserProfile {
@@ -129,6 +203,11 @@ export interface UserProfile {
   achievements: AchievementProgress[]; 
   preferences?: Record<string, number>;
   settings?: AppSettings;
+  privacy?: PrivacySettings;
+  notifications?: NotificationSettings;
+  extended?: ExtendedProfile;
+  collector?: CollectorProfile;
+  apiKeys?: ApiKey[];
   password?: string;
   isAdmin?: boolean;
   telegram?: string;

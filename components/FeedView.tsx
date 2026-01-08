@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   LayoutGrid, List as ListIcon, Search, Heart, 
@@ -66,6 +67,13 @@ const FeedView: React.FC<FeedViewProps> = ({
   // Infinite Scroll State
   const [visibleCount, setVisibleCount] = useState(20);
   const observerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize view mode from user settings on mount
+  useEffect(() => {
+      if (user.settings?.feed?.defaultView) {
+          setFeedViewMode(user.settings.feed.defaultView);
+      }
+  }, []);
 
   // Reset subcategory when main category changes
   useEffect(() => {
