@@ -23,7 +23,6 @@ const NotificationGroupCard: React.FC<{
     markGroupRead: (items: Notification[]) => void;
 }> = ({ group, theme, onAuthorClick, onExhibitClick, markGroupRead }) => {
     const [expanded, setExpanded] = useState(false);
-    const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const { items, type, timestamp } = group;
     const actor = items[0].actor;
@@ -31,20 +30,12 @@ const NotificationGroupCard: React.FC<{
     const isUnread = items.some((n: Notification) => !n.isRead);
     const isSingle = count === 1;
 
-    const handleMouseEnter = () => {
-        if (!isUnread) return;
-        if (readTimerRef.current) clearTimeout(readTimerRef.current);
-        readTimerRef.current = setTimeout(() => {
-            markGroupRead(items);
-        }, 1000);
-    };
-
-    const handleMouseLeave = () => {
-        if (readTimerRef.current) clearTimeout(readTimerRef.current);
-    };
-
     const handleClick = () => {
-        markGroupRead(items);
+        // Mark read only on explicit interaction (Click)
+        if (isUnread) {
+            markGroupRead(items);
+        }
+
         if (isSingle) {
             // Navigate directly
             const first = items[0];
@@ -89,11 +80,7 @@ const NotificationGroupCard: React.FC<{
     }
 
     return (
-        <div 
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            className={`border-b transition-all ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}
-        >
+        <div className={`border-b transition-all ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}>
             <div 
                 onClick={handleClick}
                 className="p-4 flex gap-4 cursor-pointer hover:bg-white/5 relative"
@@ -117,7 +104,7 @@ const NotificationGroupCard: React.FC<{
                         {!isSingle && <span className="bg-white/10 px-1.5 rounded-full text-[9px] flex items-center gap-1">{expanded ? <ChevronUp size={10}/> : <ChevronDown size={10}/>} {expanded ? 'Свернуть' : 'Подробнее'}</span>}
                     </div>
                 </div>
-                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"/>}
+                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0 animate-pulse"/>}
             </div>
 
             {/* Expanded List */}
@@ -158,6 +145,8 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     }, [notifications, currentUser.username, filter]);
 
     const myMessages = messages.filter(m => m.sender.toLowerCase() === currentUser.username.toLowerCase() || m.receiver.toLowerCase() === currentUser.username.toLowerCase());
+    
+    // Trade requests are handled in a separate component usually, but keeping tab here for future
     const trades = getMyTradeRequests();
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };

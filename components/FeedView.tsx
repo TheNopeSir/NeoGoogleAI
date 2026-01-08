@@ -123,7 +123,8 @@ const FeedView: React.FC<FeedViewProps> = ({
 
   // Settings Flags
   const hideNSFW = user.settings?.feed?.hideNSFW || false;
-  const compactMode = user.settings?.feed?.compactMode || false;
+  // Compact mode is disabled as per request
+  const compactMode = false; 
 
   // Initialize view mode from user settings on mount
   useEffect(() => {
@@ -339,7 +340,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? (compactMode ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5') : 'grid-cols-1'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
                             {visibleExhibits.map(item => (
                                 feedViewMode === 'GRID' ? (
                                     <ExhibitCard 

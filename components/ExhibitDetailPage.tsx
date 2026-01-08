@@ -91,11 +91,17 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const slides = useMemo(() => {
       const media: Array<{type: 'image' | 'video', url: string}> = [];
       const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : ['https://placehold.co/600x400?text=NO+IMAGE'];
+      
+      // 1. Cover Image always first
       media.push({ type: 'image', url: imageUrls[0] });
+      
+      // 2. Video ALWAYS second if exists
       if (exhibit.videoUrl) {
           const embed = getEmbedUrl(exhibit.videoUrl);
           if (embed) media.push({ type: 'video', url: embed });
       }
+      
+      // 3. Remaining images
       if (imageUrls.length > 1) {
           imageUrls.slice(1).forEach(url => media.push({ type: 'image', url }));
       }
@@ -358,14 +364,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     {...gallerySwipeHandlers}
                 >
                     {slides[currentSlideIndex].type === 'image' ? (
-                        <div className="w-full h-full relative cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
+                        <div className="w-full h-full relative cursor-zoom-in bg-black flex items-center justify-center" onClick={() => setIsFullscreen(true)}>
                             <img 
                                 src={slides[currentSlideIndex].url} 
                                 alt={exhibit.title} 
-                                className="w-full h-full object-contain" 
+                                // Changed to object-contain to support all aspect ratios properly
+                                className="max-w-full max-h-full object-contain transition-transform duration-300" 
                                 draggable="false"
                             />
-                            {isDark && <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none opacity-50"/>}
                         </div>
                     ) : (
                         <iframe src={slides[currentSlideIndex].url} className="w-full h-full relative z-10" frameBorder="0" allowFullScreen></iframe>
