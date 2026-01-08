@@ -523,7 +523,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><MessageSquare size={20} className="mx-auto"/></button>
                     <button onClick={() => setActiveSection('ANALYTICS')} className={`flex-1 pb-3 text-center ${activeSection === 'ANALYTICS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><BarChart3 size={20} className="mx-auto"/></button>
                     <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Search size={20} className="mx-auto"/></button>
-                    {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Settings size={20} className="mx-auto"/></button>}
+                    {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className="flex-1 pb-3 text-center opacity-50"><Settings size={20} className="mx-auto"/></button>}
                 </div>
             )}
 
