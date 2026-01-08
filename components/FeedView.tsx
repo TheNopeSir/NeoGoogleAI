@@ -10,6 +10,7 @@ import * as db from '../services/storageService';
 import { calculateFeedScore, getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import WishlistCard from './WishlistCard';
+import SEO from './SEO';
 
 interface FeedViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -227,6 +228,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
   return (
     <div className={`pb-24 space-y-4 animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+        <SEO title="NeoArchive: Лента" />
         
         {/* 1. MOBILE HEADER */}
         <header className="md:hidden flex justify-between items-center px-4 pt-4 bg-transparent">

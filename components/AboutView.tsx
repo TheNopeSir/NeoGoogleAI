@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ArrowLeft, Database, Shield, Zap, Heart, Globe, Terminal } from 'lucide-react';
+import SEO from './SEO';
 
 interface AboutViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -13,6 +14,7 @@ const AboutView: React.FC<AboutViewProps> = ({ theme, onBack }) => {
 
     return (
         <div className={`max-w-3xl mx-auto animate-in fade-in pb-32 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+            <SEO title="NeoArchive: О приложении" />
             <button onClick={onBack} className={`flex items-center gap-2 mb-8 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                 <ArrowLeft size={16} /> НАЗАД
             </button>

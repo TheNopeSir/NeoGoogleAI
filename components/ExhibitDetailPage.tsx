@@ -11,6 +11,7 @@ import { getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
+import SEO from './SEO';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -269,6 +270,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   return (
     <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+      <SEO title={`${exhibit.title} | ${exhibit.owner}`} description={exhibit.description} image={exhibit.imageUrls[0]} />
       
       {showTradeModal && currentUserProfile && allExhibits && recipientProfile && (
           <TradeOfferModal
@@ -295,6 +297,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                       {slides[currentSlideIndex].type === 'image' ? (
                           <img 
                             src={slides[currentSlideIndex].url} 
+                            alt={exhibit.title} 
                             className="max-w-full max-h-full object-contain transition-transform duration-300"
                             style={{ transform: `scale(${zoomLevel})` }}
                             draggable="false"
