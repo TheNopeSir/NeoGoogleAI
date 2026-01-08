@@ -4,7 +4,7 @@ import {
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
   ListMusic, Radio, Zap, Activity, Disc,
-  LayoutTemplate, FilePlus2, Flag, UserCheck
+  LayoutTemplate, FilePlus2, Flag, UserCheck, Menu
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -135,10 +135,23 @@ export default function App() {
 
   const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
-      if (params?.item) { setSelectedExhibit(params.item); setHighlightCommentId(params.highlightCommentId); }
+      
+      // CRITICAL FIX: Explicitly handle item selection vs new creation
+      if (newView === 'CREATE_ARTIFACT' && !params?.initialData && !params?.item) {
+          setSelectedExhibit(null); // Clear selected exhibit so we don't edit the last viewed item
+      } else if (params?.item) {
+          setSelectedExhibit(params.item); 
+          setHighlightCommentId(params.highlightCommentId); 
+      }
+      
       if (params?.collection) setSelectedCollection(params.collection);
       if (params?.wishlistItem) setSelectedWishlistItem(params.wishlistItem);
       
+      // Pass initialData for editing if provided
+      if (newView === 'CREATE_ARTIFACT' && params?.initialData) {
+          setSelectedExhibit(params.initialData);
+      }
+
       setView(newView);
 
       let path = '/';
@@ -270,10 +283,10 @@ export default function App() {
 
   const getDesktopNavClasses = () => {
       switch(theme) {
-          case 'xp': return 'bg-gradient-to-b from-[#245DDA] to-[#245DDA] border-b-2 border-[#003C74] text-white';
-          case 'winamp': return 'bg-[#292929] border-b border-[#505050] text-[#00ff00] font-winamp';
-          case 'light': return 'bg-white/90 backdrop-blur-md border-b border-gray-200 text-gray-900';
-          default: return 'bg-black/80 backdrop-blur-md border-b border-white/10 text-white';
+          case 'xp': return 'bg-gradient-to-b from-[#245DDA] to-[#245DDA] border-b-2 border-[#003C74] text-white shadow-md';
+          case 'winamp': return 'bg-[#292929] border-b border-[#505050] text-[#00ff00] font-winamp shadow-md';
+          case 'light': return 'bg-white/90 backdrop-blur-md border-b border-gray-200 text-gray-900 shadow-sm';
+          default: return 'bg-black/80 backdrop-blur-md border-b border-white/10 text-white shadow-lg';
       }
   };
 
@@ -328,20 +341,55 @@ export default function App() {
             </div>
         )}
 
-        {/* NAVIGATION COMPONENTS OMITTED FOR BREVITY BUT PRESUMED INCLUDED IN RENDER */}
+        {/* NAVIGATION */}
         {user && (
-            <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
-                <div className="flex justify-around items-center h-16">
-                    <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
-                    <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
-                    <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
-                    <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
-                    <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/></button>
-                </div>
-            </nav>
+            <>
+                {/* DESKTOP HEADER */}
+                <header className={`hidden md:flex fixed top-0 left-0 right-0 h-16 z-50 px-6 items-center justify-between transition-all duration-300 ${getDesktopNavClasses()}`}>
+                    <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigateTo('FEED')}>
+                        <div className={`w-8 h-8 rounded flex items-center justify-center font-bold text-black font-pixel text-xs ${theme === 'winamp' ? 'bg-[#292929] text-[#00ff00] border border-[#505050]' : 'bg-green-500'}`}>NA</div>
+                        <h1 className={`text-xl font-pixel font-bold tracking-tighter ${theme === 'winamp' ? 'text-[#00ff00]' : ''}`}>NeoArchive</h1>
+                    </div>
+
+                    <div className="flex items-center gap-8">
+                        <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 hover:opacity-100 transition-all ${view === 'FEED' ? 'opacity-100 font-bold scale-105' : 'opacity-60'}`}>
+                            {getNavIcon('FEED')} <span className="text-xs font-pixel tracking-wider">ЛЕНТА</span>
+                        </button>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 hover:opacity-100 transition-all ${view === 'COMMUNITY_HUB' ? 'opacity-100 font-bold scale-105' : 'opacity-60'}`}>
+                            {getNavIcon('COMMUNITY_HUB')} <span className="text-xs font-pixel tracking-wider">СООБЩЕСТВО</span>
+                        </button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 hover:opacity-100 transition-all ${view === 'CREATE_HUB' ? 'opacity-100 font-bold scale-105' : 'opacity-60'}`}>
+                            {getNavIcon('CREATE_HUB')} <span className="text-xs font-pixel tracking-wider">СОЗДАТЬ</span>
+                        </button>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 hover:opacity-100 transition-all relative ${view === 'ACTIVITY' ? 'opacity-100 font-bold scale-105' : 'opacity-60'}`}>
+                            {getNavIcon('ACTIVITY')} <span className="text-xs font-pixel tracking-wider">АКТИВНОСТЬ</span>
+                            {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><Search size={20}/></button>
+                        <div onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className="flex items-center gap-3 cursor-pointer opacity-80 hover:opacity-100 transition-opacity group">
+                            <span className={`text-xs font-bold font-pixel hidden lg:block ${theme === 'winamp' ? 'text-[#00ff00]' : ''}`}>@{user.username}</span>
+                            <img src={db.getUserAvatar(user.username)} className={`w-9 h-9 rounded-full border-2 transition-transform group-hover:scale-110 ${theme === 'winamp' ? 'border-[#505050]' : 'border-white/20'}`} />
+                        </div>
+                    </div>
+                </header>
+
+                {/* MOBILE BOTTOM NAV */}
+                <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
+                    <div className="flex justify-around items-center h-16">
+                        <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
+                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/></button>
+                    </div>
+                </nav>
+            </>
         )}
 
-        <div className="md:pt-16">
+        <div className="md:pt-20">
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onLike={handleLike} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
             )}
