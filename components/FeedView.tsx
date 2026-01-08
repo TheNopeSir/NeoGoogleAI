@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   LayoutGrid, List as ListIcon, Search, Heart, 
-  Zap, Radar, SlidersHorizontal, Clock, ArrowUpCircle
+  Zap, Radar, SlidersHorizontal, Clock, ArrowUpCircle, FolderOpen, User, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { UserProfile, Exhibit, WishlistItem } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
-import { calculateFeedScore } from '../services/storageService';
+import { calculateFeedScore, getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import WishlistCard from './WishlistCard';
 
@@ -33,9 +34,60 @@ interface FeedViewProps {
   onWishlistClick: (item: WishlistItem) => void;
 }
 
-const FeedSkeleton: React.FC<{ viewMode: 'GRID' | 'LIST' }> = ({ viewMode }) => (
-    <div className={`animate-pulse ${viewMode === 'GRID' ? 'aspect-[3/4]' : 'h-24'} bg-white/5 rounded-xl border border-white/5`}></div>
+const FeedSkeleton: React.FC<{ viewMode: 'GRID' | 'LIST', theme: string }> = ({ viewMode, theme }) => (
+    <div className={`animate-pulse ${viewMode === 'GRID' ? 'aspect-[3/4]' : 'h-24'} rounded-xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}></div>
 );
+
+const UserWishlistGroup: React.FC<{
+    username: string;
+    items: WishlistItem[];
+    theme: string;
+    onUserClick: (u: string) => void;
+    onWishlistClick: (i: WishlistItem) => void;
+}> = ({ username, items, theme, onUserClick, onWishlistClick }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isDark = theme === 'dark';
+    const isWinamp = theme === 'winamp';
+
+    return (
+        <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${expanded ? 'mb-4 shadow-lg' : 'mb-2'} ${isWinamp ? 'bg-[#191919] border-[#505050]' : isDark ? 'bg-dark-surface border-white/10' : 'bg-white border-black/10'}`}>
+            <div 
+                onClick={() => setExpanded(!expanded)}
+                className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${expanded ? 'bg-black/5' : 'hover:bg-black/5'}`}
+            >
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <img src={getUserAvatar(username)} className="w-10 h-10 rounded-full border border-white/20 object-cover"/>
+                        <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-[9px] font-bold px-1.5 rounded-full border border-black">{items.length}</div>
+                    </div>
+                    <div>
+                        <div className={`font-bold text-sm font-pixel ${isWinamp ? 'text-[#00ff00]' : ''}`} onClick={(e) => { e.stopPropagation(); onUserClick(username); }}>@{username}</div>
+                        <div className="text-[10px] opacity-50 font-mono">Ищет {items.length} артефактов</div>
+                    </div>
+                </div>
+                <div className="opacity-50">
+                    {expanded ? <ChevronDown size={20}/> : <ChevronRight size={20}/>}
+                </div>
+            </div>
+
+            {expanded && (
+                <div className="p-3 border-t border-dashed border-white/10 bg-black/5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {items.map(item => (
+                            <WishlistCard 
+                                key={item.id} 
+                                item={item} 
+                                theme={theme as any} 
+                                onClick={onWishlistClick} 
+                                onUserClick={onUserClick} 
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 const FeedView: React.FC<FeedViewProps> = ({
   theme,
@@ -58,6 +110,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   onWishlistClick
 }) => {
   const isWinamp = theme === 'winamp';
+  const isDark = theme === 'dark';
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   
   // Sorting Mode: SMART (Algo) vs FRESH (Chronological)
@@ -66,6 +119,17 @@ const FeedView: React.FC<FeedViewProps> = ({
   // Infinite Scroll State
   const [visibleCount, setVisibleCount] = useState(20);
   const observerRef = useRef<HTMLDivElement>(null);
+
+  // Settings Flags
+  const hideNSFW = user.settings?.feed?.hideNSFW || false;
+  const compactMode = user.settings?.feed?.compactMode || false;
+
+  // Initialize view mode from user settings on mount
+  useEffect(() => {
+      if (user.settings?.feed?.defaultView) {
+          setFeedViewMode(user.settings.feed.defaultView);
+      }
+  }, []);
 
   // Reset subcategory when main category changes
   useEffect(() => {
@@ -80,6 +144,12 @@ const FeedView: React.FC<FeedViewProps> = ({
           // EXCLUDE SELF & DRAFTS (Fixes Problem #3)
           if (e.owner === user.username) return false;
           if (e.isDraft) return false;
+
+          // NSFW Filter (Basic word check)
+          if (hideNSFW) {
+              const content = (e.title + e.description + e.category).toLowerCase();
+              if (content.includes('nsfw') || content.includes('18+') || content.includes('xxx')) return false;
+          }
 
           // Category Filter
           if (selectedCategory !== 'ВСЕ' && e.category !== selectedCategory) return false;
@@ -114,7 +184,7 @@ const FeedView: React.FC<FeedViewProps> = ({
           return b.id.localeCompare(a.id);
       });
 
-  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode]);
+  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode, hideNSFW]);
 
   const processedWishlist = useMemo(() => {
       return wishlist.filter(w => {
@@ -124,6 +194,21 @@ const FeedView: React.FC<FeedViewProps> = ({
           return true;
       }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [wishlist, user.username, selectedCategory, feedType]);
+
+  // Group Wishlist items by User
+  const groupedWishlist = useMemo(() => {
+      const groups: Record<string, WishlistItem[]> = {};
+      processedWishlist.forEach(item => {
+          if (!groups[item.owner]) groups[item.owner] = [];
+          groups[item.owner].push(item);
+      });
+      // Sort users by most recent request
+      return Object.entries(groups).sort((a, b) => {
+          const lastA = Math.max(...a[1].map(i => new Date(i.timestamp).getTime()));
+          const lastB = Math.max(...b[1].map(i => new Date(i.timestamp).getTime()));
+          return lastB - lastA;
+      });
+  }, [processedWishlist]);
 
   // --- INFINITE SCROLL ---
   useEffect(() => {
@@ -138,10 +223,10 @@ const FeedView: React.FC<FeedViewProps> = ({
   }, [processedExhibits.length, processedWishlist.length]);
 
   const visibleExhibits = processedExhibits.slice(0, visibleCount);
-  const visibleWishlist = processedWishlist.slice(0, visibleCount);
+  const visibleWishlistGroups = groupedWishlist.slice(0, visibleCount);
 
   return (
-    <div className="pb-24 space-y-4 animate-in fade-in">
+    <div className={`pb-24 space-y-4 animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : isDark ? 'text-gray-100' : 'text-gray-900'}`}>
         
         {/* 1. MOBILE HEADER */}
         <header className="md:hidden flex justify-between items-center px-4 pt-4 bg-transparent">
@@ -159,7 +244,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {stories.map((story, i) => (
                         <div key={i} onClick={() => story.latestItem && onExhibitClick(story.latestItem)} className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]">
                             <div className="relative p-[2px] rounded-full bg-gradient-to-tr from-green-500 to-blue-500">
-                                <div className={`rounded-full p-[2px] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+                                <div className={`rounded-full p-[2px] ${isDark ? 'bg-black' : 'bg-white'}`}>
                                     <img src={story.avatar} className="w-14 h-14 rounded-full object-cover" />
                                 </div>
                             </div>
@@ -171,12 +256,12 @@ const FeedView: React.FC<FeedViewProps> = ({
         )}
 
         {/* 3. CONTROLS AREA */}
-        <div className={`pt-2 pb-2 px-4 transition-all ${theme === 'dark' ? '' : isWinamp ? 'bg-[#191919] border-b border-[#505050]' : ''}`}>
+        <div className={`pt-2 pb-2 px-4 transition-all ${isDark ? '' : 'bg-gray-50/50'} ${isWinamp ? 'bg-[#191919] border-b border-[#505050]' : ''}`}>
             <div className="max-w-5xl mx-auto w-full space-y-4">
                 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-4">
-                    <div className={`flex-1 flex p-1 rounded-xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
+                    <div className={`flex-1 flex p-1 rounded-xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : isDark ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
                         <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow-lg') : 'opacity-50'}`}>
                             <LayoutGrid size={14} /> ЛЕНТА
                         </button>
@@ -184,20 +269,20 @@ const FeedView: React.FC<FeedViewProps> = ({
                             <Radar size={14} /> ВИШЛИСТ
                         </button>
                     </div>
-                    <button onClick={() => onNavigate('SEARCH')} className={`px-4 rounded-xl border flex items-center justify-center ${isWinamp ? 'bg-black border-[#00ff00] text-[#00ff00]' : 'bg-white/5 border-white/10'}`}>
+                    <button onClick={() => onNavigate('SEARCH')} className={`px-4 rounded-xl border flex items-center justify-center ${isWinamp ? 'bg-black border-[#00ff00] text-[#00ff00]' : isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/5'}`}>
                         <Search size={20} />
                     </button>
                 </div>
 
                 {/* Filters Row */}
                 <div className="flex items-center justify-between gap-2 overflow-x-auto scrollbar-hide pb-2">
-                    <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
-                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ГЛАВНАЯ</button>
-                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ПОДПИСКИ</button>
+                    <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : isDark ? 'bg-green-500 text-black shadow' : 'bg-green-500 text-white') : 'opacity-50'}`}>ГЛАВНАЯ</button>
+                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : isDark ? 'bg-green-500 text-black shadow' : 'bg-green-500 text-white') : 'opacity-50'}`}>ПОДПИСКИ</button>
                     </div>
 
                     {feedMode === 'ARTIFACTS' && (
-                        <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+                        <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isDark ? 'bg-white/5' : 'bg-black/5'}`}>
                             <button onClick={() => setSortMode('SMART')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${sortMode === 'SMART' ? 'bg-blue-500 text-white shadow' : 'opacity-50'}`}>
                                 <Zap size={10}/> УМНАЯ
                             </button>
@@ -207,18 +292,20 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     )}
 
-                    <div className="flex gap-1 shrink-0 ml-auto">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg ${feedViewMode === 'GRID' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><LayoutGrid size={16}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg ${feedViewMode === 'LIST' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><ListIcon size={16}/></button>
-                    </div>
+                    {feedMode === 'ARTIFACTS' && (
+                        <div className="flex gap-1 shrink-0 ml-auto">
+                            <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg ${feedViewMode === 'GRID' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><LayoutGrid size={16}/></button>
+                            <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg ${feedViewMode === 'LIST' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><ListIcon size={16}/></button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Category Pills */}
                 <div className="space-y-2">
                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === 'ВСЕ' ? 'bg-white text-black border-white' : 'border-current opacity-40 hover:opacity-100'}`}>ВСЕ</button>
+                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === 'ВСЕ' ? (isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-current opacity-40 hover:opacity-100'}`}>ВСЕ</button>
                         {Object.values(DefaultCategory).map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black border-[#00ff00]' : 'bg-green-500 text-black border-green-500') : 'border-white/10 opacity-60 hover:opacity-100'}`}>{cat}</button>
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black border-[#00ff00]' : isDark ? 'bg-green-500 text-black border-green-500' : 'bg-green-600 text-white border-green-600') : (isDark ? 'border-white/10 opacity-60' : 'border-black/10 opacity-60')}`}>{cat}</button>
                         ))}
                     </div>
                     {/* Subcategories */}
@@ -226,7 +313,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2">
                             <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap border transition-all ${!selectedSubcategory ? 'bg-white/10 border-white' : 'border-transparent opacity-50'}`}>ВСЕ {selectedCategory}</button>
                             {CATEGORY_SUBCATEGORIES[selectedCategory].map(sub => (
-                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap border transition-all ${selectedSubcategory === sub ? 'bg-white/10 border-white' : 'border-transparent opacity-50'}`}>{sub}</button>
+                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap border transition-all ${selectedSubcategory === sub ? (isDark ? 'bg-white/10 border-white' : 'bg-black/10 border-black') : 'border-transparent opacity-50'}`}>{sub}</button>
                             ))}
                         </div>
                     )}
@@ -241,16 +328,16 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {/* Loading State / Empty State */}
                     {exhibits.length === 0 ? (
                         <div className="grid grid-cols-2 gap-4">
-                            {[1,2,3,4].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
+                            {[1,2,3,4].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} theme={theme} />)}
                         </div>
                     ) : processedExhibits.length === 0 ? (
-                        <div className="text-center py-20 opacity-50 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">
+                        <div className={`text-center py-20 opacity-50 font-mono text-xs border-2 border-dashed rounded-3xl ${isDark ? 'border-white/10' : 'border-black/10'}`}>
                             <div className="mb-2 text-2xl">🏜️</div>
                             ЗДЕСЬ ПОКА ПУСТО<br/>
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? (compactMode ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5') : 'grid-cols-1'}`}>
                             {visibleExhibits.map(item => (
                                 feedViewMode === 'GRID' ? (
                                     <ExhibitCard 
@@ -261,9 +348,10 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         isLiked={item.likedBy?.includes(user?.username || '') || false}
                                         onLike={(e) => onLike(item.id, e)}
                                         onAuthorClick={onUserClick}
+                                        compactMode={compactMode}
                                     />
                                 ) : (
-                                    <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
+                                    <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-sm'}`}>
                                         <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={item.imageUrls[0]} className="w-full h-full object-cover" /></div>
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
@@ -280,18 +368,23 @@ const FeedView: React.FC<FeedViewProps> = ({
                     )}
                 </>
             ) : (
-                /* WISHLIST MODE */
-                <>
+                /* WISHLIST MODE - GROUPED BY USER */
+                <div className="space-y-4">
                     {processedWishlist.length === 0 ? (
-                        <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">ВИШЛИСТ ПУСТ</div>
+                        <div className={`text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed rounded-3xl ${isDark ? 'border-white/10' : 'border-black/10'}`}>ВИШЛИСТ ПУСТ</div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
-                            {visibleWishlist.map(item => (
-                                <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />
-                            ))}
-                        </div>
+                        visibleWishlistGroups.map(([username, items]) => (
+                            <UserWishlistGroup 
+                                key={username} 
+                                username={username} 
+                                items={items} 
+                                theme={theme}
+                                onUserClick={onUserClick}
+                                onWishlistClick={onWishlistClick}
+                            />
+                        ))
                     )}
-                </>
+                </div>
             )}
 
             {/* Infinite Scroll Trigger */}
