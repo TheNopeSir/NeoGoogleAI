@@ -68,6 +68,10 @@ const FeedView: React.FC<FeedViewProps> = ({
   const [visibleCount, setVisibleCount] = useState(20);
   const observerRef = useRef<HTMLDivElement>(null);
 
+  // Settings Flags
+  const hideNSFW = user.settings?.feed?.hideNSFW || false;
+  const compactMode = user.settings?.feed?.compactMode || false;
+
   // Initialize view mode from user settings on mount
   useEffect(() => {
       if (user.settings?.feed?.defaultView) {
@@ -88,6 +92,12 @@ const FeedView: React.FC<FeedViewProps> = ({
           // EXCLUDE SELF & DRAFTS (Fixes Problem #3)
           if (e.owner === user.username) return false;
           if (e.isDraft) return false;
+
+          // NSFW Filter (Basic word check)
+          if (hideNSFW) {
+              const content = (e.title + e.description + e.category).toLowerCase();
+              if (content.includes('nsfw') || content.includes('18+') || content.includes('xxx')) return false;
+          }
 
           // Category Filter
           if (selectedCategory !== 'ВСЕ' && e.category !== selectedCategory) return false;
@@ -122,7 +132,7 @@ const FeedView: React.FC<FeedViewProps> = ({
           return b.id.localeCompare(a.id);
       });
 
-  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode]);
+  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode, hideNSFW]);
 
   const processedWishlist = useMemo(() => {
       return wishlist.filter(w => {
@@ -258,7 +268,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? (compactMode ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5') : 'grid-cols-1'}`}>
                             {visibleExhibits.map(item => (
                                 feedViewMode === 'GRID' ? (
                                     <ExhibitCard 
@@ -269,6 +279,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         isLiked={item.likedBy?.includes(user?.username || '') || false}
                                         onLike={(e) => onLike(item.id, e)}
                                         onAuthorClick={onUserClick}
+                                        compactMode={compactMode}
                                     />
                                 ) : (
                                     <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>

@@ -12,9 +12,10 @@ interface ExhibitCardProps {
   isLiked: boolean;
   onLike: (e: React.MouseEvent) => void;
   onAuthorClick: (author: string) => void;
+  compactMode?: boolean;
 }
 
-const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked, onLike, onAuthorClick }) => {
+const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked, onLike, onAuthorClick, compactMode = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
@@ -112,7 +113,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
         
-        {!isXP && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
+        {!isXP && !compactMode && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
         
         <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
             <Icon size={10} /> {config.name}
@@ -126,18 +127,24 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
         )}
       </div>
 
-      <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
-        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-1 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
-        <div className={`mt-1 font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
-            <span className="truncate uppercase">{item.condition || item.quality}</span>
-            {isXP && <div className="text-[9px] text-gray-600 mt-1 uppercase tracking-wide">{item.category}</div>}
-        </div>
+      <div className={`flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''} ${compactMode ? 'p-2' : 'p-4'}`}>
+        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-1 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''} ${compactMode ? 'text-[11px]' : ''}`}>{item.title}</h3>}
         
-        <div className={`mt-auto pt-4 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author">
-                <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
-                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
+        {!compactMode && (
+            <div className={`mt-1 font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
+                <span className="truncate uppercase">{item.condition || item.quality}</span>
+                {isXP && <div className="text-[9px] text-gray-600 mt-1 uppercase tracking-wide">{item.category}</div>}
             </div>
+        )}
+        
+        <div className={`mt-auto flex items-center justify-between ${isXP ? 'border-gray-400' : 'border-white/10'} ${compactMode ? 'pt-2' : 'pt-4 border-t border-dashed'}`}>
+            {!compactMode && (
+                <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author">
+                    <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
+                    <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
+                </div>
+            )}
+            {compactMode && <div className="text-[9px] opacity-30 font-pixel uppercase">{item.category}</div>}
             
             <div className="flex items-center gap-3">
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>

@@ -135,10 +135,23 @@ export default function App() {
 
   const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
-      if (params?.item) { setSelectedExhibit(params.item); setHighlightCommentId(params.highlightCommentId); }
+      
+      // CRITICAL FIX: Explicitly handle item selection vs new creation
+      if (newView === 'CREATE_ARTIFACT' && !params?.initialData && !params?.item) {
+          setSelectedExhibit(null); // Clear selected exhibit so we don't edit the last viewed item
+      } else if (params?.item) {
+          setSelectedExhibit(params.item); 
+          setHighlightCommentId(params.highlightCommentId); 
+      }
+      
       if (params?.collection) setSelectedCollection(params.collection);
       if (params?.wishlistItem) setSelectedWishlistItem(params.wishlistItem);
       
+      // Pass initialData for editing if provided
+      if (newView === 'CREATE_ARTIFACT' && params?.initialData) {
+          setSelectedExhibit(params.initialData);
+      }
+
       setView(newView);
 
       let path = '/';
@@ -401,7 +414,8 @@ export default function App() {
                         <h2 className="font-pixel text-lg">СОЗДАТЬ</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
-                        <button onClick={() => navigateTo('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all"><div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><Plus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div><div className="text-xs opacity-50">Добавить предмет в коллекцию</div></div></button>
+                        {/* Fix: Pass item: null to clear selection on new creation */}
+                        <button onClick={() => navigateTo('CREATE_ARTIFACT', { item: undefined })} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all"><div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><Plus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div><div className="text-xs opacity-50">Добавить предмет в коллекцию</div></div></button>
                         <button onClick={() => navigateTo('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all"><div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><FolderPlus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВАЯ КОЛЛЕКЦИЯ</div><div className="text-xs opacity-50">Объединить предметы в альбом</div></div></button>
                         <button onClick={() => navigateTo('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all"><div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-500"><Search size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">В ПОИСКЕ (WISHLIST)</div><div className="text-xs opacity-50">Объявить розыск предмета</div></div></button>
                     </div>
