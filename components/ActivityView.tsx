@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Bell, MessageCircle, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests } from '../services/storageService';
+import SEO from './SEO';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -214,6 +215,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     return (
         <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 ${theme === 'winamp' ? 'font-mono text-gray-300' : ''}`}>
+            <SEO title="NeoArchive: Активность" />
             
             {/* Header Tabs */}
             <div className={`flex mb-6 border-b ${theme === 'winamp' ? 'border-[#505050]' : 'border-gray-500/30'}`}>

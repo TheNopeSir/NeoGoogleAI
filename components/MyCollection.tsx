@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import WishlistCard from './WishlistCard';
+import SEO from './SEO';
 
 interface MyCollectionProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -61,6 +63,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
 
     return (
         <div className={`max-w-4xl mx-auto animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+            <SEO title="NeoArchive: Моя полка" />
             <div className="flex items-center justify-between mb-6">
                 <button onClick={onBack} className={`flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={16} /> НАЗАД

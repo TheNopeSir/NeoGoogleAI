@@ -336,7 +336,6 @@ export default function App() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-safe flex flex-col ${getThemeClasses()}`}>
-        <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
         
@@ -451,6 +450,7 @@ export default function App() {
 
             {view === 'CREATE_HUB' && (
                 <div className="p-6 pb-24 animate-in slide-in-from-bottom-10">
+                    <SEO title="NeoArchive: Создать" />
                     <div className="flex items-center justify-between mb-8">
                         <button onClick={handleBack} className="flex items-center gap-2 opacity-50 hover:opacity-100"><ArrowLeft size={16}/> НАЗАД</button>
                         <h2 className="font-pixel text-lg">СОЗДАТЬ</h2>
