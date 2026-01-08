@@ -107,47 +107,12 @@ export interface AchievementProgress {
   unlocked: boolean;
 }
 
-export interface PrivacySettings {
-  profileVisibility: 'PUBLIC' | 'FRIENDS_ONLY' | 'PRIVATE';
-  showEmail: boolean;
-  showTelegram: boolean;
-  allowDirectMessages: 'EVERYONE' | 'FRIENDS' | 'NONE';
-  allowGuestbook: boolean;
-  showOnlineStatus: boolean;
-}
-
-export interface NotificationSettings {
-  enabled: boolean;
-  email: boolean;
-  push: boolean;
-  types: {
-    likes: boolean;
-    comments: boolean;
-    follows: boolean;
-    messages: boolean;
-    trades: boolean;
-    mentions: boolean;
-  };
-}
-
-export interface ExtendedProfile {
-  location?: string;
-  website?: string;
-  collectingSince?: string;
-  socialLinks?: {
-    instagram?: string;
-    youtube?: string;
-    vk?: string;
-    discord?: string;
-  };
-}
-
 export interface AppSettings {
     theme?: 'dark' | 'light' | 'xp' | 'winamp';
     notificationsEnabled?: boolean;
     soundEnabled?: boolean;
-    publicProfile?: boolean; // Legacy, kept for compatibility, mapped to PrivacySettings
-    showEmail?: boolean; // Legacy
+    publicProfile?: boolean;
+    showEmail?: boolean;
 }
 
 export interface UserProfile {
@@ -164,9 +129,6 @@ export interface UserProfile {
   achievements: AchievementProgress[]; 
   preferences?: Record<string, number>;
   settings?: AppSettings;
-  privacy?: PrivacySettings;
-  notifications?: NotificationSettings;
-  extended?: ExtendedProfile;
   password?: string;
   isAdmin?: boolean;
   telegram?: string;
