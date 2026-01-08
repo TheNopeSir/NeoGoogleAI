@@ -1,5 +1,4 @@
 
-
 export interface Comment {
   id: string;
   parentId?: string; // For replies
@@ -110,9 +109,7 @@ export interface AchievementProgress {
 
 export interface FeedSettings {
     defaultView: 'GRID' | 'LIST';
-    autoplayVideos: boolean;
     hideNSFW: boolean;
-    hideSpoilers: boolean;
     compactMode: boolean;
 }
 

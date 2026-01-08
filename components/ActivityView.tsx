@@ -1,6 +1,5 @@
-
-import React, { useState, useMemo } from 'react';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Bell, MessageCircle, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, Check } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests } from '../services/storageService';
 
@@ -20,6 +19,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+    const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const myNotifs = useMemo(() => {
         let list = notifications.filter(n => n.recipient.toLowerCase() === currentUser.username.toLowerCase());
@@ -31,6 +31,37 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const trades = getMyTradeRequests();
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
+
+    // Function to mark a specific group read
+    const markGroupRead = (groupItems: Notification[]) => {
+        const unreadIds = groupItems.filter(n => !n.isRead).map(n => n.id);
+        if (unreadIds.length > 0) {
+            markNotificationsRead(currentUser.username, unreadIds);
+        }
+    };
+
+    const handleMouseEnterGroup = (groupItems: Notification[]) => {
+        // Debounce read status on hover to prevent accidental marking while scrolling
+        if (readTimerRef.current) clearTimeout(readTimerRef.current);
+        readTimerRef.current = setTimeout(() => {
+            markGroupRead(groupItems);
+        }, 1000); // 1 second hover required
+    };
+
+    const handleMouseLeaveGroup = () => {
+        if (readTimerRef.current) clearTimeout(readTimerRef.current);
+    };
+
+    const handleClickGroup = (groupItems: Notification[]) => {
+        markGroupRead(groupItems);
+        // Also trigger navigation if applicable
+        const first = groupItems[0];
+        if (first.targetId) {
+            onExhibitClick(first.targetId);
+        } else if (first.type === 'FOLLOW') {
+            onAuthorClick(first.actor);
+        }
+    };
 
     // --- GROUPING LOGIC ---
     const groupedNotifications = useMemo(() => {
@@ -100,21 +131,24 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         else title = 'Уведомление';
 
         const actorsText = uniqueActors.length === 1 
-            ? <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={() => onAuthorClick(uniqueActors[0])}>@{uniqueActors[0]}</span> 
+            ? <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(uniqueActors[0]); }}>@{uniqueActors[0]}</span> 
             : <span><span className="font-bold text-green-400">@{uniqueActors[0]}</span> и еще <span className="font-bold">{uniqueActors.length - 1}</span></span>;
 
         return (
-            <div key={group.id} className={`p-4 border-b transition-all flex gap-4 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent'}`}>
+            <div 
+                key={group.id} 
+                onMouseEnter={() => handleMouseEnterGroup(group.items)}
+                onMouseLeave={handleMouseLeaveGroup}
+                onClick={() => handleClickGroup(group.items)}
+                className={`p-4 border-b transition-all flex gap-4 cursor-pointer hover:bg-white/5 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}
+            >
                 <div className="pt-1">{getIconForType(first.type)}</div>
                 <div className="flex-1">
                     <div className="text-sm font-mono mb-1">
                         {actorsText} <span className="opacity-70">{title.toLowerCase()}</span>
                     </div>
                     {first.targetPreview && (
-                        <div 
-                            onClick={() => first.targetId && onExhibitClick(first.targetId)}
-                            className="text-xs font-bold font-pixel opacity-90 cursor-pointer hover:text-green-400 transition-colors border-l-2 border-white/20 pl-2 mt-2"
-                        >
+                        <div className="text-xs font-bold font-pixel opacity-90 border-l-2 border-white/20 pl-2 mt-2">
                             "{first.targetPreview}"
                         </div>
                     )}
@@ -123,7 +157,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                         {count > 1 && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">+{count} событий</span>}
                     </div>
                 </div>
-                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2"/>}
+                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"/>}
             </div>
         );
     };
@@ -221,17 +255,17 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                         className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
                                     >
                                         <img src={getUserAvatar(partner)} className="w-10 h-10 rounded-full border border-white/20" />
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
-                                                <span className="text-[9px] opacity-40 font-mono">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
+                                                <span className={`font-bold font-pixel text-xs truncate ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
+                                                <span className="text-[9px] opacity-40 font-mono ml-2 shrink-0">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
                                             </div>
                                             <div className={`text-xs font-mono truncate ${hasUnread ? 'text-white' : 'opacity-60'}`}>
                                                 {lastMsg.sender.toLowerCase() === currentUser.username.toLowerCase() && <span className="opacity-50">Вы: </span>}
                                                 {lastMsg.text}
                                             </div>
                                         </div>
-                                        {hasUnread && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>}
+                                        {hasUnread && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"/>}
                                     </div>
                                 );
                             });
@@ -242,7 +276,6 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {activeTab === 'TRADES' && (
                 <div>
-                    {/* Trades Logic (simplified) */}
                     <div className="text-center opacity-30 py-10 font-pixel text-xs">АКТИВНЫЕ СДЕЛКИ</div>
                 </div>
             )}
