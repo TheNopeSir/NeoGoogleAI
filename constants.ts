@@ -1,5 +1,5 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority, PrivacySettings, NotificationSettings, FeedSettings, CollectorProfile, ProfileCustomization } from './types';
+import { Exhibit, TierType, TradeStatus, WishlistPriority, PrivacySettings, NotificationSettings } from './types';
 import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target } from 'lucide-react';
 
 export const DefaultCategory = {
@@ -93,29 +93,6 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
         trades: true,
         mentions: true,
     }
-};
-
-export const DEFAULT_FEED_SETTINGS: FeedSettings = {
-    defaultView: 'GRID',
-    autoplayVideos: false,
-    hideNSFW: false,
-    hideSpoilers: false,
-    compactMode: false,
-};
-
-export const DEFAULT_COLLECTOR_PROFILE: CollectorProfile = {
-    specialization: '',
-    yearsCollecting: 0,
-    openToTrade: true,
-    openToSell: false,
-    openToBuy: true,
-};
-
-export const DEFAULT_CUSTOMIZATION: ProfileCustomization = {
-    accentColor: '#22c55e',
-    fontChoice: 'DEFAULT',
-    showBadges: true,
-    showStats: true
 };
 
 export const CATEGORY_CONDITIONS: Record<string, string[]> = {

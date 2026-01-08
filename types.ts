@@ -130,29 +130,6 @@ export interface NotificationSettings {
   };
 }
 
-export interface FeedSettings {
-  defaultView: 'GRID' | 'LIST';
-  autoplayVideos: boolean;
-  hideNSFW: boolean;
-  hideSpoilers: boolean;
-  compactMode: boolean;
-}
-
-export interface ProfileCustomization {
-  accentColor: string; // Hex or Tailwind class
-  fontChoice: 'DEFAULT' | 'MONO' | 'PIXEL';
-  showBadges: boolean;
-  showStats: boolean;
-}
-
-export interface CollectorProfile {
-  specialization: string; // Text field for now (e.g. "Retro Consoles")
-  yearsCollecting: number;
-  openToTrade: boolean;
-  openToSell: boolean;
-  openToBuy: boolean;
-}
-
 export interface ExtendedProfile {
   location?: string;
   website?: string;
@@ -165,28 +142,12 @@ export interface ExtendedProfile {
   };
 }
 
-export interface ApiKey {
-    id: string;
-    key: string;
-    name: string;
-    createdAt: string;
-    lastUsed: string;
-}
-
-export interface UserSession {
-    id: string;
-    device: string;
-    ip: string;
-    lastActive: string;
-    isCurrent: boolean;
-}
-
 export interface AppSettings {
     theme?: 'dark' | 'light' | 'xp' | 'winamp';
-    notificationsEnabled?: boolean; // Legacy mapping
+    notificationsEnabled?: boolean;
     soundEnabled?: boolean;
-    feed?: FeedSettings;
-    customization?: ProfileCustomization;
+    publicProfile?: boolean; // Legacy, kept for compatibility, mapped to PrivacySettings
+    showEmail?: boolean; // Legacy
 }
 
 export interface UserProfile {
@@ -206,8 +167,6 @@ export interface UserProfile {
   privacy?: PrivacySettings;
   notifications?: NotificationSettings;
   extended?: ExtendedProfile;
-  collector?: CollectorProfile;
-  apiKeys?: ApiKey[];
   password?: string;
   isAdmin?: boolean;
   telegram?: string;

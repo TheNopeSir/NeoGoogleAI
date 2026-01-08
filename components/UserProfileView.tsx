@@ -5,13 +5,12 @@ import {
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings, 
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, Lock, Bell, Shield, Database,
-    MapPin, Globe, Instagram, Youtube, UserCheck, Layout, Briefcase, Zap, Video, 
-    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText
+    MapPin, Globe, Instagram, Youtube, UserCheck
 } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, PrivacySettings, NotificationSettings, ExtendedProfile, FeedSettings, CollectorProfile, ApiKey } from '../types';
-import { STATUS_OPTIONS, DEFAULT_PRIVACY_SETTINGS, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_FEED_SETTINGS, DEFAULT_COLLECTOR_PROFILE } from '../constants';
+import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, PrivacySettings, NotificationSettings, ExtendedProfile } from '../types';
+import { STATUS_OPTIONS, DEFAULT_PRIVACY_SETTINGS, DEFAULT_NOTIFICATION_SETTINGS } from '../constants';
 import * as db from '../services/storageService';
-import { getUserAvatar, exportUserData, generateApiKey } from '../services/storageService';
+import { getUserAvatar } from '../services/storageService';
 import WishlistCard from './WishlistCard';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
@@ -75,6 +74,20 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
     </div>
 );
 
+const RetroCounter: React.FC<{ count: number }> = ({ count }) => {
+    const countStr = Math.max(count, 1).toString().padStart(6, '0');
+    return (
+        <div className="inline-flex gap-0.5 p-1 bg-black border-2 border-gray-600 rounded-sm shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" title="Счетчик посетителей">
+            {countStr.split('').map((digit, i) => (
+                <div key={i} className="w-3 h-5 bg-[#1a1a1a] text-red-600 font-mono flex items-center justify-center text-[10px] font-bold border border-[#333] shadow-[inset_0_0_2px_black] relative overflow-hidden">
+                    <span className="relative z-10 text-red-500 text-shadow-red">{digit}</span>
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-500/10 to-transparent opacity-20 pointer-events-none"></div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const SettingsToggle: React.FC<{ label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }> = ({ label, checked, onChange, disabled }) => (
     <div className={`flex items-center justify-between p-3 border border-white/5 rounded-lg ${disabled ? 'opacity-50 pointer-events-none' : 'hover:bg-white/5'}`}>
         <span className="text-xs font-mono">{label}</span>
@@ -116,20 +129,15 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const isWinamp = theme === 'winamp';
 
     // Tabs
-    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'ANALYTICS' | 'CONFIG' | 'WISHLIST'>('SHELF');
+    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST'>('SHELF');
     const [localProfileTab, setLocalProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>('ARTIFACTS');
-    const [settingsCategory, setSettingsCategory] = useState<'PROFILE' | 'PRIVACY' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY' | 'CONTENT' | 'COLLECTOR' | 'DATA' | 'INTEGRATIONS'>('PROFILE');
+    const [settingsCategory, setSettingsCategory] = useState<'PROFILE' | 'PRIVACY' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY'>('PROFILE');
 
     // Local state for extended settings (so we can save them in bulk)
     const [localPrivacy, setLocalPrivacy] = useState<PrivacySettings>(user?.privacy || DEFAULT_PRIVACY_SETTINGS);
     const [localNotifs, setLocalNotifs] = useState<NotificationSettings>(user?.notifications || DEFAULT_NOTIFICATION_SETTINGS);
-    const [localFeed, setLocalFeed] = useState<FeedSettings>(user?.settings?.feed || DEFAULT_FEED_SETTINGS);
-    const [localCollector, setLocalCollector] = useState<CollectorProfile>(user?.collector || DEFAULT_COLLECTOR_PROFILE);
     const [localExtended, setLocalExtended] = useState<ExtendedProfile>(user?.extended || {});
     
-    // API Keys State
-    const [apiKeys, setApiKeys] = useState<ApiKey[]>(user?.apiKeys || []);
-
     // Edit State
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
@@ -139,10 +147,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         if(isCurrentUser) {
             setLocalPrivacy(user.privacy || DEFAULT_PRIVACY_SETTINGS);
             setLocalNotifs(user.notifications || DEFAULT_NOTIFICATION_SETTINGS);
-            setLocalFeed(user.settings?.feed || DEFAULT_FEED_SETTINGS);
-            setLocalCollector(user.collector || DEFAULT_COLLECTOR_PROFILE);
             setLocalExtended(user.extended || {});
-            setApiKeys(user.apiKeys || []);
         }
     }, [user, isCurrentUser]);
 
@@ -164,24 +169,11 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         return [...publishedExhibits].sort((a, b) => (b.likes * 2 + b.views) - (a.likes * 2 + a.views))[0];
     }, [publishedExhibits]);
 
-    // Analytics Data (Calculated on the fly)
-    const analyticsData = useMemo(() => {
-        const totalItems = publishedExhibits.length;
-        const totalLikes = publishedExhibits.reduce((acc, curr) => acc + curr.likes, 0);
-        // Estimate value (mock sum of prices or default)
-        const totalValue = publishedExhibits.reduce((acc, curr) => acc + (curr.price || 0), 0);
-        
-        // Category Distribution
-        const categories: Record<string, number> = {};
-        publishedExhibits.forEach(e => {
-            categories[e.category] = (categories[e.category] || 0) + 1;
-        });
-        const categoryData = Object.entries(categories)
-            .map(([label, count]) => ({ label, count, pct: (count / totalItems) * 100 }))
-            .sort((a, b) => b.count - a.count);
-
-        return { totalItems, totalLikes, totalValue, categoryData };
-    }, [publishedExhibits]);
+    // Visitor Counter
+    const totalViews = useMemo(() => {
+        const itemViews = publishedExhibits.reduce((acc, curr) => acc + (curr.views || 0), 0);
+        return itemViews + (profileUser.followers?.length || 0) * 15 + 1337;
+    }, [publishedExhibits, profileUser]);
 
     // Handlers
     const handleDeleteEntry = async (id: string) => { if (confirm('Удалить запись?')) { await db.deleteGuestbookEntry(id); refreshData(); } };
@@ -198,9 +190,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     const handleSaveExtended = async () => {
         if (!isCurrentUser) return;
-        
-        const newAppSettings = { ...localSettings, feed: localFeed };
-
         const updatedUser = {
             ...user,
             tagline: editTagline,
@@ -209,10 +198,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             telegram: editTelegram,
             privacy: localPrivacy,
             notifications: localNotifs,
-            collector: localCollector,
-            extended: localExtended,
-            settings: newAppSettings,
-            apiKeys: apiKeys
+            extended: localExtended
         };
         if (editPassword) updatedUser.password = editPassword;
         
@@ -220,15 +206,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         setIsEditingProfile(false);
         setEditPassword('');
         alert('Настройки профиля обновлены');
-    };
-
-    const handleGenerateApiKey = () => {
-        const newKey = generateApiKey();
-        setApiKeys(prev => [...prev, newKey]);
-    };
-
-    const handleDeleteApiKey = (id: string) => {
-        setApiKeys(prev => prev.filter(k => k.id !== id));
     };
 
     const handleGuestbookSubmit = () => {
@@ -249,22 +226,14 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         window.location.reload();
     };
 
-    const handleExportData = async () => {
-        await exportUserData(user.username);
-    };
-
     // Render Helpers for Settings
     const renderSettingsNav = () => (
-        <div className={`flex overflow-x-auto gap-2 mb-6 pb-2 border-b scrollbar-hide ${isWinamp ? 'border-[#505050]' : 'border-white/10'}`}>
+        <div className={`flex overflow-x-auto gap-2 mb-6 pb-2 border-b ${isWinamp ? 'border-[#505050]' : 'border-white/10'}`}>
             {[
                 { id: 'PROFILE', label: 'ПРОФИЛЬ', icon: UserCheck },
-                { id: 'COLLECTOR', label: 'КОЛЛЕКЦИОНЕР', icon: Briefcase },
-                { id: 'CONTENT', label: 'КОНТЕНТ', icon: Layout },
                 { id: 'PRIVACY', label: 'ПРИВАТНОСТЬ', icon: Lock },
                 { id: 'NOTIFICATIONS', label: 'УВЕДОМЛЕНИЯ', icon: Bell },
                 { id: 'APPEARANCE', label: 'ВИД', icon: Palette },
-                { id: 'INTEGRATIONS', label: 'API & ИНТЕГРАЦИИ', icon: Terminal },
-                { id: 'DATA', label: 'ДАННЫЕ', icon: Database },
                 { id: 'SECURITY', label: 'БЕЗОПАСНОСТЬ', icon: Shield },
             ].map(tab => (
                 <button
@@ -299,6 +268,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             <div className="flex-1 space-y-1">
                                 <div className="text-[14px] text-wa-gold flex justify-between">
                                     <span>{profileUser.username}</span>
+                                    <RetroCounter count={totalViews} />
                                 </div>
                                 <div className="text-[12px] opacity-80">{profileUser.tagline}</div>
                                 <div className="text-[12px] flex gap-2 mt-2">
@@ -319,6 +289,10 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             {isEditingProfile && isCurrentUser && (
                                 <label className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-xl cursor-pointer hover:bg-black/70 border border-white/20 flex items-center gap-2 backdrop-blur-sm"><Camera size={16} /> <span className="text-[10px] font-pixel">ОБЛОЖКА</span><input type="file" accept="image/*" className="hidden" onChange={onProfileCoverUpload} /></label>
                             )}
+                            <div className="absolute bottom-2 right-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10">
+                                <span className="text-[9px] font-pixel text-white opacity-70 hidden md:inline">VISITORS:</span>
+                                <RetroCounter count={totalViews} />
+                            </div>
                         </div>
 
                         {/* Avatar & Info Container */}
@@ -343,9 +317,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             {/* Extended Info Row */}
                                             <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] font-mono opacity-60">
                                                 <span>В сети с {profileUser.joinedDate}</span>
-                                                {profileUser.collector?.yearsCollecting > 0 && (
-                                                    <span className="flex items-center gap-1 border-l border-white/20 pl-3 text-yellow-500"><Crown size={12}/> Стаж: {profileUser.collector.yearsCollecting} лет</span>
-                                                )}
                                                 {profileUser.extended?.location && (
                                                     <span className="flex items-center gap-1 border-l border-white/20 pl-3"><MapPin size={12}/> {profileUser.extended.location}</span>
                                                 )}
@@ -436,14 +407,12 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <button onClick={() => setActiveSection('SHELF')} className={`flex-1 pb-3 text-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Package size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Heart size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><MessageSquare size={20} className="mx-auto"/></button>
-                <button onClick={() => setActiveSection('ANALYTICS')} className={`flex-1 pb-3 text-center ${activeSection === 'ANALYTICS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><BarChart3 size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Search size={20} className="mx-auto"/></button>
                 {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Settings size={20} className="mx-auto"/></button>}
             </div>
 
             {/* SECTIONS CONTENT */}
             
-            {/* ... Shelf, Favorites, Wishlist, Logs (unchanged) ... */}
             {activeSection === 'SHELF' && (
                 <div className="space-y-6 animate-in fade-in px-0 md:px-0">
                     <div className="flex items-center gap-4 mb-4 px-2 md:px-0">
@@ -512,71 +481,12 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
             )}
 
-            {/* NEW ANALYTICS SECTION */}
-            {activeSection === 'ANALYTICS' && (
-                <div className="space-y-6 animate-in fade-in px-0 md:px-0">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-3 gap-2 md:gap-4">
-                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                            <div className="text-[10px] font-pixel opacity-50 uppercase mb-1">Ценность</div>
-                            <div className="text-lg font-bold font-mono">{analyticsData.totalValue} ₽</div>
-                        </div>
-                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                            <div className="text-[10px] font-pixel opacity-50 uppercase mb-1">Лайки</div>
-                            <div className="text-lg font-bold font-mono">{analyticsData.totalLikes}</div>
-                        </div>
-                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                            <div className="text-[10px] font-pixel opacity-50 uppercase mb-1">Артефакты</div>
-                            <div className="text-lg font-bold font-mono">{analyticsData.totalItems}</div>
-                        </div>
-                    </div>
-
-                    {/* Category Distribution */}
-                    <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                        <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><PieChart size={14}/> Распределение по категориям</h3>
-                        <div className="space-y-4">
-                            {analyticsData.categoryData.length === 0 && <div className="text-center opacity-30 text-[10px]">Нет данных</div>}
-                            {analyticsData.categoryData.map((cat, i) => (
-                                <div key={cat.label}>
-                                    <div className="flex justify-between text-[10px] font-mono mb-1">
-                                        <span>{cat.label}</span>
-                                        <span>{cat.count} ({cat.pct.toFixed(1)}%)</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full ${isWinamp ? 'bg-[#00ff00]' : 'bg-green-500'}`} 
-                                            style={{ width: `${cat.pct}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Activity Heatmap (Mocked visual) */}
-                    <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                        <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={14}/> Активность (Год)</h3>
-                        <div className="flex gap-1 flex-wrap justify-center opacity-50">
-                            {Array.from({length: 52}).map((_, i) => (
-                                <div key={i} className="flex flex-col gap-1">
-                                    {Array.from({length: 7}).map((_, j) => {
-                                        const intensity = Math.random() > 0.8 ? (Math.random() > 0.5 ? 'bg-green-500' : 'bg-green-900') : 'bg-white/5';
-                                        return <div key={j} className={`w-2 h-2 rounded-sm ${intensity}`}></div>
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {isCurrentUser && activeSection === 'CONFIG' && (
                 <div className="animate-in fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden mx-0 md:mx-0">
                     {/* Settings Navigation */}
                     <div className="p-4 border-b border-white/10 bg-black/20">
                         {renderSettingsNav()}
                         
-                        {/* ... Existing Profiles, Content, Collector sections ... */}
                         {settingsCategory === 'PROFILE' && (
                             <div className="space-y-4 animate-in slide-in-from-right-4">
                                 <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Основное</h3>
@@ -605,49 +515,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <Youtube size={14} className="opacity-50"/>
                                         <input value={localExtended.socialLinks?.youtube || ''} onChange={(e) => setLocalExtended({...localExtended, socialLinks: {...localExtended.socialLinks, youtube: e.target.value}})} className="bg-transparent w-full text-xs outline-none" placeholder="Youtube URL" />
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {settingsCategory === 'COLLECTOR' && (
-                            <div className="space-y-4 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Данные коллекционера</h3>
-                                <div className="p-4 border border-white/10 rounded-xl bg-black/20 space-y-4">
-                                    <div>
-                                        <label className="text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Основная специализация</label>
-                                        <input value={localCollector.specialization || ''} onChange={(e) => setLocalCollector({...localCollector, specialization: e.target.value})} className="w-full bg-transparent border-b border-white/10 py-1 text-xs outline-none focus:border-green-500" placeholder="Например: Nintendo, Apple, VHS..." />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Стаж (Лет)</label>
-                                        <input type="number" value={localCollector.yearsCollecting || ''} onChange={(e) => setLocalCollector({...localCollector, yearsCollecting: parseInt(e.target.value) || 0})} className="w-full bg-transparent border-b border-white/10 py-1 text-xs outline-none focus:border-green-500" placeholder="0" />
-                                    </div>
-                                    <div className="pt-2">
-                                        <h4 className="text-[10px] opacity-50 uppercase tracking-widest mb-2">Статус торговли</h4>
-                                        <div className="space-y-2">
-                                            <SettingsToggle label="Открыт к обмену" checked={localCollector.openToTrade} onChange={(v) => setLocalCollector({...localCollector, openToTrade: v})} />
-                                            <SettingsToggle label="Покупаю артефакты" checked={localCollector.openToBuy} onChange={(v) => setLocalCollector({...localCollector, openToBuy: v})} />
-                                            <SettingsToggle label="Продаю из коллекции" checked={localCollector.openToSell} onChange={(v) => setLocalCollector({...localCollector, openToSell: v})} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {settingsCategory === 'CONTENT' && (
-                            <div className="space-y-4 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Настройки ленты</h3>
-                                <div className="space-y-2">
-                                    <div className="p-3 border border-white/5 rounded-lg flex justify-between items-center">
-                                        <span className="text-xs font-mono">Вид по умолчанию</span>
-                                        <div className="flex bg-black/30 rounded p-1 gap-1">
-                                            <button onClick={() => setLocalFeed({...localFeed, defaultView: 'GRID'})} className={`px-2 py-1 text-[10px] rounded ${localFeed.defaultView === 'GRID' ? 'bg-white text-black' : 'opacity-50'}`}>GRID</button>
-                                            <button onClick={() => setLocalFeed({...localFeed, defaultView: 'LIST'})} className={`px-2 py-1 text-[10px] rounded ${localFeed.defaultView === 'LIST' ? 'bg-white text-black' : 'opacity-50'}`}>LIST</button>
-                                        </div>
-                                    </div>
-                                    <SettingsToggle label="Автовоспроизведение видео" checked={localFeed.autoplayVideos} onChange={(v) => setLocalFeed({...localFeed, autoplayVideos: v})} />
-                                    <SettingsToggle label="Скрывать NSFW контент" checked={localFeed.hideNSFW} onChange={(v) => setLocalFeed({...localFeed, hideNSFW: v})} />
-                                    <SettingsToggle label="Скрывать спойлеры" checked={localFeed.hideSpoilers} onChange={(v) => setLocalFeed({...localFeed, hideSpoilers: v})} />
-                                    <SettingsToggle label="Компактный режим" checked={localFeed.compactMode} onChange={(v) => setLocalFeed({...localFeed, compactMode: v})} />
                                 </div>
                             </div>
                         )}
@@ -708,46 +575,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             </div>
                         )}
 
-                        {/* NEW INTEGRATIONS SECTION */}
-                        {settingsCategory === 'INTEGRATIONS' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4">
-                                <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Ключи разработчика (API)</h3>
-                                    <p className="text-[10px] opacity-60 mb-4 font-mono">Используйте ключи для интеграции с внешними приложениями. Никому не сообщайте их.</p>
-                                    
-                                    <div className="space-y-3 mb-4">
-                                        {apiKeys.length === 0 && <div className="text-center opacity-30 text-[10px] border border-dashed border-white/10 rounded p-4">Нет активных ключей</div>}
-                                        {apiKeys.map(key => (
-                                            <div key={key.id} className="p-3 bg-black/20 border border-white/10 rounded flex justify-between items-center">
-                                                <div>
-                                                    <div className="text-[10px] font-bold text-green-500">{key.name}</div>
-                                                    <div className="text-[10px] font-mono opacity-50 blur-sm hover:blur-none transition-all cursor-text">{key.key}</div>
-                                                </div>
-                                                <button onClick={() => handleDeleteApiKey(key.id)} className="text-red-500 hover:bg-red-500/10 p-2 rounded"><Trash2 size={14}/></button>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <button onClick={handleGenerateApiKey} className="w-full py-3 border border-green-500/30 text-green-500 rounded font-bold text-xs uppercase hover:bg-green-500/10 flex items-center justify-center gap-2">
-                                        <Key size={14}/> Сгенерировать новый ключ
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* NEW DATA SECTION */}
-                        {settingsCategory === 'DATA' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4">
-                                <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Экспорт данных</h3>
-                                    <p className="text-[10px] opacity-60 mb-4 font-mono">Скачать полный архив вашего профиля, коллекций и предметов в формате JSON.</p>
-                                    <button onClick={handleExportData} className="w-full py-4 bg-white/5 border border-white/10 rounded-xl font-bold text-xs uppercase hover:bg-white/10 flex items-center justify-center gap-2">
-                                        <Download size={16}/> Скачать архив
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {settingsCategory === 'SECURITY' && (
                             <div className="space-y-6 animate-in slide-in-from-right-4">
                                 <div>
@@ -768,33 +595,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <button onClick={generateSecurePassword} className="px-3 py-2 bg-white/10 rounded-lg hover:bg-white/20" title="Сгенерировать">
                                             <Wand2 size={14} />
                                         </button>
-                                    </div>
-                                </div>
-
-                                {/* Active Sessions Mock UI */}
-                                <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-4 block">Активные сессии</h3>
-                                    <div className="space-y-2">
-                                        <div className="p-3 bg-green-900/10 border border-green-500/30 rounded flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <Laptop size={16} className="text-green-500"/>
-                                                <div>
-                                                    <div className="text-[10px] font-bold text-white">Chrome on Windows</div>
-                                                    <div className="text-[8px] opacity-50">Москва, RU • Текущая сессия</div>
-                                                </div>
-                                            </div>
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        </div>
-                                        <div className="p-3 bg-white/5 border border-white/10 rounded flex items-center justify-between opacity-50">
-                                            <div className="flex items-center gap-3">
-                                                <Smartphone size={16}/>
-                                                <div>
-                                                    <div className="text-[10px] font-bold text-white">Safari on iPhone</div>
-                                                    <div className="text-[8px] opacity-50">Москва, RU • 2 часа назад</div>
-                                                </div>
-                                            </div>
-                                            <button className="text-[8px] text-red-500 border border-red-500/30 px-2 py-1 rounded hover:bg-red-500/10">ВЫЙТИ</button>
-                                        </div>
                                     </div>
                                 </div>
                                 
