@@ -1,6 +1,6 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
+import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ApiKey } from '../types';
 
 // ==========================================
 // 🚀 NEO_ARCHIVE HIGH-PERFORMANCE DB LAYER
@@ -574,6 +574,39 @@ export const deleteGuild = async (id: string) => {
     notifyListeners();
     await deleteGeneric(id);
     // await apiCall(`/guilds/${id}`, 'DELETE');
+};
+
+// --- DATA EXPORT & SECURITY ---
+
+export const generateApiKey = (): ApiKey => {
+    const key = `na_live_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
+    return {
+        id: crypto.randomUUID(),
+        key,
+        name: 'Default Key',
+        createdAt: new Date().toISOString(),
+        lastUsed: 'Never'
+    };
+};
+
+export const exportUserData = async (username: string) => {
+    const data = {
+        profile: hotCache.users.find(u => u.username === username),
+        exhibits: hotCache.exhibits.filter(e => e.owner === username),
+        collections: hotCache.collections.filter(c => c.owner === username),
+        wishlist: hotCache.wishlist.filter(w => w.owner === username),
+        guestbook: hotCache.guestbook.filter(g => g.targetUser === username),
+        generatedAt: new Date().toISOString(),
+        version: '1.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `neo_archive_export_${username}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
 };
 
 // UTILS
