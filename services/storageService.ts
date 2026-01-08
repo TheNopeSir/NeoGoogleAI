@@ -429,6 +429,24 @@ export const recoverPassword = async (email: string) => {
     return await apiCall('/auth/recover', 'POST', { email }); 
 };
 
+// --- VALIDATION HELPERS ---
+
+export const checkUsernameAvailable = (username: string, excludeCurrentUser: string): boolean => {
+    const lower = username.toLowerCase();
+    // Local check against cache (good enough for immediate feedback)
+    const exists = hotCache.users.some(u => u.username.toLowerCase() === lower && u.username !== excludeCurrentUser);
+    return !exists;
+};
+
+export const checkTelegramAvailable = (tg: string, excludeCurrentUser: string): boolean => {
+    if (!tg) return true;
+    const lower = tg.toLowerCase().replace('@', '');
+    const exists = hotCache.users.some(u => 
+        u.telegram && u.telegram.toLowerCase() === lower && u.username !== excludeCurrentUser
+    );
+    return !exists;
+};
+
 // --- CRUD OPERATIONS (OPTIMISTIC UI UPDATE + ASYNC DB) ---
 
 export const getFullDatabase = () => ({ ...hotCache });
@@ -660,17 +678,30 @@ export const clearLocalCache = async () => {
 };
 
 export const markNotificationsRead = async (u:string, ids?: string[]) => {
+    const updatedNotifications: Notification[] = [];
+
     hotCache.notifications.forEach(n => { 
         if(n.recipient === u && !n.isRead) {
             if (!ids || ids.includes(n.id)) {
                 n.isRead = true;
-                const dbPromise = getDB().then(db => db.put('notifications', n));
+                updatedNotifications.push(n);
+                // Update local IndexedDB immediately
+                getDB().then(db => db.put('notifications', n));
             }
         }
     });
+    
     notifyListeners();
     
-    // Optional: Sync read status to backend if needed (omitted for brevity as server handles sync on next load)
+    // Sync to server to persist read status
+    if (updatedNotifications.length > 0) {
+        try {
+            // Send updates in parallel
+            await Promise.all(updatedNotifications.map(n => apiCall('/notifications', 'POST', n)));
+        } catch (e) {
+            console.error("Failed to sync notification read status", e);
+        }
+    }
 };
 
 export const toggleFollow = async (me:string, them:string) => {

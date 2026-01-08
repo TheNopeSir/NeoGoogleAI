@@ -134,9 +134,11 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const [localCollector, setLocalCollector] = useState<CollectorProfile>(user?.collector || DEFAULT_COLLECTOR_PROFILE);
     const [localExtended, setLocalExtended] = useState<ExtendedProfile>(user?.extended || {});
     
-    // Edit State
+    // Edit State & Validation
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
+    const [passError, setPassError] = useState('');
+    const [tgError, setTgError] = useState('');
 
     // Ensure we have valid local state if user props update
     useEffect(() => {
@@ -186,6 +188,37 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         return { totalItems, totalLikes, totalValue, categoryData };
     }, [publishedExhibits]);
 
+    // REAL ACTIVITY HEATMAP DATA
+    const activityData = useMemo(() => {
+        // Generate last 364 days
+        const days = [];
+        const today = new Date();
+        // Normalize today to start of day
+        today.setHours(0,0,0,0);
+        
+        const activityMap = new Map<string, number>();
+        
+        // Count uploads per day based on timestamp
+        userExhibits.forEach(exhibit => {
+            if (exhibit.isDraft) return;
+            const date = new Date(exhibit.timestamp);
+            const dateStr = date.toDateString(); // "Mon Jan 01 2024"
+            activityMap.set(dateStr, (activityMap.get(dateStr) || 0) + 1);
+        });
+
+        // 52 weeks * 7 days = 364 days history
+        for (let i = 363; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toDateString();
+            days.push({
+                date: d,
+                count: activityMap.get(dateStr) || 0
+            });
+        }
+        return days;
+    }, [userExhibits]);
+
     // Handlers
     const handleDeleteEntry = async (id: string) => { if (confirm('Удалить запись?')) { await db.deleteGuestbookEntry(id); refreshData(); } };
     const generateSecurePassword = () => { const chars = "ABCabc123!@#"; let pass = ""; for(let i=0; i<12; i++) { pass += chars.charAt(Math.floor(Math.random() * chars.length)); } setEditPassword(pass); setShowPassword(true); };
@@ -201,6 +234,27 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     const handleSaveExtended = async () => {
         if (!isCurrentUser) return;
+        setPassError('');
+        setTgError('');
+
+        // VALIDATION
+        if (editPassword) {
+            if (editPassword.length < 8) { setPassError("Пароль слишком короткий (мин 8)"); return; }
+            if (!/[0-9]/.test(editPassword)) { setPassError("Пароль должен содержать цифры"); return; }
+            if (!/[A-Z]/.test(editPassword)) { setPassError("Пароль должен содержать заглавную букву"); return; }
+        }
+
+        if (editTelegram) {
+            // Check format
+            if (!/^[a-zA-Z0-9_]{5,32}$/.test(editTelegram)) {
+                setTgError("Неверный формат Telegram (5-32 символа, латиница, _)"); return;
+            }
+            // Check availability
+            const isFree = db.checkTelegramAvailable(editTelegram, user.username);
+            if (!isFree) {
+                setTgError("Этот Telegram уже привязан к другому аккаунту"); return;
+            }
+        }
         
         const newAppSettings = { ...localSettings, feed: localFeed };
 
@@ -221,7 +275,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         await db.updateUserProfile(updatedUser);
         setIsEditingProfile(false);
         setEditPassword('');
-        alert('Настройки профиля обновлены');
+        alert('Настройки профиля успешно обновлены');
     };
 
     const handleGuestbookSubmit = () => {
@@ -248,7 +302,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     // Render Helpers for Settings
     const renderSettingsNav = () => (
-        <div className={`flex overflow-x-auto gap-2 mb-6 pb-2 border-b scrollbar-hide ${isWinamp ? 'border-[#505050]' : isDark ? 'border-white/10' : 'border-black/10'}`}>
+        <div className={`flex flex-nowrap overflow-x-auto gap-2 mb-6 pb-2 border-b scrollbar-hide w-full ${isWinamp ? 'border-[#505050]' : isDark ? 'border-white/10' : 'border-black/10'}`}>
             {[
                 { id: 'PROFILE', label: 'ПРОФИЛЬ', icon: UserCheck },
                 { id: 'COLLECTOR', label: 'КОЛЛЕКЦИОНЕР', icon: Briefcase },
@@ -262,7 +316,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <button
                     key={tab.id}
                     onClick={() => setSettingsCategory(tab.id as any)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
+                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
                         settingsCategory === tab.id 
                         ? (isWinamp ? 'bg-[#00ff00] text-black' : isDark ? 'bg-white text-black' : 'bg-black text-white') 
                         : (isDark ? 'opacity-50 hover:opacity-100 hover:bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-black/5')
@@ -541,14 +595,34 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         </div>
                     </div>
 
-                    <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
-                        <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={14}/> Активность (Год)</h3>
-                        <div className="flex gap-1 flex-wrap justify-center opacity-50">
-                            {Array.from({length: 52}).map((_, i) => (
-                                <div key={i} className="flex flex-col gap-1">
-                                    {Array.from({length: 7}).map((_, j) => {
-                                        const intensity = Math.random() > 0.8 ? (Math.random() > 0.5 ? 'bg-green-500' : 'bg-green-900') : (isDark ? 'bg-white/5' : 'bg-black/5');
-                                        return <div key={j} className={`w-2 h-2 rounded-sm ${intensity}`}></div>
+                    {/* ACTIVITY MAP (Real Data) */}
+                    <div className={`p-6 rounded-xl border overflow-x-auto ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
+                        <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={14}/> Активность (Последний год)</h3>
+                        <div className="flex gap-1 min-w-max pb-2">
+                            {/* Render weeks columns */}
+                            {Array.from({ length: 52 }).map((_, weekIndex) => (
+                                <div key={weekIndex} className="flex flex-col gap-1">
+                                    {/* Render 7 days per week */}
+                                    {Array.from({ length: 7 }).map((_, dayIndex) => {
+                                        // Calculate exact index in the 364 day array
+                                        const globalIndex = weekIndex * 7 + dayIndex;
+                                        const dayData = activityData[globalIndex];
+                                        
+                                        // Default empty state
+                                        if (!dayData) return <div key={dayIndex} className={`w-2 h-2 rounded-sm ${isDark ? 'bg-white/5' : 'bg-black/5'}`}></div>;
+
+                                        let colorClass = isDark ? 'bg-white/5' : 'bg-black/5';
+                                        if (dayData.count > 0) colorClass = 'bg-green-900';
+                                        if (dayData.count > 2) colorClass = 'bg-green-700';
+                                        if (dayData.count > 5) colorClass = 'bg-green-500';
+                                        
+                                        return (
+                                            <div 
+                                                key={dayIndex} 
+                                                title={`${dayData.date.toLocaleDateString()}: ${dayData.count} items`}
+                                                className={`w-2 h-2 rounded-sm ${colorClass}`}
+                                            ></div>
+                                        );
                                     })}
                                 </div>
                             ))}
@@ -579,9 +653,12 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <Globe size={14} className="opacity-50"/>
                                         <input value={localExtended.website || ''} onChange={(e) => setLocalExtended({...localExtended, website: e.target.value})} className="bg-transparent w-full text-xs outline-none" placeholder="Website URL" />
                                     </div>
-                                    <div className={`flex items-center gap-2 border-b pb-1 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                        <Send size={14} className="opacity-50"/>
-                                        <input value={editTelegram} onChange={(e) => setEditTelegram(e.target.value.replace('@', ''))} className="bg-transparent w-full text-xs outline-none" placeholder="Telegram username" />
+                                    <div className={`flex flex-col w-full border-b pb-1 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                        <div className="flex items-center gap-2">
+                                            <Send size={14} className={`opacity-50 ${tgError ? 'text-red-500' : ''}`}/>
+                                            <input value={editTelegram} onChange={(e) => { setEditTelegram(e.target.value.replace('@', '')); setTgError(''); }} className="bg-transparent w-full text-xs outline-none" placeholder="Telegram username" />
+                                        </div>
+                                        {tgError && <span className="text-[9px] text-red-500 font-mono mt-1">{tgError}</span>}
                                     </div>
                                     <div className={`flex items-center gap-2 border-b pb-1 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
                                         <Instagram size={14} className="opacity-50"/>
@@ -714,7 +791,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <input 
                                                 type={showPassword ? "text" : "password"}
                                                 value={editPassword} 
-                                                onChange={(e) => setEditPassword(e.target.value)} 
+                                                onChange={(e) => { setEditPassword(e.target.value); setPassError(''); }}
                                                 className={`w-full border rounded-lg px-3 py-2 font-mono text-xs focus:border-yellow-500 outline-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}
                                                 placeholder="Новый пароль..."
                                             />
@@ -726,6 +803,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <Wand2 size={14} />
                                         </button>
                                     </div>
+                                    {passError && <p className="text-[9px] text-red-500 font-mono mt-1">{passError}</p>}
                                 </div>
 
                                 {/* Active Sessions Mock UI */}
