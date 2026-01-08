@@ -30,6 +30,7 @@ import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import AboutView from './components/AboutView';
+import Footer from './components/Footer';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus } from './types';
@@ -330,8 +331,11 @@ export default function App() {
       }
   };
 
+  // Determine if we should show the footer
+  const showFooter = ['FEED', 'USER_PROFILE', 'COMMUNITY_HUB', 'SEARCH', 'MY_COLLECTION', 'COLLECTION_DETAIL', 'EXHIBIT', 'WISHLIST_DETAIL'].includes(view);
+
   return (
-    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
+    <div className={`min-h-screen transition-colors duration-300 pb-safe flex flex-col ${getThemeClasses()}`}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
@@ -392,7 +396,7 @@ export default function App() {
             </>
         )}
 
-        <div className="md:pt-20">
+        <div className="md:pt-20 flex-1 flex flex-col">
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onLike={handleLike} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
             )}
@@ -503,6 +507,9 @@ export default function App() {
             {view === 'HALL_OF_FAME' && user && (
                  <HallOfFame theme={theme} achievements={user.achievements} onBack={handleBack} />
             )}
+
+            {/* GLOBAL FOOTER */}
+            {showFooter && <Footer theme={theme} onAboutClick={() => navigateTo('ABOUT')} />}
         </div>
     </div>
   );

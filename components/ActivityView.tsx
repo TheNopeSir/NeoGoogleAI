@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useRef } from 'react';
-import { Bell, MessageCircle, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, Check } from 'lucide-react';
+import { Bell, MessageCircle, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests } from '../services/storageService';
 
@@ -13,13 +14,141 @@ interface ActivityViewProps {
     onChatClick: (username: string) => void;
 }
 
+const NotificationGroupCard: React.FC<{
+    group: any;
+    theme: string;
+    onAuthorClick: (u: string) => void;
+    onExhibitClick: (id: string) => void;
+    markGroupRead: (items: Notification[]) => void;
+}> = ({ group, theme, onAuthorClick, onExhibitClick, markGroupRead }) => {
+    const [expanded, setExpanded] = useState(false);
+    const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    
+    const { items, type, timestamp } = group;
+    const actor = items[0].actor;
+    const count = items.length;
+    const isUnread = items.some((n: Notification) => !n.isRead);
+    const isSingle = count === 1;
+
+    const handleMouseEnter = () => {
+        if (!isUnread) return;
+        if (readTimerRef.current) clearTimeout(readTimerRef.current);
+        readTimerRef.current = setTimeout(() => {
+            markGroupRead(items);
+        }, 1000);
+    };
+
+    const handleMouseLeave = () => {
+        if (readTimerRef.current) clearTimeout(readTimerRef.current);
+    };
+
+    const handleClick = () => {
+        markGroupRead(items);
+        if (isSingle) {
+            // Navigate directly
+            const first = items[0];
+            if (first.targetId) {
+                onExhibitClick(first.targetId);
+            } else if (first.type === 'FOLLOW') {
+                onAuthorClick(first.actor);
+            }
+        } else {
+            // Toggle expand
+            setExpanded(!expanded);
+        }
+    };
+
+    const getIconForType = (t: string) => {
+        switch (t) {
+            case 'LIKE': return <Heart size={16} className="text-red-500 fill-current" />;
+            case 'COMMENT': return <MessageSquare size={16} className="text-blue-500 fill-current" />;
+            case 'FOLLOW': return <UserPlus size={16} className="text-green-500" />;
+            case 'GUESTBOOK': return <BookOpen size={16} className="text-yellow-500" />;
+            case 'TRADE_OFFER': return <RefreshCw size={16} className="text-blue-400" />;
+            case 'TRADE_ACCEPTED': return <Check size={16} className="text-green-400" />;
+            default: return <Bell size={16} />;
+        }
+    };
+
+    let title = '';
+    let subtext = '';
+
+    if (type === 'LIKE') {
+        title = isSingle ? `Понравился ваш экспонат` : `Оценил ${count} ваших экспонатов`;
+    } else if (type === 'COMMENT') {
+        title = isSingle ? `Новый комментарий` : `Оставил ${count} комментариев`;
+    } else if (type === 'FOLLOW') {
+        title = `Новый подписчик`;
+    } else if (type.includes('TRADE')) {
+        title = `Обновление по сделке`;
+    } else if (type === 'GUESTBOOK') {
+        title = `Запись в гостевой книге`;
+    } else {
+        title = 'Уведомление';
+    }
+
+    return (
+        <div 
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            className={`border-b transition-all ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}
+        >
+            <div 
+                onClick={handleClick}
+                className="p-4 flex gap-4 cursor-pointer hover:bg-white/5 relative"
+            >
+                <div className="pt-1">{getIconForType(type)}</div>
+                <div className="flex-1 min-w-0">
+                    <div className="text-sm font-mono mb-1">
+                        <span className="font-bold text-green-400 hover:underline mr-1" onClick={(e) => { e.stopPropagation(); onAuthorClick(actor); }}>@{actor}</span>
+                        <span className="opacity-70">{title.toLowerCase()}</span>
+                    </div>
+                    
+                    {/* Single Item Preview */}
+                    {isSingle && items[0].targetPreview && (
+                        <div className="text-xs font-bold font-pixel opacity-90 border-l-2 border-white/20 pl-2 mt-2 truncate">
+                            "{items[0].targetPreview}"
+                        </div>
+                    )}
+
+                    <div className="text-[10px] opacity-40 mt-2 font-mono flex items-center gap-2">
+                        {new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        {!isSingle && <span className="bg-white/10 px-1.5 rounded-full text-[9px] flex items-center gap-1">{expanded ? <ChevronUp size={10}/> : <ChevronDown size={10}/>} {expanded ? 'Свернуть' : 'Подробнее'}</span>}
+                    </div>
+                </div>
+                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"/>}
+            </div>
+
+            {/* Expanded List */}
+            {expanded && !isSingle && (
+                <div className="bg-black/20 border-t border-white/5">
+                    {items.map((notif: Notification, idx: number) => (
+                        <div 
+                            key={notif.id}
+                            onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (notif.targetId) onExhibitClick(notif.targetId); 
+                            }}
+                            className="p-3 pl-12 border-b border-white/5 flex items-center justify-between hover:bg-white/5 cursor-pointer group"
+                        >
+                            <div className="text-xs font-pixel opacity-80 truncate pr-4">
+                                {notif.targetPreview || "Без названия"}
+                            </div>
+                            <ExternalLink size={12} className="opacity-0 group-hover:opacity-50"/>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ActivityView: React.FC<ActivityViewProps> = ({ 
     notifications, messages, currentUser, theme, 
     onAuthorClick, onExhibitClick, onChatClick
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
-    const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const myNotifs = useMemo(() => {
         let list = notifications.filter(n => n.recipient.toLowerCase() === currentUser.username.toLowerCase());
@@ -32,46 +161,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
 
-    // Function to mark a specific group read
-    const markGroupRead = (groupItems: Notification[]) => {
-        const unreadIds = groupItems.filter(n => !n.isRead).map(n => n.id);
-        if (unreadIds.length > 0) {
-            markNotificationsRead(currentUser.username, unreadIds);
-        }
-    };
-
-    const handleMouseEnterGroup = (groupItems: Notification[]) => {
-        // Debounce read status on hover to prevent accidental marking while scrolling
-        if (readTimerRef.current) clearTimeout(readTimerRef.current);
-        readTimerRef.current = setTimeout(() => {
-            markGroupRead(groupItems);
-        }, 1000); // 1 second hover required
-    };
-
-    const handleMouseLeaveGroup = () => {
-        if (readTimerRef.current) clearTimeout(readTimerRef.current);
-    };
-
-    const handleClickGroup = (groupItems: Notification[]) => {
-        markGroupRead(groupItems);
-        // Also trigger navigation if applicable
-        const first = groupItems[0];
-        if (first.targetId) {
-            onExhibitClick(first.targetId);
-        } else if (first.type === 'FOLLOW') {
-            onAuthorClick(first.actor);
-        }
-    };
-
-    // --- GROUPING LOGIC ---
+    // --- GROUPING LOGIC (ACTOR + TYPE + DATE) ---
     const groupedNotifications = useMemo(() => {
         const groups: { [key: string]: Notification[] } = {};
         const order: string[] = [];
 
         myNotifs.forEach(notif => {
             const date = new Date(notif.timestamp).toDateString();
-            // Group key: TYPE + TARGET_ID + DATE
-            const groupKey = `${date}_${notif.type}_${notif.targetId || 'general'}`;
+            // Key: DATE_ACTOR_TYPE
+            // This groups all actions of a specific type by a specific user on a specific day
+            const groupKey = `${date}_${notif.actor}_${notif.type}`;
             
             if (!groups[groupKey]) {
                 groups[groupKey] = [];
@@ -85,10 +184,8 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             return {
                 id: key,
                 type: group[0].type,
-                items: group,
+                items: group, // Contains array of notifications
                 timestamp: group[0].timestamp,
-                targetId: group[0].targetId,
-                targetPreview: group[0].targetPreview
             };
         });
     }, [myNotifs]);
@@ -104,62 +201,12 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         return date.toLocaleDateString();
     };
 
-    const getIconForType = (type: string) => {
-        switch (type) {
-            case 'LIKE': return <Heart size={16} className="text-red-500 fill-current" />;
-            case 'COMMENT': return <MessageSquare size={16} className="text-blue-500 fill-current" />;
-            case 'FOLLOW': return <UserPlus size={16} className="text-green-500" />;
-            case 'GUESTBOOK': return <BookOpen size={16} className="text-yellow-500" />;
-            case 'TRADE_OFFER': return <RefreshCw size={16} className="text-blue-400" />;
-            case 'TRADE_ACCEPTED': return <Check size={16} className="text-green-400" />;
-            default: return <Bell size={16} />;
+    // Helper to mark a group read
+    const markGroupRead = (groupItems: Notification[]) => {
+        const unreadIds = groupItems.filter(n => !n.isRead).map(n => n.id);
+        if (unreadIds.length > 0) {
+            markNotificationsRead(currentUser.username, unreadIds);
         }
-    };
-
-    const renderNotificationCard = (group: any) => {
-        const count = group.items.length;
-        const first = group.items[0];
-        // Cast to string array to avoid 'unknown' type in JSX
-        const uniqueActors = Array.from(new Set(group.items.map((n: any) => n.actor as string))) as string[];
-        const isUnread = group.items.some((n: any) => !n.isRead);
-
-        let title = '';
-        if (first.type === 'LIKE') title = `Понравился ваш экспонат`;
-        else if (first.type === 'COMMENT') title = `Новый комментарий`;
-        else if (first.type === 'FOLLOW') title = `Новый подписчик`;
-        else if (first.type.includes('TRADE')) title = `Обновление по сделке`;
-        else title = 'Уведомление';
-
-        const actorsText = uniqueActors.length === 1 
-            ? <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(uniqueActors[0]); }}>@{uniqueActors[0]}</span> 
-            : <span><span className="font-bold text-green-400">@{uniqueActors[0]}</span> и еще <span className="font-bold">{uniqueActors.length - 1}</span></span>;
-
-        return (
-            <div 
-                key={group.id} 
-                onMouseEnter={() => handleMouseEnterGroup(group.items)}
-                onMouseLeave={handleMouseLeaveGroup}
-                onClick={() => handleClickGroup(group.items)}
-                className={`p-4 border-b transition-all flex gap-4 cursor-pointer hover:bg-white/5 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}
-            >
-                <div className="pt-1">{getIconForType(first.type)}</div>
-                <div className="flex-1">
-                    <div className="text-sm font-mono mb-1">
-                        {actorsText} <span className="opacity-70">{title.toLowerCase()}</span>
-                    </div>
-                    {first.targetPreview && (
-                        <div className="text-xs font-bold font-pixel opacity-90 border-l-2 border-white/20 pl-2 mt-2">
-                            "{first.targetPreview}"
-                        </div>
-                    )}
-                    <div className="text-[10px] opacity-40 mt-2 font-mono flex items-center gap-2">
-                        {new Date(first.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        {count > 1 && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">+{count} событий</span>}
-                    </div>
-                </div>
-                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"/>}
-            </div>
-        );
     };
 
     // Grouping by Date for display
@@ -221,7 +268,13 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                                 {dateLabel}
                                             </div>
                                         )}
-                                        {renderNotificationCard(group)}
+                                        <NotificationGroupCard 
+                                            group={group} 
+                                            theme={theme}
+                                            onAuthorClick={onAuthorClick}
+                                            onExhibitClick={onExhibitClick}
+                                            markGroupRead={markGroupRead}
+                                        />
                                     </React.Fragment>
                                 );
                             })}
