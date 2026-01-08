@@ -77,13 +77,13 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
 );
 
 const SettingsToggle: React.FC<{ label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; theme: string }> = ({ label, checked, onChange, disabled, theme }) => (
-    <div className={`flex items-center justify-between p-2.5 border rounded-lg ${disabled ? 'opacity-50 pointer-events-none' : theme === 'dark' ? 'border-white/5 hover:bg-white/5' : 'border-black/5 hover:bg-black/5'}`}>
-        <span className={`text-xs font-mono ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{label}</span>
+    <div className={`flex items-center justify-between p-2 border rounded-lg ${disabled ? 'opacity-50 pointer-events-none' : theme === 'dark' ? 'border-white/5 hover:bg-white/5' : 'border-black/5 hover:bg-black/5'}`}>
+        <span className={`text-[10px] font-mono ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{label}</span>
         <div 
             onClick={() => !disabled && onChange(!checked)}
-            className={`w-9 h-4.5 rounded-full relative cursor-pointer transition-colors ${checked ? 'bg-green-500' : 'bg-gray-500'}`}
+            className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${checked ? 'bg-green-500' : 'bg-gray-500'}`}
         >
-            <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${checked ? 'left-5' : 'left-0.5'}`} />
+            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${checked ? 'left-4.5' : 'left-0.5'}`} />
         </div>
     </div>
 );
@@ -302,7 +302,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     // Render Helpers for Settings
     const renderSettingsNav = () => (
-        <div className={`flex flex-nowrap overflow-x-auto gap-2 mb-3 pb-2 border-b scrollbar-hide w-full ${isWinamp ? 'border-[#505050]' : isDark ? 'border-white/10' : 'border-black/10'}`}>
+        <div className={`flex flex-nowrap overflow-x-auto gap-2 mb-2 pb-2 border-b scrollbar-hide w-full ${isWinamp ? 'border-[#505050]' : isDark ? 'border-white/10' : 'border-black/10'}`}>
             {[
                 { id: 'PROFILE', label: 'ПРОФИЛЬ', icon: UserCheck },
                 { id: 'COLLECTOR', label: 'КОЛЛЕКЦИОНЕР', icon: Briefcase },
@@ -316,7 +316,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <button
                     key={tab.id}
                     onClick={() => setSettingsCategory(tab.id as any)}
-                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
+                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
                         settingsCategory === tab.id 
                         ? (isWinamp ? 'bg-[#00ff00] text-black' : isDark ? 'bg-white text-black' : 'bg-black text-white') 
                         : (isDark ? 'opacity-50 hover:opacity-100 hover:bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-black/5')
@@ -339,21 +339,35 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 {isWinamp ? (
                     <WinampWindow title={`USER: ${profileUser.username}`}>
                         <div className="flex gap-4 items-start">
-                            <div className="w-20 h-20 border-2 border-inset border-[#505050] p-1 bg-black">
+                            <div className="w-24 h-24 border-2 border-inset border-[#505050] p-1 bg-black flex-shrink-0">
                                 <img src={profileUser.avatarUrl} className="w-full h-full object-cover grayscale opacity-80 hover:opacity-100" />
                             </div>
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 space-y-1 overflow-hidden">
                                 <div className="text-[14px] text-wa-gold flex justify-between">
-                                    <span>{profileUser.username}</span>
+                                    <span>{profileUser.username} [{profileUser.status || 'ONLINE'}]</span>
                                 </div>
-                                <div className="text-[12px] opacity-80">{profileUser.tagline}</div>
-                                <div className="text-[12px] flex gap-2 mt-2">
-                                    <span onClick={() => onOpenSocialList(profileUser.username, 'followers')} className="cursor-pointer hover:text-white">Подписчики: {profileUser.followers?.length || 0}</span>
-                                    <span onClick={() => onOpenSocialList(profileUser.username, 'following')} className="cursor-pointer hover:text-white">Подписки: {profileUser.following?.length || 0}</span>
+                                <div className="text-[12px] opacity-80 whitespace-nowrap overflow-hidden text-ellipsis">{profileUser.tagline}</div>
+                                
+                                {/* Winamp Stats Grid */}
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] mt-1 border border-[#505050] p-1 bg-black/20">
+                                    <span className="text-[#00ff00]">Followers: {profileUser.followers?.length || 0}</span>
+                                    <span className="text-[#00ff00]">Joined: {profileUser.joinedDate}</span>
+                                    <span className="text-[#00ff00]">Following: {profileUser.following?.length || 0}</span>
+                                    {profileUser.extended?.location && <span className="text-[#00ff00]">Loc: {profileUser.extended.location}</span>}
                                 </div>
-                                {isCurrentUser && (
-                                    <button onClick={onLogout} className="px-2 border border-[#505050] bg-[#292929] text-[10px] hover:text-red-500 mt-2">ВЫЙТИ</button>
+
+                                {profileUser.bio && (
+                                    <div className="text-[10px] opacity-70 mt-1 max-h-12 overflow-y-auto custom-scrollbar border-l-2 border-[#505050] pl-1">
+                                        {profileUser.bio}
+                                    </div>
                                 )}
+
+                                {/* Links Row */}
+                                <div className="flex gap-2 mt-1 text-[10px]">
+                                    {profileUser.extended?.website && <a href={profileUser.extended.website} target="_blank" className="hover:text-white underline">[WEB]</a>}
+                                    {profileUser.extended?.socialLinks?.instagram && <a href={profileUser.extended.socialLinks.instagram} target="_blank" className="hover:text-white underline">[INST]</a>}
+                                    {isCurrentUser && <button onClick={onLogout} className="ml-auto hover:text-red-500">[LOGOUT]</button>}
+                                </div>
                             </div>
                         </div>
                     </WinampWindow>
@@ -634,17 +648,17 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {isCurrentUser && activeSection === 'CONFIG' && (
                 <div className={`animate-in fade-in rounded-xl overflow-hidden mx-0 md:mx-0 border ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
                     {/* Settings Navigation */}
-                    <div className={`p-3 border-b ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-black/10'}`}>
+                    <div className={`p-2 border-b ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-black/10'}`}>
                         {renderSettingsNav()}
                         
                         {settingsCategory === 'PROFILE' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Основное</h3>
-                                <input value={editTagline} onChange={(e) => setEditTagline(e.target.value)} className={`w-full border rounded-lg px-2 py-1.5 font-mono text-xs focus:border-green-500 outline-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`} placeholder="Статус / Слоган" />
-                                <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={3} className={`w-full border rounded-lg px-2 py-1.5 font-mono text-xs focus:border-green-500 outline-none resize-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`} placeholder="О себе..." />
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Основное</h3>
+                                <input value={editTagline} onChange={(e) => setEditTagline(e.target.value)} className={`w-full border rounded-lg px-2 py-1 font-mono text-xs focus:border-green-500 outline-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`} placeholder="Статус / Слоган" />
+                                <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={2} className={`w-full border rounded-lg px-2 py-1 font-mono text-xs focus:border-green-500 outline-none resize-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`} placeholder="О себе..." />
                                 
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block mt-4">Расширенная информация</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block mt-3">Расширенная информация</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     <div className={`flex items-center gap-2 border-b pb-1 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
                                         <MapPin size={14} className="opacity-50"/>
                                         <input value={localExtended.location || ''} onChange={(e) => setLocalExtended({...localExtended, location: e.target.value})} className="bg-transparent w-full text-xs outline-none" placeholder="Город" />
@@ -673,9 +687,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'COLLECTOR' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Данные коллекционера</h3>
-                                <div className={`p-3 border rounded-xl space-y-3 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}>
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Данные коллекционера</h3>
+                                <div className={`p-2 border rounded-xl space-y-2 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}>
                                     <div>
                                         <label className="text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Основная специализация</label>
                                         <input value={localCollector.specialization || ''} onChange={(e) => setLocalCollector({...localCollector, specialization: e.target.value})} className={`w-full bg-transparent border-b py-1 text-xs outline-none focus:border-green-500 ${isDark ? 'border-white/10' : 'border-black/10 text-black'}`} placeholder="Например: Nintendo, Apple, VHS..." />
@@ -686,7 +700,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     </div>
                                     <div className="pt-1">
                                         <h4 className="text-[10px] opacity-50 uppercase tracking-widest mb-2">Статус торговли</h4>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                             <SettingsToggle theme={theme} label="Открыт к обмену" checked={localCollector.openToTrade} onChange={(v) => setLocalCollector({...localCollector, openToTrade: v})} />
                                             <SettingsToggle theme={theme} label="Покупаю артефакты" checked={localCollector.openToBuy} onChange={(v) => setLocalCollector({...localCollector, openToBuy: v})} />
                                             <SettingsToggle theme={theme} label="Продаю из коллекции" checked={localCollector.openToSell} onChange={(v) => setLocalCollector({...localCollector, openToSell: v})} />
@@ -697,10 +711,10 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'CONTENT' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Настройки ленты</h3>
-                                <div className="space-y-2">
-                                    <div className={`p-2.5 border rounded-lg flex justify-between items-center ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Настройки ленты</h3>
+                                <div className="space-y-1">
+                                    <div className={`p-2 border rounded-lg flex justify-between items-center ${isDark ? 'border-white/5' : 'border-black/5'}`}>
                                         <span className="text-xs font-mono">Вид по умолчанию</span>
                                         <div className="flex bg-black/30 rounded p-1 gap-1">
                                             <button onClick={() => setLocalFeed({...localFeed, defaultView: 'GRID'})} className={`px-2 py-1 text-[10px] rounded ${localFeed.defaultView === 'GRID' ? 'bg-white text-black' : 'opacity-50 text-white'}`}>GRID</button>
@@ -713,15 +727,15 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'PRIVACY' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Приватность</h3>
-                                <div className="space-y-2">
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Приватность</h3>
+                                <div className="space-y-1">
                                     <SettingsToggle theme={theme} label="Показывать Email" checked={localPrivacy.showEmail} onChange={(v) => setLocalPrivacy({...localPrivacy, showEmail: v})} />
                                     <SettingsToggle theme={theme} label="Показывать Telegram" checked={localPrivacy.showTelegram} onChange={(v) => setLocalPrivacy({...localPrivacy, showTelegram: v})} />
                                     <SettingsToggle theme={theme} label="Открытая гостевая книга" checked={localPrivacy.allowGuestbook} onChange={(v) => setLocalPrivacy({...localPrivacy, allowGuestbook: v})} />
                                     <SettingsToggle theme={theme} label="Показывать статус онлайн" checked={localPrivacy.showOnlineStatus} onChange={(v) => setLocalPrivacy({...localPrivacy, showOnlineStatus: v})} />
                                     
-                                    <div className={`p-2.5 border rounded-lg flex justify-between items-center ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+                                    <div className={`p-2 border rounded-lg flex justify-between items-center ${isDark ? 'border-white/5' : 'border-black/5'}`}>
                                         <span className="text-xs font-mono">Личные сообщения</span>
                                         <select 
                                             value={localPrivacy.allowDirectMessages}
@@ -738,14 +752,14 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'NOTIFICATIONS' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <div className="flex items-center justify-between mb-2">
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <div className="flex items-center justify-between mb-1">
                                     <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest block">Уведомления</h3>
                                     <SettingsToggle theme={theme} label="Включить" checked={localNotifs.enabled} onChange={(v) => setLocalNotifs({...localNotifs, enabled: v})} />
                                 </div>
                                 
                                 {localNotifs.enabled && (
-                                    <div className={`space-y-2 pl-2 border-l ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                    <div className={`space-y-1 pl-2 border-l ${isDark ? 'border-white/10' : 'border-black/10'}`}>
                                         <SettingsToggle theme={theme} label="Лайки" checked={localNotifs.types.likes} onChange={(v) => setLocalNotifs({...localNotifs, types: {...localNotifs.types, likes: v}})} />
                                         <SettingsToggle theme={theme} label="Комментарии" checked={localNotifs.types.comments} onChange={(v) => setLocalNotifs({...localNotifs, types: {...localNotifs.types, comments: v}})} />
                                         <SettingsToggle theme={theme} label="Новые подписчики" checked={localNotifs.types.follows} onChange={(v) => setLocalNotifs({...localNotifs, types: {...localNotifs.types, follows: v}})} />
@@ -757,24 +771,24 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'APPEARANCE' && (
-                            <div className="space-y-3 animate-in slide-in-from-right-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Тема оформления</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={() => updateTheme('dark')} className={`p-3 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'dark' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Matrix (Dark)</button>
-                                    <button onClick={() => updateTheme('light')} className={`p-3 border rounded hover:bg-black/10 text-xs ${localSettings.theme === 'light' ? 'border-green-500 text-green-500' : 'border-black/10'}`}>Office (Light)</button>
-                                    <button onClick={() => updateTheme('xp')} className={`p-3 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'xp' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Windows XP</button>
-                                    <button onClick={() => updateTheme('winamp')} className={`p-3 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'winamp' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Winamp Classic</button>
+                            <div className="space-y-2 animate-in slide-in-from-right-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Тема оформления</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => updateTheme('dark')} className={`p-2 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'dark' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Matrix (Dark)</button>
+                                    <button onClick={() => updateTheme('light')} className={`p-2 border rounded hover:bg-black/10 text-xs ${localSettings.theme === 'light' ? 'border-green-500 text-green-500' : 'border-black/10'}`}>Office (Light)</button>
+                                    <button onClick={() => updateTheme('xp')} className={`p-2 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'xp' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Windows XP</button>
+                                    <button onClick={() => updateTheme('winamp')} className={`p-2 border rounded hover:bg-white/10 text-xs ${localSettings.theme === 'winamp' ? 'border-green-500 text-green-500' : 'border-white/10'}`}>Winamp Classic</button>
                                 </div>
                             </div>
                         )}
 
                         {/* NEW DATA SECTION */}
                         {settingsCategory === 'DATA' && (
-                            <div className="space-y-4 animate-in slide-in-from-right-4">
+                            <div className="space-y-3 animate-in slide-in-from-right-4">
                                 <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Экспорт данных</h3>
-                                    <p className="text-[10px] opacity-60 mb-3 font-mono">Скачать полный архив вашего профиля, коллекций и предметов в формате JSON.</p>
-                                    <button onClick={handleExportData} className={`w-full py-3 border rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
+                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Экспорт данных</h3>
+                                    <p className="text-[10px] opacity-60 mb-2 font-mono">Скачать полный архив вашего профиля, коллекций и предметов в формате JSON.</p>
+                                    <button onClick={handleExportData} className={`w-full py-2 border rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
                                         <Download size={16}/> Скачать архив
                                     </button>
                                 </div>
@@ -782,23 +796,23 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
 
                         {settingsCategory === 'SECURITY' && (
-                            <div className="space-y-4 animate-in slide-in-from-right-4">
+                            <div className="space-y-3 animate-in slide-in-from-right-4">
                                 <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block text-yellow-500">Смена пароля</h3>
+                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block text-yellow-500">Смена пароля</h3>
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
                                             <input 
                                                 type={showPassword ? "text" : "password"}
                                                 value={editPassword} 
                                                 onChange={(e) => { setEditPassword(e.target.value); setPassError(''); }}
-                                                className={`w-full border rounded-lg px-2 py-1.5 font-mono text-xs focus:border-yellow-500 outline-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}
+                                                className={`w-full border rounded-lg px-2 py-1 font-mono text-xs focus:border-yellow-500 outline-none ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-black/10'}`}
                                                 placeholder="Новый пароль..."
                                             />
                                             <button onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100">
                                                 {showPassword ? <Eye size={14} /> : <EyeOff size={14} />}
                                             </button>
                                         </div>
-                                        <button onClick={generateSecurePassword} className={`px-3 py-1.5 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`} title="Сгенерировать">
+                                        <button onClick={generateSecurePassword} className={`px-2 py-1 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`} title="Сгенерировать">
                                             <Wand2 size={14} />
                                         </button>
                                     </div>
@@ -807,9 +821,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
                                 {/* Active Sessions Mock UI */}
                                 <div>
-                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-2 block">Активные сессии</h3>
-                                    <div className="space-y-2">
-                                        <div className="p-2.5 bg-green-900/10 border border-green-500/30 rounded flex items-center justify-between">
+                                    <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Активные сессии</h3>
+                                    <div className="space-y-1">
+                                        <div className="p-2 bg-green-900/10 border border-green-500/30 rounded flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <Laptop size={16} className="text-green-500"/>
                                                 <div>
@@ -819,7 +833,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             </div>
                                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                         </div>
-                                        <div className={`p-2.5 border rounded flex items-center justify-between opacity-50 ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
+                                        <div className={`p-2 border rounded flex items-center justify-between opacity-50 ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
                                             <div className="flex items-center gap-3">
                                                 <Smartphone size={16}/>
                                                 <div>
@@ -832,9 +846,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     </div>
                                 </div>
                                 
-                                <div className={`pt-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                    <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-2 flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Danger Zone</h3>
-                                    <button onClick={handleHardReset} className="w-full py-3 border-2 border-red-500/50 text-red-500 rounded-xl hover:bg-red-500/10 font-bold text-xs uppercase flex items-center justify-center gap-2">
+                                <div className={`pt-3 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                    <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Danger Zone</h3>
+                                    <button onClick={handleHardReset} className="w-full py-2 border-2 border-red-500/50 text-red-500 rounded-xl hover:bg-red-500/10 font-bold text-xs uppercase flex items-center justify-center gap-2">
                                         <RefreshCw size={16}/> HARD RESET APP
                                     </button>
                                     <p className="text-[10px] opacity-50 mt-2 text-center">Очистка локального кэша и перезагрузка приложения.</p>
@@ -844,9 +858,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </div>
 
                     {/* Action Footer */}
-                    <div className={`p-3 flex gap-2 ${isDark ? 'bg-black/40' : 'bg-black/5'}`}>
-                        <button onClick={handleSaveExtended} className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-xs uppercase hover:bg-green-500 transition-all">Сохранить</button>
-                        <button onClick={() => setIsEditingProfile(false)} className={`px-6 py-2.5 rounded-lg border text-xs uppercase ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-black/10 hover:bg-black/5'}`}>Отмена</button>
+                    <div className={`p-2 flex gap-2 ${isDark ? 'bg-black/40' : 'bg-black/5'}`}>
+                        <button onClick={handleSaveExtended} className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase hover:bg-green-500 transition-all">Сохранить</button>
+                        <button onClick={() => setIsEditingProfile(false)} className={`px-6 py-2 rounded-lg border text-xs uppercase ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-black/10 hover:bg-black/5'}`}>Отмена</button>
                     </div>
                 </div>
             )}
