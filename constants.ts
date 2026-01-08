@@ -1,5 +1,6 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority } from './types';
+
+import { Exhibit, TierType, TradeStatus, WishlistPriority, PrivacySettings, NotificationSettings, FeedSettings, CollectorProfile } from './types';
 import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target } from 'lucide-react';
 
 export const DefaultCategory = {
@@ -159,4 +160,37 @@ export const getSimilarArtifacts = (current: Exhibit, all: Exhibit[], limit: num
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
         .map(x => x.item);
+};
+
+export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
+    showEmail: false,
+    showTelegram: false,
+    allowGuestbook: true,
+    showOnlineStatus: true,
+    allowDirectMessages: 'EVERYONE'
+};
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+    enabled: true,
+    types: {
+        likes: true,
+        comments: true,
+        follows: true,
+        messages: true,
+        trades: true
+    }
+};
+
+export const DEFAULT_FEED_SETTINGS: FeedSettings = {
+    defaultView: 'GRID',
+    autoplayVideos: true,
+    hideNSFW: false,
+    hideSpoilers: false,
+    compactMode: false
+};
+
+export const DEFAULT_COLLECTOR_PROFILE: CollectorProfile = {
+    openToTrade: true,
+    openToBuy: false,
+    openToSell: false
 };

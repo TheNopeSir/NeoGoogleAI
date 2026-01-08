@@ -1,6 +1,7 @@
 
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
+import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ApiKey } from '../types';
 
 // ==========================================
 // 🚀 NEO_ARCHIVE HIGH-PERFORMANCE DB LAYER
@@ -689,3 +690,31 @@ export const sendTradeRequest = async (p: any) => {};
 export const acceptTradeRequest = async (id:string) => {};
 export const updateTradeStatus = async (id:string, s:string) => {};
 export const completeTradeRequest = async (id:string) => {};
+
+export const generateApiKey = (): ApiKey => {
+    return {
+        id: crypto.randomUUID(),
+        name: 'New Key',
+        key: 'na_' + crypto.randomUUID().replace(/-/g, ''),
+        createdAt: new Date().toISOString()
+    };
+};
+
+export const exportUserData = async (username: string) => {
+    // Basic implementation for client side dump
+    const data = getFullDatabase();
+    const userData = {
+        profile: data.users.find(u => u.username === username),
+        exhibits: data.exhibits.filter(e => e.owner === username),
+        collections: data.collections.filter(c => c.owner === username),
+        wishlist: data.wishlist.filter(w => w.owner === username)
+    };
+    
+    const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `neoarchive_export_${username}_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
