@@ -343,7 +343,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             {/* Extended Info Row */}
                                             <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] font-mono opacity-60">
                                                 <span>В сети с {profileUser.joinedDate}</span>
-                                                {profileUser.collector?.yearsCollecting > 0 && (
+                                                {profileUser.collector && profileUser.collector.yearsCollecting > 0 && (
                                                     <span className="flex items-center gap-1 border-l border-white/20 pl-3 text-yellow-500"><Crown size={12}/> Стаж: {profileUser.collector.yearsCollecting} лет</span>
                                                 )}
                                                 {profileUser.extended?.location && (
