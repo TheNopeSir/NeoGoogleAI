@@ -6,7 +6,7 @@ import {
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, Lock, Bell, Shield, Database,
     MapPin, Globe, Instagram, Youtube, UserCheck, Layout, Briefcase, Zap, Video, 
-    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText, Mail, Info
+    BarChart3, PieChart, Key, Download, Laptop, Smartphone, FileText, Mail
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, PrivacySettings, NotificationSettings, ExtendedProfile, FeedSettings, CollectorProfile, ApiKey } from '../types';
 import { STATUS_OPTIONS, DEFAULT_PRIVACY_SETTINGS, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_FEED_SETTINGS, DEFAULT_COLLECTOR_PROFILE } from '../constants';
@@ -59,7 +59,7 @@ interface UserProfileViewProps {
     onOpenSocialList: (username: string, type: 'followers' | 'following') => void;
     onThemeChange?: (theme: 'dark' | 'light' | 'xp' | 'winamp') => void;
     onWishlistClick: (item: WishlistItem) => void;
-    onAboutClick: () => void;
+    onAboutClick?: () => void;
 }
 
 // --- SUBCOMPONENTS ---
@@ -97,7 +97,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
     onSaveProfile, onProfileImageUpload, onProfileCoverUpload, guestbookInput, setGuestbookInput, guestbookInputRef, profileTab, setProfileTab, refreshData,
-    onOpenSocialList, onThemeChange, onWishlistClick, onAboutClick
+    onOpenSocialList, onThemeChange, onWishlistClick
 }) => {
     const profileUser = db.getFullDatabase().users.find(u => u.username === viewedProfileUsername) || { 
         username: viewedProfileUsername, 
@@ -700,11 +700,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     <p className="text-[10px] opacity-60 mb-4 font-mono">Скачать полный архив вашего профиля, коллекций и предметов в формате JSON.</p>
                                     <button onClick={handleExportData} className={`w-full py-4 border rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
                                         <Download size={16}/> Скачать архив
-                                    </button>
-                                </div>
-                                <div className={`pt-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                    <button onClick={onAboutClick} className="w-full py-3 flex items-center justify-center gap-2 text-xs font-mono opacity-60 hover:opacity-100 hover:underline">
-                                        <Info size={14}/> О приложении
                                     </button>
                                 </div>
                             </div>
