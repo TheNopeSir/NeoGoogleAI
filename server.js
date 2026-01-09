@@ -371,12 +371,20 @@ api.get('/feed', async (req, res) => {
     // if (cached) return res.json(cached);
 
     try {
+        // Limit to 50 to prevent massive payloads on mobile
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
+        
         const items = result.rows.map(mapRow).map(item => ({
             ...item,
+            // Keep only first image for feed preview
             imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
+            // Remove heavy comments array for feed (saves bandwidth)
+            comments: [],
+            // Truncate description to save bandwidth
+            description: item.description ? item.description.slice(0, 200) : '',
             _isLite: true
         }));
+        
         // cache.set(cacheKey, items, 30);
         res.json(items);
     } catch (e) {

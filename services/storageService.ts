@@ -1,4 +1,3 @@
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
 
@@ -249,29 +248,40 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             const data = await apiCall(endpoint);
             if (!Array.isArray(data)) return;
 
-            const tx = db.transaction(table as any, 'readwrite');
-            const store = tx.objectStore(table as any);
-
-            // Update IDB & Hot Cache in parallel
-            if (table === 'generic' && genericTable && cacheKey) {
-                // Generic logic
-                data.forEach(item => store.put({ id: item.id, table: genericTable, data: item }));
-                hotCache[cacheKey] = data as any;
-            } else if (cacheKey) {
-                // Specific table logic
-                data.forEach(item => store.put(item));
-                
-                // Special Sort for exhibits
+            // --- 1. OPTIMISTIC UPDATE (RAM) ---
+            // Update hotCache immediately so UI reflects data NOW
+            if (cacheKey) {
                 if (cacheKey === 'exhibits') {
                     hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 } else {
                     hotCache[cacheKey] = data as any;
                 }
+            } else if (table === 'generic') {
+                 // For generics, if needed we can parse them, but usually they come from endpoint as clean array
+                 // Currently 'wishlist' endpoint returns array of items, we map them above in hydrateContent
+                 if (genericTable === 'wishlist') hotCache.wishlist = data;
+                 if (genericTable === 'guestbook') hotCache.guestbook = data;
+            }
+            
+            // --- 2. NOTIFY UI ---
+            notifyListeners(); 
+
+            // --- 3. PERSIST TO IDB (Background) ---
+            const tx = db.transaction(table as any, 'readwrite');
+            const store = tx.objectStore(table as any);
+
+            // Clear old data for feed to prevent stale accumulation? 
+            // No, we overwrite by ID. But maybe we should clear for feed? 
+            // For now, put is safe.
+            
+            if (table === 'generic' && genericTable) {
+                data.forEach(item => store.put({ id: item.id, table: genericTable, data: item }));
+            } else {
+                data.forEach(item => store.put(item));
             }
             
             await tx.done;
-            notifyListeners(); // <--- CRITICAL: Update UI as soon as THIS chunk is ready
-            console.log(`✅ [Sync] ${endpoint} loaded & rendered`);
+            console.log(`✅ [Sync] ${endpoint} persisted`);
         } catch (e) {
             console.warn(`[Sync] Failed ${endpoint}:`, e);
         }
@@ -290,25 +300,25 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     if (activeUserUsername) {
         apiCall(`/sync?username=${activeUserUsername}`).then(async (syncData) => {
             if (!syncData) return;
-            const tx = db.transaction(['users', 'collections'], 'readwrite');
             
             if (syncData.users?.length) {
-                syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
-                // Merge users
+                const tx = db.transaction('users', 'readwrite');
                 syncData.users.forEach((u: UserProfile) => {
+                    tx.store.put(u);
                     const idx = hotCache.users.findIndex(ex => ex.username === u.username);
                     if(idx !== -1) hotCache.users[idx] = u; else hotCache.users.push(u);
                 });
+                await tx.done;
             }
             if (syncData.collections?.length) {
-                syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
-                // Merge collections
+                const tx = db.transaction('collections', 'readwrite');
                 syncData.collections.forEach((c: Collection) => {
+                    tx.store.put(c);
                     const idx = hotCache.collections.findIndex(ex => ex.id === c.id);
                     if(idx !== -1) hotCache.collections[idx] = c; else hotCache.collections.push(c);
                 });
+                await tx.done;
             }
-            await tx.done;
             notifyListeners();
         }).catch(e => console.warn("[Sync] Personal Sync Error", e));
 
