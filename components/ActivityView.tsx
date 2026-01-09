@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
-import { getUserAvatar, markNotificationsRead, getMyTradeRequests } from '../services/storageService';
+import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase } from '../services/storageService';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -20,6 +20,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const myNotifs = useMemo(() => {
         let list = notifications.filter(n => n.recipient.toLowerCase() === currentUser.username.toLowerCase());
@@ -31,6 +32,17 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const trades = getMyTradeRequests();
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await initializeDatabase();
+        } catch (e) {
+            console.error("Refresh failed", e);
+        } finally {
+            setTimeout(() => setIsRefreshing(false), 500);
+        }
+    };
 
     // --- GROUPING LOGIC ---
     const groupedNotifications = useMemo(() => {
@@ -164,11 +176,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                             <button onClick={() => setFilter('ALL')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'ALL' ? 'bg-white text-black border-white' : 'border-white/20 opacity-50'}`}>ВСЕ</button>
                             <button onClick={() => setFilter('UNREAD')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'UNREAD' ? 'bg-green-500 text-black border-green-500' : 'border-white/20 opacity-50'}`}>НОВЫЕ</button>
                         </div>
-                        {myNotifs.some(n => !n.isRead) && (
-                            <button onClick={handleMarkAllRead} className="text-[10px] text-green-500 hover:underline flex items-center gap-1">
-                                <CheckCheck size={12}/> Прочитать все
+                        <div className="flex gap-2">
+                            {myNotifs.some(n => !n.isRead) && (
+                                <button onClick={handleMarkAllRead} className="text-[10px] text-green-500 hover:underline flex items-center gap-1">
+                                    <CheckCheck size={12}/>
+                                </button>
+                            )}
+                            <button onClick={handleRefresh} className={`text-[10px] hover:text-white flex items-center gap-1 ${isRefreshing ? 'animate-spin opacity-100' : 'opacity-50'}`}>
+                                <RefreshCw size={12}/>
                             </button>
-                        )}
+                        </div>
                     </div>
 
                     {groupedNotifications.length === 0 ? (

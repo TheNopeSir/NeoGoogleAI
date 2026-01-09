@@ -171,6 +171,15 @@ const mapRow = (row) => {
 
 const api = express.Router();
 
+// Middleware to prevent caching for API requests
+api.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    next();
+});
+
 api.get('/', (req, res) => res.json({ status: 'NeoArchive API Online' }));
 
 api.get('/health', async (req, res) => {
@@ -356,9 +365,10 @@ api.post('/auth/recover', async (req, res) => {
 
 // FEED (Optimized)
 api.get('/feed', async (req, res) => {
-    const cacheKey = 'feed_global_lite';
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
+    // Disable caching for feed to ensure fresh data on mobile
+    // const cacheKey = 'feed_global_lite';
+    // const cached = cache.get(cacheKey);
+    // if (cached) return res.json(cached);
 
     try {
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
@@ -367,7 +377,7 @@ api.get('/feed', async (req, res) => {
             imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
             _isLite: true
         }));
-        cache.set(cacheKey, items, 30);
+        // cache.set(cacheKey, items, 30);
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -376,10 +386,7 @@ api.get('/feed', async (req, res) => {
 });
 
 api.get('/users', async (req, res) => {
-    const cacheKey = 'users_global';
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
-
+    // Disable caching for user list
     try {
         const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT 50');
         const users = result.rows.map(row => {
@@ -387,7 +394,6 @@ api.get('/users', async (req, res) => {
             if(u) { delete u.password; delete u.email; delete u.settings; }
             return u;
         });
-        cache.set(cacheKey, users, 60);
         res.json(users);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
@@ -505,7 +511,8 @@ api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1)`, [username]);
+        // Enforce ordering by timestamp within the JSON data for correctness
+        const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
         res.json(result.rows.map(mapRow));
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
