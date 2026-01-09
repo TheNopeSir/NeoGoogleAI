@@ -117,12 +117,17 @@ const dbName = process.env.DB_NAME || 'default_db';
 const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
 const dbPort = 5432;
 
-// Construct connection string to enforce SSL parameters at protocol level
-const connectionString = `postgres://${dbUser}:${encodeURIComponent(dbPass)}@${dbHost}:${dbPort}/${dbName}?sslmode=require`;
-
+// Explicit object configuration ensures SSL settings are respected correctly
+// compared to connection string parsing which can vary by environment.
 const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false }, // Necessary for Node to accept self-signed certs if applicable
+    user: dbUser,
+    password: dbPass,
+    host: dbHost,
+    port: dbPort,
+    database: dbName,
+    ssl: {
+        rejectUnauthorized: false // Fix for "self-signed certificate" and "no encryption" errors
+    },
     connectionTimeoutMillis: 20000, // Wait 20s before timing out new client creation
     idleTimeoutMillis: 30000, // Close idle clients after 30s
     max: 20, // Max clients in pool
@@ -135,17 +140,18 @@ pool.connect().then(client => {
     client.release();
 }).catch(err => {
     console.error(`❌ [Database] Initial connection failed:`, err.message);
+    // console.error(err);
 });
 
 pool.on('error', (err) => {
-    console.error('❌ [Database] Unexpected error on idle client', err);
+    console.error('❌ [Database] Unexpected error on idle client', err.message);
 });
 
 const query = async (text, params = []) => {
     try {
         return await pool.query(text, params);
     } catch (err) {
-        console.error(`❌ [Database] Query Failed: ${text}`, err.message);
+        console.error(`❌ [Database] Query Failed: ${text.slice(0, 50)}...`, err.message);
         throw err;
     }
 };
