@@ -328,17 +328,58 @@ export default function App() {
             </div>
         )}
 
-        {/* NAVIGATION COMPONENTS OMITTED FOR BREVITY BUT PRESUMED INCLUDED IN RENDER */}
         {user && (
-            <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
-                <div className="flex justify-around items-center h-16">
-                    <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
-                    <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
-                    <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
-                    <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
-                    <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/></button>
-                </div>
-            </nav>
+            <>
+                {/* DESKTOP NAV (Hidden on Mobile) */}
+                <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
+                    {/* Logo Area */}
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
+                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
+                        <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
+                    </div>
+
+                    {/* Center Links */}
+                    <div className="flex items-center gap-8">
+                        <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                            <LayoutGrid size={18} /> ЛЕНТА
+                        </button>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'COMMUNITY_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                            <Globe size={18} /> СЕТЬ
+                        </button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'CREATE_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                            <PlusCircle size={18} /> СОЗДАТЬ
+                        </button>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 relative ${view === 'ACTIVITY' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                            <Bell size={18} /> АКТИВНОСТЬ
+                            {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]" />}
+                        </button>
+                    </div>
+
+                    {/* Right Actions */}
+                    <div className="flex items-center gap-6">
+                        <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><Search size={20}/></button>
+                        <div className="h-6 w-[1px] bg-white/10"></div>
+                        <div onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className="flex items-center gap-3 cursor-pointer group">
+                            <div className="text-right hidden lg:block">
+                                <div className={`font-pixel text-xs font-bold ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>@{user.username}</div>
+                                <div className="text-[9px] font-mono opacity-50 uppercase">{user.tagline || 'USER'}</div>
+                            </div>
+                            <img src={user.avatarUrl} className={`w-9 h-9 rounded-full border-2 transition-all ${theme === 'winamp' ? 'border-[#505050]' : 'border-white/20 group-hover:border-green-500'}`} />
+                        </div>
+                    </div>
+                </nav>
+
+                {/* MOBILE NAV (Hidden on Desktop) */}
+                <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
+                    <div className="flex justify-around items-center h-16">
+                        <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
+                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/></button>
+                    </div>
+                </nav>
+            </>
         )}
 
         <div className="md:pt-16">

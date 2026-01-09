@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, Lock, UserPlus, User, AlertCircle, CheckSquare, Square, Send, Wand2, Eye, EyeOff, Terminal, RefreshCw } from 'lucide-react';
+import { Mail, Lock, UserPlus, User, AlertCircle, CheckSquare, Square, Send, Wand2, Eye, EyeOff, Terminal, RefreshCw, Activity } from 'lucide-react';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 
@@ -26,10 +26,16 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
   const [infoMessage, setInfoMessage] = useState('');
   const [showRecoverOption, setShowRecoverOption] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userCount, setUserCount] = useState<number | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('verified') === 'true') { setInfoMessage("ПОЧТА ПОДТВЕРЖДЕНА"); setStep('LOGIN'); window.history.replaceState({}, document.title, window.location.pathname + window.location.hash); }
+    
+    // Fetch stats
+    fetch('/api/health').then(res => res.json()).then(data => {
+        if (typeof data.totalUsers === 'number') setUserCount(data.totalUsers);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -131,6 +137,15 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
                 <button onClick={() => { setStep('TELEGRAM'); resetForm(); }} className="py-4 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
                     <Send size={16} /> TELEGRAM
                 </button>
+                
+                {userCount !== null && (
+                    <div className="mt-4 flex items-center justify-center gap-2 opacity-50">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_#22c55e]"></div>
+                        <span className="text-[10px] font-mono text-green-500 tracking-[0.2em]">
+                            ACTIVE_NODES: {userCount.toLocaleString()}
+                        </span>
+                    </div>
+                )}
             </div>
         )
     }

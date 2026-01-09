@@ -186,7 +186,6 @@ const hydrateCritical = async () => {
         hotCache.users = users;
         hotCache.notifications = notifications;
         hotCache.messages = messages;
-        // Don't notify listeners yet, main app will check cache manually on init
     } catch (e) {
         console.warn("Critical hydration failed (clean slate?):", e);
     }
@@ -212,7 +211,7 @@ const hydrateContent = async () => {
         hotCache.tradeRequests = generic.filter((i:any) => i.table === 'tradeRequests').map((i:any) => i.data);
 
         console.log(`[NeoDB] Content Hydrated: ${exhibits.length} items`);
-        notifyListeners(); // Update UI when heavy content is ready
+        notifyListeners(); // Update UI immediately when IDB is ready
     } catch (e) {
         console.error("Content hydration failed:", e);
     }
@@ -229,105 +228,100 @@ const deleteGeneric = async (id: string) => {
     await db.delete('generic', id);
 };
 
-// BACKGROUND SYNC LOGIC (Non-Blocking)
+// BACKGROUND SYNC LOGIC (Progressive - Instant Updates)
 const performBackgroundSync = async (activeUserUsername?: string) => {
     if (!navigator.onLine) return;
     
-    console.log("🔄 [Sync] Starting background sync...");
-    try {
-        // Prepare promises for parallel fetching
-        const promises: Promise<any>[] = [
-            apiCall('/feed'),
-            apiCall('/users'),
-            apiCall('/wishlist'),
-            apiCall('/collections'),
-            apiCall('/guestbook')
-        ];
+    console.log("🔄 [Sync] Starting Progressive Sync...");
+    const db = await getDB();
 
-        // If user is logged in, fetch sync data in parallel
-        if (activeUserUsername) {
-            promises.push(apiCall(`/sync?username=${activeUserUsername}`));
+    // Helper to process specific fetch and update UI immediately
+    const fetchAndApply = async (endpoint: string, table: keyof NeoArchiveDB | 'generic', genericTable?: string, cacheKey?: keyof typeof hotCache) => {
+        try {
+            const data = await apiCall(endpoint);
+            if (!Array.isArray(data)) return;
+
+            const tx = db.transaction(table as any, 'readwrite');
+            const store = tx.objectStore(table as any);
+
+            // Update IDB & Hot Cache in parallel
+            if (table === 'generic' && genericTable && cacheKey) {
+                // Generic logic
+                data.forEach(item => store.put({ id: item.id, table: genericTable, data: item }));
+                hotCache[cacheKey] = data as any;
+            } else if (cacheKey) {
+                // Specific table logic
+                data.forEach(item => store.put(item));
+                
+                // Special Sort for exhibits
+                if (cacheKey === 'exhibits') {
+                    hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                } else {
+                    hotCache[cacheKey] = data as any;
+                }
+            }
+            
+            await tx.done;
+            notifyListeners(); // <--- CRITICAL: Update UI as soon as THIS chunk is ready
+            console.log(`✅ [Sync] ${endpoint} loaded & rendered`);
+        } catch (e) {
+            console.warn(`[Sync] Failed ${endpoint}:`, e);
         }
+    };
 
-        // Await ALL data
-        const results = await Promise.all(promises);
-        
-        const feed = results[0];
-        const globalUsers = results[1];
-        const globalWishlist = results[2];
-        const globalCollections = results[3];
-        const globalGuestbook = results[4];
-        const syncData = activeUserUsername ? results[5] : null;
+    // 1. FETCH FEED FIRST (Most important for "Instant" feel)
+    fetchAndApply('/feed', 'exhibits', undefined, 'exhibits');
 
-        const db = await getDB();
-        const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
+    // 2. Fetch others in parallel (don't await feed)
+    fetchAndApply('/users', 'users', undefined, 'users');
+    fetchAndApply('/collections', 'collections', undefined, 'collections');
+    fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
+    fetchAndApply('/guestbook', 'generic', 'guestbook', 'guestbook');
 
-        // Save Feed
-        if (Array.isArray(feed)) {
-            feed.forEach(item => tx.objectStore('exhibits').put(item));
-        }
-
-        // Save Global Users
-        if (Array.isArray(globalUsers)) {
-            globalUsers.forEach(u => tx.objectStore('users').put(u));
-        }
-
-        // Save Global Wishlist
-        if (Array.isArray(globalWishlist)) {
-            globalWishlist.forEach(w => tx.objectStore('generic').put({ id: w.id, table: 'wishlist', data: w }));
-        }
-
-        // Save Global Collections
-        if (Array.isArray(globalCollections)) {
-            globalCollections.forEach(c => tx.objectStore('collections').put(c));
-        }
-
-        // Save Global Guestbook
-        if (Array.isArray(globalGuestbook)) {
-            globalGuestbook.forEach(g => tx.objectStore('generic').put({ id: g.id, table: 'guestbook', data: g }));
-        }
-
-        // Save Private Sync Data
-        if (syncData) {
-            if (syncData.users && Array.isArray(syncData.users)) {
+    // 3. User Specific Sync
+    if (activeUserUsername) {
+        apiCall(`/sync?username=${activeUserUsername}`).then(async (syncData) => {
+            if (!syncData) return;
+            const tx = db.transaction(['users', 'collections'], 'readwrite');
+            
+            if (syncData.users?.length) {
                 syncData.users.forEach((u: UserProfile) => tx.objectStore('users').put(u));
+                // Merge users
+                syncData.users.forEach((u: UserProfile) => {
+                    const idx = hotCache.users.findIndex(ex => ex.username === u.username);
+                    if(idx !== -1) hotCache.users[idx] = u; else hotCache.users.push(u);
+                });
             }
-            if (syncData.collections && Array.isArray(syncData.collections)) {
+            if (syncData.collections?.length) {
                 syncData.collections.forEach((c: Collection) => tx.objectStore('collections').put(c));
+                // Merge collections
+                syncData.collections.forEach((c: Collection) => {
+                    const idx = hotCache.collections.findIndex(ex => ex.id === c.id);
+                    if(idx !== -1) hotCache.collections[idx] = c; else hotCache.collections.push(c);
+                });
             }
-        }
-        
-        await tx.done;
+            await tx.done;
+            notifyListeners();
+        }).catch(e => console.warn("[Sync] Personal Sync Error", e));
 
-        // Sync Notifications & Messages
-        if (activeUserUsername) {
-            try {
-                const [notifs, msgs] = await Promise.all([
-                    apiCall(`/notifications?username=${activeUserUsername}`),
-                    apiCall(`/messages?username=${activeUserUsername}`)
-                ]);
-
-                if(Array.isArray(notifs)) {
-                    const txNotif = db.transaction('notifications', 'readwrite');
-                    await Promise.all(notifs.map((n: Notification) => txNotif.store.put(n)));
-                    await txNotif.done;
-                }
-
-                if(Array.isArray(msgs)) {
-                    const txMsg = db.transaction('messages', 'readwrite');
-                    await Promise.all(msgs.map((m: Message) => txMsg.store.put(m)));
-                    await txMsg.done;
-                }
-            } catch (e) {
-                console.error("Failed to sync personal data (non-fatal):", e);
+        // Notifications & Messages
+        Promise.all([
+            apiCall(`/notifications?username=${activeUserUsername}`),
+            apiCall(`/messages?username=${activeUserUsername}`)
+        ]).then(async ([notifs, msgs]) => {
+            const tx = db.transaction(['notifications', 'messages'], 'readwrite');
+            
+            if (Array.isArray(notifs)) {
+                notifs.forEach(n => tx.objectStore('notifications').put(n));
+                hotCache.notifications = notifs;
             }
-        }
-        
-        // Re-hydrate to reflect new server data in UI
-        await hydrateContent(); 
-        console.log("✅ [Sync] Background sync complete");
-    } catch (e) {
-        console.warn("[Sync] Server unreachable or timeout:", e);
+            if (Array.isArray(msgs)) {
+                msgs.forEach(m => tx.objectStore('messages').put(m));
+                hotCache.messages = msgs;
+            }
+            await tx.done;
+            notifyListeners();
+        }).catch(e => console.warn("[Sync] Messages Sync Error", e));
     }
 };
 
@@ -353,10 +347,10 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         }
     }
 
-    // 1. Load Critical Data Fast (Users, Session)
+    // 1. Load Critical Data (Users/Session)
     await hydrateCritical();
     
-    // 2. Start Heavy Load (Exhibits) in Background
+    // 2. Start Heavy Load (Exhibits from IDB)
     hydrateContent();
 
     let activeUserUsername: string | undefined;
@@ -368,7 +362,8 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 3. Trigger Background Sync (Optimistic UI Pattern)
+    // 3. Trigger Progressive Background Sync IMMEDIATELY
+    // Do not await this. Let it populate the UI as data arrives.
     performBackgroundSync(activeUserUsername);
 
     // 4. Return user immediately from local cache if present
