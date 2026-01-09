@@ -83,10 +83,11 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
+// FIX: Port 2525 is often more reliable than 465 on cloud hosting to avoid timeouts
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru',
-    port: 465,
-    secure: true,
+    port: 2525, 
+    secure: false, // Must be false for 2525/587
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
