@@ -5,7 +5,6 @@ import { Exhibit, Collection, UserProfile } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import { getUserAvatar } from '../services/storageService';
-import SEO from './SEO';
 
 interface SearchViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -56,7 +55,6 @@ const SearchView: React.FC<SearchViewProps> = ({
 
     return (
         <div className="max-w-4xl mx-auto animate-in fade-in pb-32">
-            <SEO title="NeoArchive: Поиск" />
             <div className={`flex items-center gap-4 mb-6 sticky top-20 z-30 pt-4 pb-4 border-b backdrop-blur-md ${isWinamp ? 'bg-[#282828]/90 border-[#505050]' : 'bg-transparent border-white/10'}`}>
                 <button onClick={onBack} className={`p-2 rounded-full transition-colors ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}>
                     <ArrowLeft size={20} className={isWinamp ? 'text-[#00ff00]' : ''}/>

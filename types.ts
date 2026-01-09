@@ -107,62 +107,12 @@ export interface AchievementProgress {
   unlocked: boolean;
 }
 
-export interface FeedSettings {
-    defaultView: 'GRID' | 'LIST';
-    hideNSFW: boolean;
-    compactMode: boolean;
-}
-
 export interface AppSettings {
     theme?: 'dark' | 'light' | 'xp' | 'winamp';
     notificationsEnabled?: boolean;
     soundEnabled?: boolean;
     publicProfile?: boolean;
     showEmail?: boolean;
-    feed?: FeedSettings;
-}
-
-export interface PrivacySettings {
-    showEmail: boolean;
-    showTelegram: boolean;
-    allowGuestbook: boolean;
-    showOnlineStatus: boolean;
-    allowDirectMessages: 'EVERYONE' | 'FRIENDS' | 'NONE';
-}
-
-export interface NotificationSettings {
-    enabled: boolean;
-    types: {
-        likes: boolean;
-        comments: boolean;
-        follows: boolean;
-        messages: boolean;
-        trades: boolean;
-    };
-}
-
-export interface CollectorProfile {
-    specialization?: string;
-    yearsCollecting?: number;
-    openToTrade: boolean;
-    openToBuy: boolean;
-    openToSell: boolean;
-}
-
-export interface ExtendedProfile {
-    location?: string;
-    website?: string;
-    socialLinks?: {
-        instagram?: string;
-        youtube?: string;
-    };
-}
-
-export interface ApiKey {
-    id: string;
-    name: string;
-    key: string;
-    createdAt: string;
 }
 
 export interface UserProfile {
@@ -190,11 +140,6 @@ export interface UserProfile {
       ratingSum: number;
       ratingCount: number;
   };
-  privacy?: PrivacySettings;
-  notifications?: NotificationSettings;
-  collector?: CollectorProfile;
-  extended?: ExtendedProfile;
-  apiKeys?: ApiKey[];
 }
 
 export interface Guild {

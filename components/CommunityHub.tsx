@@ -4,7 +4,6 @@ import { Trophy, TrendingUp, Users, RefreshCw, Flame } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
 import ExhibitCard from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
-import SEO from './SEO';
 
 interface CommunityHubProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -84,8 +83,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
 
     return (
         <div className={`max-w-4xl mx-auto pb-32 animate-in fade-in ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
-            <SEO title="NeoArchive: Сообщество" />
-            
             {/* Header */}
             {isWinamp ? (
                 <WinampWindow title="COMMUNITY NETWORK">

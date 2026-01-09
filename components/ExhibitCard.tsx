@@ -12,10 +12,9 @@ interface ExhibitCardProps {
   isLiked: boolean;
   onLike: (e: React.MouseEvent) => void;
   onAuthorClick: (author: string) => void;
-  compactMode?: boolean;
 }
 
-const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked, onLike, onAuthorClick, compactMode = false }) => {
+const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked, onLike, onAuthorClick }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
@@ -28,7 +27,6 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
 
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
-  const isDark = theme === 'dark';
   
   const imageUrl = item.imageUrls?.[0] || 'https://placehold.co/600x400?text=NO+IMAGE';
 
@@ -61,11 +59,11 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
 
                 {/* Meta Info - Playlist Style */}
                 <div className="flex justify-between items-end mt-auto font-winamp text-wa-green text-[12px] leading-none">
-                    <div className="flex flex-col overflow-hidden">
+                    <div className="flex flex-col">
                         <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
                         <span className="truncate max-w-[80px]" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1">
                         <button onClick={(e) => { e.stopPropagation(); onLike(e); }} className={`hover:text-wa-gold ${isLiked ? 'text-wa-gold' : 'text-wa-green'}`}>
                             {isLiked ? '★' : '☆'}
                         </button>
@@ -84,7 +82,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
       className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 
         ${isXP 
           ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white' 
-          : `rounded-2xl overflow-hidden border-2 ${isDark ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-gray-300 hover:border-gray-400 shadow-lg'}`
+          : `rounded-2xl overflow-hidden border-2 ${theme === 'dark' ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
         } 
         ${isCursed ? 'animate-pulse' : ''}`
       }
@@ -99,7 +97,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
           </div>
       )}
 
-      <div className={`relative aspect-square overflow-hidden bg-black/5 ${!isXP ? 'rounded-t-2xl' : ''}`}>
+      <div className={`relative aspect-square overflow-hidden bg-black/20 ${!isXP ? 'rounded-t-2xl' : ''}`}>
         {!isLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-800 animate-pulse">
                 <ImageIcon size={24} className="text-white/20" />
@@ -114,40 +112,34 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
         
-        {!isXP && !compactMode && <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded backdrop-blur-md text-[7px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
+        {!isXP && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
         
-        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded flex items-center gap-1 text-[7px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
-            <Icon size={8} /> {config.name}
+        <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
+            <Icon size={10} /> {config.name}
         </div>
 
         {tradeStatus !== 'NONE' && (
-            <div className={`absolute bottom-2 left-2 px-2 py-1 rounded flex items-center gap-1 text-[8px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
-                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })} 
+            <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })} 
                 {tradeConfig.badge}
             </div>
         )}
       </div>
 
-      <div className={`flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''} ${compactMode ? 'p-2' : 'p-4'}`}>
-        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-1 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : isDark ? 'text-white' : 'text-black'} ${compactMode ? 'text-[11px]' : ''}`}>{item.title}</h3>}
+      <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
+        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-1 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
+        <div className={`mt-1 font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
+            <span className="truncate uppercase">{item.condition || item.quality}</span>
+            {isXP && <div className="text-[9px] text-gray-600 mt-1 uppercase tracking-wide">{item.category}</div>}
+        </div>
         
-        {!compactMode && (
-            <div className={`mt-1 font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
-                <span className="truncate uppercase">{item.condition || item.quality}</span>
-                {isXP && <div className="text-[9px] text-gray-600 mt-1 uppercase tracking-wide">{item.category}</div>}
+        <div className={`mt-auto pt-4 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
+            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author">
+                <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
+                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
-        )}
-        
-        <div className={`mt-auto flex items-center justify-between ${isXP ? 'border-gray-400' : isDark ? 'border-white/10' : 'border-black/5'} ${compactMode ? 'pt-2' : 'pt-4 border-t border-dashed'}`}>
-            {!compactMode && (
-                <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author min-w-0 flex-1">
-                    <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border shrink-0 ${isXP ? 'border-gray-400' : isDark ? 'border-white/20' : 'border-black/10'}`} />
-                    <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
-                </div>
-            )}
-            {compactMode && <div className="text-[9px] opacity-30 font-pixel uppercase truncate flex-1">{item.category}</div>}
             
-            <div className="flex items-center gap-3 shrink-0 ml-2">
+            <div className="flex items-center gap-3">
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>
                     <Eye size={12} /> <span>{item.views}</span>
                 </div>
