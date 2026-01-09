@@ -111,14 +111,30 @@ transporter.verify(function (error, success) {
 // 💽 DATABASE CONNECTION
 // ==========================================
 
+const dbUser = process.env.DB_USER || 'gen_user';
+const dbHost = process.env.DB_HOST || '89.169.46.157';
+const dbName = process.env.DB_NAME || 'default_db';
+const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
+const dbPort = 5432;
+
+// Construct connection string to enforce SSL parameters at protocol level
+const connectionString = `postgres://${dbUser}:${encodeURIComponent(dbPass)}@${dbHost}:${dbPort}/${dbName}?sslmode=require`;
+
 const pool = new Pool({
-    user: process.env.DB_USER || 'gen_user',
-    host: process.env.DB_HOST || '89.169.46.157',
-    database: process.env.DB_NAME || 'default_db',
-    password: process.env.DB_PASSWORD || '9H@DDCb.gQm.S}',
-    port: 5432,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10000,
+    connectionString,
+    ssl: { rejectUnauthorized: false }, // Necessary for Node to accept self-signed certs if applicable
+    connectionTimeoutMillis: 20000, // Wait 20s before timing out new client creation
+    idleTimeoutMillis: 30000, // Close idle clients after 30s
+    max: 20, // Max clients in pool
+    keepAlive: true // Keep TCP connection alive
+});
+
+// Test DB Connection immediately
+pool.connect().then(client => {
+    console.log(`✅ [Database] Successfully connected to ${dbHost} as ${dbUser}`);
+    client.release();
+}).catch(err => {
+    console.error(`❌ [Database] Initial connection failed:`, err.message);
 });
 
 pool.on('error', (err) => {
