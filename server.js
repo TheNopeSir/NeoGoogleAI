@@ -83,11 +83,11 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Using port 587 (STARTTLS) which is most universally supported and less likely to timeout
+// FIX: Port 465 (SSL) is standard for secure connections.
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru',
-    port: 587, 
-    secure: false, // Must be false for 587 (it upgrades via STARTTLS)
+    port: 465, 
+    secure: true, // True for 465
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
@@ -191,16 +191,13 @@ api.post('/auth/register', async (req, res) => {
             [cleanUsername, newUser]
         );
         
-        try {
-            await transporter.sendMail({
-                from: `"NeoArchive" <${SMTP_EMAIL}>`,
-                to: cleanEmail,
-                subject: 'WELCOME TO THE ARCHIVE',
-                html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
-            });
-        } catch (mailError) {
-            console.error("[MAIL] Failed:", mailError.message);
-        }
+        // Non-blocking mail send to prevent API timeout
+        transporter.sendMail({
+            from: `"NeoArchive" <${SMTP_EMAIL}>`,
+            to: cleanEmail,
+            subject: 'WELCOME TO THE ARCHIVE',
+            html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
+        }).catch(err => console.error("[MAIL] Failed:", err.message));
 
         res.json(newUser);
     } catch (e) {
@@ -312,21 +309,19 @@ api.post('/auth/recover', async (req, res) => {
         
         await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
-        try {
-            await transporter.sendMail({
-                from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
-                to: cleanEmail,
-                subject: 'PASSWORD RESET // NEO_ARCHIVE',
-                html: `
-                <div style="background: #000; color: #0f0; padding: 20px; font-family: monospace;">
-                    <h2>/// SYSTEM OVERRIDE</h2>
-                    <p>New Access Key:</p>
-                    <h1 style="border: 1px dashed #0f0; display: inline-block; padding: 10px;">${newPass}</h1>
-                </div>`
-            });
-        } catch (mailError) {
-            console.error("[MAIL] Recovery Failed:", mailError);
-        }
+        // Non-blocking mail send to prevent API timeout
+        transporter.sendMail({
+            from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
+            to: cleanEmail,
+            subject: 'PASSWORD RESET // NEO_ARCHIVE',
+            html: `
+            <div style="background: #000; color: #0f0; padding: 20px; font-family: monospace;">
+                <h2>/// SYSTEM OVERRIDE</h2>
+                <p>New Access Key:</p>
+                <h1 style="border: 1px dashed #0f0; display: inline-block; padding: 10px;">${newPass}</h1>
+            </div>`
+        }).catch(err => console.error("[MAIL] Recovery Failed:", err.message));
+
         res.json({ success: true });
     } catch (e) {
         console.error(e);
