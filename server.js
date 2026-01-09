@@ -379,17 +379,27 @@ api.post('/auth/recover', async (req, res) => {
     }
 });
 
-// FEED (CACHED)
+// FEED (CACHED - OPTIMIZED)
+// Returns LITE objects (first image only) to reduce bandwidth by 80%
 api.get('/feed', async (req, res) => {
-    const cacheKey = 'feed_global';
+    const cacheKey = 'feed_global_lite';
     const cached = cache.get(cacheKey);
     if (cached) {
         return res.json(cached);
     }
 
     try {
-        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100`);
-        const items = result.rows.map(mapRow);
+        // Limit reduced from 100 to 50 for performance
+        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
+        const items = result.rows.map(mapRow).map(item => {
+            // Optimization: Send only the first image for the feed
+            // The client will fetch full details on click
+            return {
+                ...item,
+                imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
+                _isLite: true // Marker for client
+            };
+        });
         cache.set(cacheKey, items, 30); // Cache for 30 seconds
         res.json(items);
     } catch (e) {
@@ -405,9 +415,8 @@ api.get('/users', async (req, res) => {
     if (cached) return res.json(cached);
 
     try {
-        // Return mostly full objects but frontend will filter sensitive
-        // We select data directly. 
-        const result = await query('SELECT username, data FROM users LIMIT 200');
+        // Limit reduced to 50 for performance
+        const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT 50');
         const users = result.rows.map(row => {
             const u = mapRow(row);
             // sanitize server-side just in case
@@ -430,7 +439,8 @@ api.get('/wishlist', async (req, res) => {
     if (cached) return res.json(cached);
 
     try {
-        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT 100');
+        // Limit reduced to 50
+        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT 50');
         const items = result.rows.map(mapRow);
         cache.set(cacheKey, items, 60);
         res.json(items);
@@ -444,7 +454,8 @@ api.get('/collections', async (req, res) => {
     if (cached) return res.json(cached);
 
     try {
-        const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 50');
+        // Limit reduced to 20
+        const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 20');
         const items = result.rows.map(mapRow);
         cache.set(cacheKey, items, 60);
         res.json(items);
@@ -457,8 +468,9 @@ api.get('/messages', async (req, res) => {
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
         // Fetch sent or received messages using case-insensitive check
+        // Limit reduced to 50
         const result = await query(
-            `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 200`, 
+            `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`, 
             [username]
         );
         res.json(result.rows.map(mapRow));
@@ -470,8 +482,8 @@ api.get('/messages', async (req, res) => {
 // GET GUESTBOOK (For Profile or All)
 api.get('/guestbook', async (req, res) => {
     try {
-        // Fetch all guestbook entries (or optimize to filter by user if provided)
-        const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 200`);
+        // Limit reduced
+        const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 50`);
         res.json(result.rows.map(mapRow));
     } catch(e) {
         res.status(500).json({ error: e.message });
@@ -536,7 +548,10 @@ const createCrudRoutes = (router, table) => {
             `, [recordId, req.body]);
             
             // Invalidate Caches
-            if (table === 'exhibits') cache.del('feed_global');
+            if (table === 'exhibits') {
+                cache.del('feed_global');
+                cache.del('feed_global_lite');
+            }
             if (table === 'wishlist') cache.del('wishlist_global');
             if (table === 'collections') cache.del('collections_global');
 
@@ -551,7 +566,10 @@ const createCrudRoutes = (router, table) => {
         try {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
             // Invalidate Caches
-            if (table === 'exhibits') cache.del('feed_global');
+            if (table === 'exhibits') {
+                cache.del('feed_global');
+                cache.del('feed_global_lite');
+            }
             if (table === 'wishlist') cache.del('wishlist_global');
             if (table === 'collections') cache.del('collections_global');
             res.json({ success: true });

@@ -14,7 +14,7 @@ interface NeoArchiveDB extends DBSchema {
   };
   exhibits: {
     key: string;
-    value: Exhibit;
+    value: Exhibit & { _isLite?: boolean }; // Allow lite flag in DB
     indexes: { 'by-owner': string; 'by-date': string };
   };
   collections: {
@@ -50,7 +50,7 @@ const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V1'; // Changing this clears DB for ev
 // --- IN-MEMORY HOT CACHE (RAM) ---
 // Mimics Redis on the client side for instant UI updates
 let hotCache = {
-    exhibits: [] as Exhibit[],
+    exhibits: [] as (Exhibit & { _isLite?: boolean })[],
     collections: [] as Collection[],
     notifications: [] as Notification[],
     messages: [] as Message[],
@@ -269,7 +269,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         const db = await getDB();
         const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
 
-        // Save Feed
+        // Save Feed (Note: These might be 'Lite' objects with partial images)
         if (Array.isArray(feed)) {
             feed.forEach(item => tx.objectStore('exhibits').put(item));
         }
@@ -613,22 +613,40 @@ export const getUserAvatar = (username: string): string => {
     return `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&bold=true`;
 };
 
+// IMPROVED: Automatically upgrades "Lite" objects (from feed sync) to Full objects
 export const fetchExhibitById = async (id: string) => {
     // Try Hot Cache
     const mem = hotCache.exhibits.find(e => e.id === id);
-    if (mem) return mem;
+    // If we have it in memory AND it's NOT a lite version, use it
+    if (mem && !mem._isLite) return mem;
     
     // Try IndexedDB
     const db = await getDB();
     const local = await db.get('exhibits', id);
-    if (local) return local;
+    // If local DB has a full version, use it
+    if (local && !local._isLite) {
+        // Update hot cache if needed
+        if (!mem || mem._isLite) {
+            const idx = hotCache.exhibits.findIndex(e => e.id === id);
+            if (idx !== -1) hotCache.exhibits[idx] = local;
+            else hotCache.exhibits.push(local);
+        }
+        return local;
+    }
 
-    // Try Server
+    // Try Server (Full fetch)
     try {
+        console.log(`[NeoDB] Upgrading exhibit ${id} from server...`);
         const item = await apiCall(`/exhibits/${id}`);
         if(item) {
+            // Save full version to DB and Cache
             await db.put('exhibits', item);
-            hotCache.exhibits.push(item);
+            
+            const idx = hotCache.exhibits.findIndex(e => e.id === id);
+            if (idx !== -1) hotCache.exhibits[idx] = item;
+            else hotCache.exhibits.push(item);
+            
+            notifyListeners(); // Update UI
         }
         return item;
     } catch { return null; }
