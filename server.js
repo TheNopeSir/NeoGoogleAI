@@ -137,7 +137,8 @@ const query = async (text, params = []) => {
 const mapRow = (row) => {
     if (!row) return null;
     const { data, ...rest } = row;
-    return { ...(data || {}), ...rest };
+    // FIX: Prioritize data (JSON) over columns to ensure password/email from JSON are used
+    return { ...rest, ...(data || {}) };
 };
 
 // ==========================================
@@ -214,14 +215,19 @@ api.post('/auth/login', async (req, res) => {
     const cleanIdentifier = identifier ? identifier.trim() : '';
     const cleanPassword = password ? password.trim() : '';
 
+    console.log(`[Auth] Attempting login for: ${cleanIdentifier}`);
+
     try {
-        // Case insensitive lookup for username OR email
+        // Updated Query: Handles whitespace in DB (TRIM) and case insensitivity
         const result = await query(
-            `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($1)`, 
+            `SELECT * FROM users WHERE TRIM(LOWER(username)) = LOWER($1) OR TRIM(LOWER(data->>'email')) = LOWER($1)`, 
             [cleanIdentifier]
         );
         
-        if (result.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
+        if (result.rows.length === 0) {
+            console.log(`[Auth] User not found for: ${cleanIdentifier}`);
+            return res.status(404).json({ error: "Пользователь не найден" });
+        }
         
         const user = mapRow(result.rows[0]);
         
@@ -233,11 +239,16 @@ api.post('/auth/login', async (req, res) => {
             passIsValid = true;
         }
 
-        if (!passIsValid) return res.status(401).json({ error: "Неверный пароль" });
+        if (!passIsValid) {
+            console.log(`[Auth] Password mismatch for ${user.username}.`); 
+            // NOTE: Do not log actual passwords in production!
+            return res.status(401).json({ error: "Неверный пароль" });
+        }
         
+        console.log(`[Auth] Success: ${user.username}`);
         res.json(user);
     } catch (e) {
-        console.error(e);
+        console.error("[Auth] Login Error:", e);
         res.status(500).json({ error: "Ошибка сервера при входе: " + e.message });
     }
 });
@@ -299,14 +310,23 @@ api.post('/auth/recover', async (req, res) => {
     const cleanEmail = email.trim();
 
     try {
-        const result = await query(`SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`, [cleanEmail]);
-        if (result.rows.length === 0) return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
+        // Robust email search
+        const result = await query(`SELECT * FROM users WHERE TRIM(LOWER(data->>'email')) = LOWER($1)`, [cleanEmail]);
+        
+        if (result.rows.length === 0) {
+            console.log(`[Recover] Email not found: ${cleanEmail}`);
+            // Return success anyway for security (prevent email enumeration)
+            return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
+        }
 
         const rawUser = result.rows[0];
         const user = mapRow(rawUser);
-        const newPass = crypto.randomBytes(4).toString('hex');
+        const newPass = crypto.randomBytes(4).toString('hex'); // 8 chars hex
         user.password = newPass;
         
+        console.log(`[Recover] Resetting password for ${user.username}`);
+
+        // Update DB first
         await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
         // Non-blocking mail send to prevent API timeout
@@ -319,6 +339,7 @@ api.post('/auth/recover', async (req, res) => {
                 <h2>/// SYSTEM OVERRIDE</h2>
                 <p>New Access Key:</p>
                 <h1 style="border: 1px dashed #0f0; display: inline-block; padding: 10px;">${newPass}</h1>
+                <p>Use this key to login. You can change it in your profile settings later.</p>
             </div>`
         }).catch(err => console.error("[MAIL] Recovery Failed:", err.message));
 
