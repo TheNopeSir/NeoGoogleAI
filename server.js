@@ -77,21 +77,33 @@ app.use((req, res, next) => {
 });
 
 // ==========================================
-// 📧 SMTP CONFIGURATION
+// 📧 НАСТРОЙКА ПОЧТЫ (TIMEWEB SMTP)
 // ==========================================
 
-if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    // console.warn("\n⚠️  ВНИМАНИЕ: Настройки SMTP (почты) не найдены в файле .env!");
-}
+const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
+const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.timeweb.ru',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: parseInt(process.env.SMTP_PORT || '465') === 465, 
+    host: 'smtp.timeweb.ru',
+    port: 465,
+    secure: true,
     auth: {
-        user: process.env.SMTP_USER, 
-        pass: process.env.SMTP_PASS,
+        user: SMTP_EMAIL,
+        pass: SMTP_PASSWORD
     },
+    tls: {
+        rejectUnauthorized: false
+    },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000
+});
+
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error("⚠️ [Mail] SMTP Config Error:", error.message);
+    } else {
+        console.log(`✅ [Mail] SMTP Server is ready. User: ${SMTP_EMAIL}`);
+    }
 });
 
 // ==========================================
@@ -179,14 +191,12 @@ api.post('/auth/register', async (req, res) => {
         );
         
         try {
-            if (process.env.SMTP_USER) {
-                await transporter.sendMail({
-                    from: `"NeoArchive" <${process.env.SMTP_USER}>`,
-                    to: cleanEmail,
-                    subject: 'WELCOME TO THE ARCHIVE',
-                    html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
-                });
-            }
+            await transporter.sendMail({
+                from: `"NeoArchive" <${SMTP_EMAIL}>`,
+                to: cleanEmail,
+                subject: 'WELCOME TO THE ARCHIVE',
+                html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
+            });
         } catch (mailError) {
             console.error("[MAIL] Failed:", mailError.message);
         }
@@ -301,22 +311,20 @@ api.post('/auth/recover', async (req, res) => {
         
         await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
-        if (process.env.SMTP_USER) {
-            try {
-                await transporter.sendMail({
-                    from: `"NeoArchive Security" <${process.env.SMTP_USER}>`,
-                    to: cleanEmail,
-                    subject: 'PASSWORD RESET // NEO_ARCHIVE',
-                    html: `
-                    <div style="background: #000; color: #0f0; padding: 20px; font-family: monospace;">
-                        <h2>/// SYSTEM OVERRIDE</h2>
-                        <p>New Access Key:</p>
-                        <h1 style="border: 1px dashed #0f0; display: inline-block; padding: 10px;">${newPass}</h1>
-                    </div>`
-                });
-            } catch (mailError) {
-                console.error("[MAIL] Recovery Failed:", mailError);
-            }
+        try {
+            await transporter.sendMail({
+                from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
+                to: cleanEmail,
+                subject: 'PASSWORD RESET // NEO_ARCHIVE',
+                html: `
+                <div style="background: #000; color: #0f0; padding: 20px; font-family: monospace;">
+                    <h2>/// SYSTEM OVERRIDE</h2>
+                    <p>New Access Key:</p>
+                    <h1 style="border: 1px dashed #0f0; display: inline-block; padding: 10px;">${newPass}</h1>
+                </div>`
+            });
+        } catch (mailError) {
+            console.error("[MAIL] Recovery Failed:", mailError);
         }
         res.json({ success: true });
     } catch (e) {
