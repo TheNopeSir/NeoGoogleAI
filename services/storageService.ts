@@ -249,15 +249,22 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             promises.push(apiCall(`/sync?username=${activeUserUsername}`));
         }
 
-        // Await ALL data
-        const results = await Promise.all(promises);
+        // Await ALL data safely using allSettled to prevent partial failure
+        const results = await Promise.allSettled(promises);
         
-        const feed = results[0];
-        const globalUsers = results[1];
-        const globalWishlist = results[2];
-        const globalCollections = results[3];
-        const globalGuestbook = results[4];
-        const syncData = activeUserUsername ? results[5] : null;
+        // Helper to extract value or empty array/null
+        const getVal = (res: PromiseSettledResult<any>) => res.status === 'fulfilled' ? res.value : [];
+        const logErr = (res: PromiseSettledResult<any>, name: string) => { if(res.status === 'rejected') console.warn(`[Sync] ${name} failed:`, res.reason); };
+
+        logErr(results[0], 'Feed');
+        logErr(results[1], 'Users');
+        
+        const feed = getVal(results[0]);
+        const globalUsers = getVal(results[1]);
+        const globalWishlist = getVal(results[2]);
+        const globalCollections = getVal(results[3]);
+        const globalGuestbook = getVal(results[4]);
+        const syncData = activeUserUsername ? getVal(results[5]) : null;
 
         const db = await getDB();
         const tx = db.transaction(['exhibits', 'users', 'generic', 'collections'], 'readwrite');
@@ -302,10 +309,13 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         // Sync Notifications & Messages
         if (activeUserUsername) {
             try {
-                const [notifs, msgs] = await Promise.all([
+                const resultsPriv = await Promise.allSettled([
                     apiCall(`/notifications?username=${activeUserUsername}`),
                     apiCall(`/messages?username=${activeUserUsername}`)
                 ]);
+
+                const notifs = getVal(resultsPriv[0]);
+                const msgs = getVal(resultsPriv[1]);
 
                 if(Array.isArray(notifs)) {
                     const txNotif = db.transaction('notifications', 'readwrite');
@@ -327,7 +337,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         await hydrateContent(); 
         console.log("✅ [Sync] Background sync complete");
     } catch (e) {
-        console.warn("[Sync] Server unreachable or timeout:", e);
+        console.warn("[Sync] Critical sync error:", e);
     }
 };
 

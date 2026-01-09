@@ -9,6 +9,13 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
 
+// ==========================================
+// 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
+// ==========================================
+// Fix for "self-signed certificate in certificate chain" error
+// Required for Timeweb Cloud / Heroku Postgres connections
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 // Загружаем настройки из файла .env
 dotenv.config();
 
