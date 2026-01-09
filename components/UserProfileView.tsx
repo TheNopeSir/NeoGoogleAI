@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
@@ -637,8 +636,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         </div>
                     </div>
 
-                    {/* ACTIVITY MAP (Real Data) - Added touch-pan-y to prevent blocking vertical scroll */}
-                    <div className={`p-6 rounded-xl border overflow-x-auto ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`} style={{ touchAction: 'pan-y' }}>
+                    {/* ACTIVITY MAP (Real Data) */}
+                    <div className={`p-6 rounded-xl border overflow-x-auto ${isWinamp ? 'bg-black border-[#505050]' : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                         <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={14}/> Активность (Последний год)</h3>
                         <div className="flex gap-1 min-w-max pb-2">
                             {/* Render weeks columns */}
@@ -674,21 +673,17 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             )}
 
             {isCurrentUser && activeSection === 'CONFIG' && (
-                // Fixed height container with internal scrolling for improved UX
-                <div className={`animate-in fade-in rounded-xl overflow-hidden mx-0 md:mx-0 border flex flex-col max-h-[80vh] ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
+                <div className={`animate-in fade-in rounded-xl overflow-hidden mx-0 md:mx-0 border ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
                     {/* Settings Header for Config Mode */}
-                    <div className="p-4 border-b border-white/10 flex-shrink-0">
+                    <div className="p-4 border-b border-white/10">
                         <h1 className="text-lg font-pixel font-bold">НАСТРОЙКИ</h1>
                         <p className="text-xs opacity-50 font-mono">Редактирование профиля @{user.username}</p>
                     </div>
 
                     {/* Settings Navigation */}
-                    <div className={`p-2 border-b flex-shrink-0 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-black/10'}`}>
+                    <div className={`p-2 border-b ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-black/10'}`}>
                         {renderSettingsNav()}
-                    </div>
-
-                    {/* Scrollable Content Area */}
-                    <div className="p-4 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+                        
                         {settingsCategory === 'PROFILE' && (
                             <div className="space-y-2 animate-in slide-in-from-right-4">
                                 <h3 className="font-pixel text-[10px] opacity-50 uppercase tracking-widest mb-1 block">Основное</h3>
@@ -895,8 +890,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         )}
                     </div>
 
-                    {/* Action Footer - Fixed */}
-                    <div className={`p-2 flex gap-2 flex-shrink-0 ${isDark ? 'bg-black/40' : 'bg-black/5'}`}>
+                    {/* Action Footer */}
+                    <div className={`p-2 flex gap-2 ${isDark ? 'bg-black/40' : 'bg-black/5'}`}>
                         <button onClick={handleSaveExtended} className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase hover:bg-green-500 transition-all">Сохранить</button>
                         <button onClick={exitConfig} className={`px-6 py-2 rounded-lg border text-xs uppercase ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-black/10 hover:bg-black/5'}`}>Отмена</button>
                     </div>
