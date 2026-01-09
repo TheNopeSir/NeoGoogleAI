@@ -173,8 +173,21 @@ const api = express.Router();
 
 api.get('/', (req, res) => res.json({ status: 'NeoArchive API Online' }));
 
-api.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date(), port: PORT, cacheSize: cache.cache.size });
+api.get('/health', async (req, res) => {
+    let totalUsers = 0;
+    try {
+        const resCount = await query('SELECT COUNT(*) FROM users');
+        totalUsers = parseInt(resCount.rows[0].count);
+    } catch (e) {
+        console.error("Health check DB stats failed:", e.message);
+    }
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date(), 
+        port: PORT, 
+        cacheSize: cache.cache.size,
+        totalUsers: totalUsers
+    });
 });
 
 // AUTH: REGISTER
