@@ -132,8 +132,8 @@ const notifyListeners = () => listeners.forEach(l => l());
 // --- API HELPER WITH TIMEOUT ---
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
     const controller = new AbortController();
-    // 8 second timeout. If server doesn't respond, we fail and use local DB.
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    // Increased to 15 seconds for mobile networks
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
         const headers: any = { 'Content-Type': 'application/json' };
@@ -144,7 +144,14 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
         };
         if (body) options.body = JSON.stringify(body);
         
-        const fullPath = `${API_BASE}${endpoint}`;
+        let fullPath = `${API_BASE}${endpoint}`;
+        
+        // Anti-Caching strategy for mobile browsers
+        if (method === 'GET') {
+            const separator = fullPath.includes('?') ? '&' : '?';
+            fullPath += `${separator}_t=${Date.now()}`;
+        }
+
         const res = await fetch(fullPath, options);
         
         clearTimeout(timeoutId);
@@ -230,7 +237,8 @@ const deleteGeneric = async (id: string) => {
 
 // BACKGROUND SYNC LOGIC (Progressive - Instant Updates)
 const performBackgroundSync = async (activeUserUsername?: string) => {
-    if (!navigator.onLine) return;
+    // Relaxed online check for mobile consistency
+    // if (!navigator.onLine) return; 
     
     console.log("🔄 [Sync] Starting Progressive Sync...");
     const db = await getDB();
