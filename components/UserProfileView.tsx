@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
@@ -332,7 +331,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {/* PROFILE HEADER - Hidden in Config Mode for Mobile Layout Fix */}
             {activeSection !== 'CONFIG' && (
                 <div className={isWinamp ? '' : `md:rounded-3xl border-b md:border overflow-hidden relative ${isDark ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
-                    {/* (Standard profile header code - unchanged) */}
+                    {/* ... (Previous Profile Header Code omitted for brevity, it's unchanged) ... */}
+                    {/* Re-using existing render logic for brevity since no changes requested here */}
                     {isWinamp ? (
                         <WinampWindow title={`USER: ${profileUser.username}`}>
                             <div className="flex gap-4 items-start">
