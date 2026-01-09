@@ -11,49 +11,44 @@ interface SEOProps {
 
 const SEO: React.FC<SEOProps> = ({ title, description, image, type = 'website', path = '' }) => {
     useEffect(() => {
-        // 1. Update Title
         document.title = title;
         
-        // 2. Helper to force update meta tags
-        const setMeta = (selector: string, content: string) => {
-            // Remove existing to force update
-            const oldTag = document.querySelector(selector);
-            if (oldTag) oldTag.remove();
-
-            // Create new
-            const meta = document.createElement('meta');
-            // Determine if it uses 'name' or 'property'
-            if (selector.startsWith('meta[property=')) {
-                const propName = selector.match(/property="([^"]*)"/)?.[1];
-                if(propName) meta.setAttribute('property', propName);
-            } else {
-                const nameAttr = selector.match(/name="([^"]*)"/)?.[1];
-                if(nameAttr) meta.setAttribute('name', nameAttr);
+        const updateMeta = (name: string, content: string) => {
+            let element = document.querySelector(`meta[name="${name}"]`);
+            if (!element) {
+                element = document.createElement('meta');
+                element.setAttribute('name', name);
+                document.head.appendChild(element);
             }
-            
-            meta.setAttribute('content', content);
-            document.head.appendChild(meta);
+            element.setAttribute('content', content);
         };
 
-        // 3. Update Standard Tags
+        const updateOgMeta = (property: string, content: string) => {
+            let element = document.querySelector(`meta[property="${property}"]`);
+            if (!element) {
+                element = document.createElement('meta');
+                element.setAttribute('property', property);
+                document.head.appendChild(element);
+            }
+            element.setAttribute('content', content);
+        };
+
         if (description) {
-            setMeta('meta[name="description"]', description);
-            setMeta('meta[property="og:description"]', description);
-            setMeta('meta[name="twitter:description"]', description);
+            updateMeta('description', description);
+            updateOgMeta('og:description', description);
+            updateMeta('twitter:description', description);
         }
 
-        // 4. Update Image Tags
         if (image) {
-            setMeta('meta[property="og:image"]', image);
-            setMeta('meta[name="twitter:image"]', image);
+            updateOgMeta('og:image', image);
+            updateMeta('twitter:image', image);
         }
 
-        // 5. Update Type & Title Tags
-        setMeta('meta[property="og:type"]', type);
-        setMeta('meta[property="og:title"]', title);
-        setMeta('meta[name="twitter:title"]', title);
-        setMeta('meta[property="og:url"]', window.location.href);
-
+        updateOgMeta('og:type', type);
+        updateOgMeta('og:title', title);
+        updateMeta('twitter:title', title);
+        
+        // Removed hash-based URL forcing to allow App.tsx to handle History API
     }, [title, description, image, type, path]);
 
     return null;

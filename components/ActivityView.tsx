@@ -1,9 +1,8 @@
 
-import React, { useState, useMemo, useRef } from 'react';
-import { Bell, MessageCircle, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests } from '../services/storageService';
-import SEO from './SEO';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -14,122 +13,6 @@ interface ActivityViewProps {
     onExhibitClick: (id: string, commentId?: string) => void;
     onChatClick: (username: string) => void;
 }
-
-const NotificationGroupCard: React.FC<{
-    group: any;
-    theme: string;
-    onAuthorClick: (u: string) => void;
-    onExhibitClick: (id: string) => void;
-    markGroupRead: (items: Notification[]) => void;
-}> = ({ group, theme, onAuthorClick, onExhibitClick, markGroupRead }) => {
-    const [expanded, setExpanded] = useState(false);
-    
-    const { items, type, timestamp } = group;
-    const actor = items[0].actor;
-    const count = items.length;
-    const isUnread = items.some((n: Notification) => !n.isRead);
-    const isSingle = count === 1;
-
-    const handleClick = () => {
-        // Mark read only on explicit interaction (Click)
-        if (isUnread) {
-            markGroupRead(items);
-        }
-
-        if (isSingle) {
-            // Navigate directly
-            const first = items[0];
-            if (first.targetId) {
-                onExhibitClick(first.targetId);
-            } else if (first.type === 'FOLLOW') {
-                onAuthorClick(first.actor);
-            }
-        } else {
-            // Toggle expand
-            setExpanded(!expanded);
-        }
-    };
-
-    const getIconForType = (t: string) => {
-        switch (t) {
-            case 'LIKE': return <Heart size={16} className="text-red-500 fill-current" />;
-            case 'COMMENT': return <MessageSquare size={16} className="text-blue-500 fill-current" />;
-            case 'FOLLOW': return <UserPlus size={16} className="text-green-500" />;
-            case 'GUESTBOOK': return <BookOpen size={16} className="text-yellow-500" />;
-            case 'TRADE_OFFER': return <RefreshCw size={16} className="text-blue-400" />;
-            case 'TRADE_ACCEPTED': return <Check size={16} className="text-green-400" />;
-            default: return <Bell size={16} />;
-        }
-    };
-
-    let title = '';
-    let subtext = '';
-
-    if (type === 'LIKE') {
-        title = isSingle ? `Понравился ваш экспонат` : `Оценил ${count} ваших экспонатов`;
-    } else if (type === 'COMMENT') {
-        title = isSingle ? `Новый комментарий` : `Оставил ${count} комментариев`;
-    } else if (type === 'FOLLOW') {
-        title = `Новый подписчик`;
-    } else if (type.includes('TRADE')) {
-        title = `Обновление по сделке`;
-    } else if (type === 'GUESTBOOK') {
-        title = `Запись в гостевой книге`;
-    } else {
-        title = 'Уведомление';
-    }
-
-    return (
-        <div className={`border-b transition-all ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent opacity-70 hover:opacity-100'}`}>
-            <div 
-                onClick={handleClick}
-                className="p-4 flex gap-4 cursor-pointer hover:bg-white/5 relative"
-            >
-                <div className="pt-1">{getIconForType(type)}</div>
-                <div className="flex-1 min-w-0">
-                    <div className="text-sm font-mono mb-1">
-                        <span className="font-bold text-green-400 hover:underline mr-1" onClick={(e) => { e.stopPropagation(); onAuthorClick(actor); }}>@{actor}</span>
-                        <span className="opacity-70">{title.toLowerCase()}</span>
-                    </div>
-                    
-                    {/* Single Item Preview */}
-                    {isSingle && items[0].targetPreview && (
-                        <div className="text-xs font-bold font-pixel opacity-90 border-l-2 border-white/20 pl-2 mt-2 truncate">
-                            "{items[0].targetPreview}"
-                        </div>
-                    )}
-
-                    <div className="text-[10px] opacity-40 mt-2 font-mono flex items-center gap-2">
-                        {new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        {!isSingle && <span className="bg-white/10 px-1.5 rounded-full text-[9px] flex items-center gap-1">{expanded ? <ChevronUp size={10}/> : <ChevronDown size={10}/>} {expanded ? 'Свернуть' : 'Подробнее'}</span>}
-                    </div>
-                </div>
-                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0 animate-pulse"/>}
-            </div>
-
-            {/* Expanded List */}
-            {expanded && !isSingle && (
-                <div className="bg-black/20 border-t border-white/5">
-                    {items.map((notif: Notification, idx: number) => (
-                        <div 
-                            key={notif.id}
-                            onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (notif.targetId) onExhibitClick(notif.targetId); 
-                            }}
-                            className="p-3 pl-12 border-b border-white/5 flex items-center justify-between hover:bg-white/5 cursor-pointer group"
-                        >
-                            <div className="text-xs font-pixel opacity-80 truncate pr-4">
-                                {notif.targetPreview || "Без названия"}
-                            </div>
-                            <ExternalLink size={12} className="opacity-0 group-hover:opacity-50"/>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
 
 const ActivityView: React.FC<ActivityViewProps> = ({ 
     notifications, messages, currentUser, theme, 
@@ -145,22 +28,19 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     }, [notifications, currentUser.username, filter]);
 
     const myMessages = messages.filter(m => m.sender.toLowerCase() === currentUser.username.toLowerCase() || m.receiver.toLowerCase() === currentUser.username.toLowerCase());
-    
-    // Trade requests are handled in a separate component usually, but keeping tab here for future
     const trades = getMyTradeRequests();
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
 
-    // --- GROUPING LOGIC (ACTOR + TYPE + DATE) ---
+    // --- GROUPING LOGIC ---
     const groupedNotifications = useMemo(() => {
         const groups: { [key: string]: Notification[] } = {};
         const order: string[] = [];
 
         myNotifs.forEach(notif => {
             const date = new Date(notif.timestamp).toDateString();
-            // Key: DATE_ACTOR_TYPE
-            // This groups all actions of a specific type by a specific user on a specific day
-            const groupKey = `${date}_${notif.actor}_${notif.type}`;
+            // Group key: TYPE + TARGET_ID + DATE
+            const groupKey = `${date}_${notif.type}_${notif.targetId || 'general'}`;
             
             if (!groups[groupKey]) {
                 groups[groupKey] = [];
@@ -174,8 +54,10 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             return {
                 id: key,
                 type: group[0].type,
-                items: group, // Contains array of notifications
+                items: group,
                 timestamp: group[0].timestamp,
+                targetId: group[0].targetId,
+                targetPreview: group[0].targetPreview
             };
         });
     }, [myNotifs]);
@@ -191,12 +73,59 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         return date.toLocaleDateString();
     };
 
-    // Helper to mark a group read
-    const markGroupRead = (groupItems: Notification[]) => {
-        const unreadIds = groupItems.filter(n => !n.isRead).map(n => n.id);
-        if (unreadIds.length > 0) {
-            markNotificationsRead(currentUser.username, unreadIds);
+    const getIconForType = (type: string) => {
+        switch (type) {
+            case 'LIKE': return <Heart size={16} className="text-red-500 fill-current" />;
+            case 'COMMENT': return <MessageSquare size={16} className="text-blue-500 fill-current" />;
+            case 'FOLLOW': return <UserPlus size={16} className="text-green-500" />;
+            case 'GUESTBOOK': return <BookOpen size={16} className="text-yellow-500" />;
+            case 'TRADE_OFFER': return <RefreshCw size={16} className="text-blue-400" />;
+            case 'TRADE_ACCEPTED': return <Check size={16} className="text-green-400" />;
+            default: return <Bell size={16} />;
         }
+    };
+
+    const renderNotificationCard = (group: any) => {
+        const count = group.items.length;
+        const first = group.items[0];
+        // Cast to string array to avoid 'unknown' type in JSX
+        const uniqueActors = Array.from(new Set(group.items.map((n: any) => n.actor as string))) as string[];
+        const isUnread = group.items.some((n: any) => !n.isRead);
+
+        let title = '';
+        if (first.type === 'LIKE') title = `Понравился ваш экспонат`;
+        else if (first.type === 'COMMENT') title = `Новый комментарий`;
+        else if (first.type === 'FOLLOW') title = `Новый подписчик`;
+        else if (first.type.includes('TRADE')) title = `Обновление по сделке`;
+        else title = 'Уведомление';
+
+        const actorsText = uniqueActors.length === 1 
+            ? <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={() => onAuthorClick(uniqueActors[0])}>@{uniqueActors[0]}</span> 
+            : <span><span className="font-bold text-green-400">@{uniqueActors[0]}</span> и еще <span className="font-bold">{uniqueActors.length - 1}</span></span>;
+
+        return (
+            <div key={group.id} className={`p-4 border-b transition-all flex gap-4 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent'}`}>
+                <div className="pt-1">{getIconForType(first.type)}</div>
+                <div className="flex-1">
+                    <div className="text-sm font-mono mb-1">
+                        {actorsText} <span className="opacity-70">{title.toLowerCase()}</span>
+                    </div>
+                    {first.targetPreview && (
+                        <div 
+                            onClick={() => first.targetId && onExhibitClick(first.targetId)}
+                            className="text-xs font-bold font-pixel opacity-90 cursor-pointer hover:text-green-400 transition-colors border-l-2 border-white/20 pl-2 mt-2"
+                        >
+                            "{first.targetPreview}"
+                        </div>
+                    )}
+                    <div className="text-[10px] opacity-40 mt-2 font-mono flex items-center gap-2">
+                        {new Date(first.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        {count > 1 && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">+{count} событий</span>}
+                    </div>
+                </div>
+                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2"/>}
+            </div>
+        );
     };
 
     // Grouping by Date for display
@@ -204,7 +133,6 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     return (
         <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 ${theme === 'winamp' ? 'font-mono text-gray-300' : ''}`}>
-            <SEO title="NeoArchive: Активность" />
             
             {/* Header Tabs */}
             <div className={`flex mb-6 border-b ${theme === 'winamp' ? 'border-[#505050]' : 'border-gray-500/30'}`}>
@@ -259,13 +187,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                                 {dateLabel}
                                             </div>
                                         )}
-                                        <NotificationGroupCard 
-                                            group={group} 
-                                            theme={theme}
-                                            onAuthorClick={onAuthorClick}
-                                            onExhibitClick={onExhibitClick}
-                                            markGroupRead={markGroupRead}
-                                        />
+                                        {renderNotificationCard(group)}
                                     </React.Fragment>
                                 );
                             })}
@@ -299,17 +221,17 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                         className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
                                     >
                                         <img src={getUserAvatar(partner)} className="w-10 h-10 rounded-full border border-white/20" />
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className={`font-bold font-pixel text-xs truncate ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
-                                                <span className="text-[9px] opacity-40 font-mono ml-2 shrink-0">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
+                                                <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
+                                                <span className="text-[9px] opacity-40 font-mono">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
                                             </div>
                                             <div className={`text-xs font-mono truncate ${hasUnread ? 'text-white' : 'opacity-60'}`}>
                                                 {lastMsg.sender.toLowerCase() === currentUser.username.toLowerCase() && <span className="opacity-50">Вы: </span>}
                                                 {lastMsg.text}
                                             </div>
                                         </div>
-                                        {hasUnread && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"/>}
+                                        {hasUnread && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>}
                                     </div>
                                 );
                             });
@@ -320,6 +242,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {activeTab === 'TRADES' && (
                 <div>
+                    {/* Trades Logic (simplified) */}
                     <div className="text-center opacity-30 py-10 font-pixel text-xs">АКТИВНЫЕ СДЕЛКИ</div>
                 </div>
             )}

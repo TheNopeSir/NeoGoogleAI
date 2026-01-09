@@ -4,7 +4,6 @@ import { ArrowLeft, Share2, FolderOpen, Grid, User, Edit3, Trash2 } from 'lucide
 import { Collection, Exhibit } from '../types';
 import ExhibitCard from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
-import SEO from './SEO';
 
 interface CollectionDetailPageProps {
     collection: Collection;
@@ -27,7 +26,6 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
 
     return (
         <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
-            <SEO title={`${collection.title} | ${collection.owner}`} description={collection.description} image={collection.coverImage} />
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={14} /> НАЗАД
