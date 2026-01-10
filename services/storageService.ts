@@ -234,12 +234,36 @@ const deleteGeneric = async (id: string) => {
     await db.delete('generic', id);
 };
 
+// CRITICAL FEED LOADER - Loads feed data synchronously before UI renders
+const loadCriticalFeedData = async () => {
+    try {
+        console.log("📦 [Sync] Loading critical feed data...");
+        const data = await apiCall('/feed');
+        if (!Array.isArray(data)) return;
+
+        // Update hotCache immediately
+        hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        notifyListeners();
+
+        // Persist to IDB in background (don't await)
+        getDB().then(db => {
+            const tx = db.transaction('exhibits', 'readwrite');
+            data.forEach(item => tx.store.put(item));
+            return tx.done;
+        }).then(() => console.log("✅ [Sync] Feed persisted"));
+
+        console.log(`✅ [Sync] Feed loaded: ${data.length} items`);
+    } catch (e) {
+        console.warn("[Sync] Critical feed load failed:", e);
+    }
+};
+
 // BACKGROUND SYNC LOGIC (Progressive - Instant Updates)
 const performBackgroundSync = async (activeUserUsername?: string) => {
     // Relaxed online check for mobile consistency
-    // if (!navigator.onLine) return; 
-    
-    console.log("🔄 [Sync] Starting Progressive Sync...");
+    // if (!navigator.onLine) return;
+
+    console.log("🔄 [Sync] Starting background sync...");
     const db = await getDB();
 
     // Helper to process specific fetch and update UI immediately
@@ -262,24 +286,24 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                  if (genericTable === 'wishlist') hotCache.wishlist = data;
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
             }
-            
+
             // --- 2. NOTIFY UI ---
-            notifyListeners(); 
+            notifyListeners();
 
             // --- 3. PERSIST TO IDB (Background) ---
             const tx = db.transaction(table as any, 'readwrite');
             const store = tx.objectStore(table as any);
 
-            // Clear old data for feed to prevent stale accumulation? 
-            // No, we overwrite by ID. But maybe we should clear for feed? 
+            // Clear old data for feed to prevent stale accumulation?
+            // No, we overwrite by ID. But maybe we should clear for feed?
             // For now, put is safe.
-            
+
             if (table === 'generic' && genericTable) {
                 data.forEach(item => store.put({ id: item.id, table: genericTable, data: item }));
             } else {
                 data.forEach(item => store.put(item));
             }
-            
+
             await tx.done;
             console.log(`✅ [Sync] ${endpoint} persisted`);
         } catch (e) {
@@ -287,11 +311,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         }
     };
 
-    // 1. FETCH FEED FIRST (Most important for "Instant" feel)
-    // AWAIT feed to ensure artifacts load before showing empty state
-    await fetchAndApply('/feed', 'exhibits', undefined, 'exhibits');
-
-    // 2. Fetch others in parallel (don't await these)
+    // Fetch all data in parallel (non-blocking)
     fetchAndApply('/users', 'users', undefined, 'users');
     fetchAndApply('/collections', 'collections', undefined, 'collections');
     fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
@@ -381,11 +401,14 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 3. Trigger Progressive Background Sync IMMEDIATELY
-    // AWAIT to ensure feed data loads before showing UI (fixes empty feed after cache reset)
-    await performBackgroundSync(activeUserUsername);
+    // 3. Load CRITICAL feed data FIRST (blocks until feed loads)
+    // This ensures artifacts appear in feed after cache reset
+    await loadCriticalFeedData();
 
-    // 4. Return user immediately from local cache if present
+    // 4. Trigger background sync for other data (non-blocking)
+    performBackgroundSync(activeUserUsername);
+
+    // 5. Return user immediately from local cache if present
     if (activeUserUsername) {
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
