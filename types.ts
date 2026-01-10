@@ -9,7 +9,7 @@ export interface Comment {
   likedBy: string[];
 }
 
-export type TierType = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'CURSED';
+export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';
 
 export type TradeStatus = 'NONE' | 'FOR_TRADE' | 'FOR_SALE' | 'GIFT' | 'NOT_FOR_SALE';
 
@@ -47,8 +47,9 @@ export interface Exhibit {
   owner: string;
   timestamp: string;
   likes: number;
-  likedBy: string[]; 
+  likedBy: string[];
   views: number;
+  viewedBy?: string[]; // Unique viewers tracking
   condition?: string;
   quality: string;
   specs: Record<string, string>;

@@ -20,6 +20,8 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
   const config = TIER_CONFIG[tier];
   const Icon = config.icon;
   const isCursed = tier === 'CURSED';
+  const isHighTier = config.glow; // UNCOMMON and above get glow effects
+  const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
   
   // Trade Status Logic
   const tradeStatus = item.tradeStatus || 'NONE';
@@ -91,15 +93,18 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
 
   // Standard Render for other themes
   return (
-    <div 
+    <div
       onClick={() => onClick(item)}
-      className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 
-        ${isXP 
-          ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white' 
+      className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative
+        ${isXP
+          ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white'
           : `rounded-2xl overflow-hidden border-2 ${theme === 'dark' ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
-        } 
-        ${isCursed ? 'animate-pulse' : ''}`
+        }
+        ${isCursed || config.animated ? 'animate-pulse' : ''}`
       }
+      style={isHighTier && theme === 'dark' ? {
+        boxShadow: `0 0 20px ${config.glowColor}, inset 0 0 20px ${config.glowColor}15`
+      } : undefined}
     >
       {/* XP Window Header */}
       {isXP && (
@@ -155,7 +160,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
             
             <div className="flex items-center gap-3">
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>
-                    <Eye size={12} /> <span>{item.views}</span>
+                    <Eye size={12} /> <span>{uniqueViews}</span>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); onLike(e); }} className={`flex items-center gap-1 text-[10px] transition-all hover:scale-110 ${isLiked ? 'text-green-400' : (isXP ? 'text-black/60' : 'opacity-40')}`}>
                     <Heart size={14} fill={isLiked ? "currentColor" : "none"} /> <span>{item.likes}</span>
