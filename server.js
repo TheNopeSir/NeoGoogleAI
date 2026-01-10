@@ -1,6 +1,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
@@ -73,6 +74,7 @@ const PORT = 3002;
 const app = express();
 
 app.disable('x-powered-by');
+app.use(compression()); // Enable gzip compression
 app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '50mb' }));
 
@@ -400,15 +402,28 @@ api.post('/auth/recover', async (req, res) => {
     }
 });
 
-// FEED (Optimized)
+// FEED (Optimized with pagination)
 api.get('/feed', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
+        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
+        const offset = parseInt(req.query.offset) || 0;
+
+        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
         const items = result.rows.map(mapRow).map(item => ({
-            ...item,
-            imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
-            comments: [],
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
             description: item.description ? item.description.slice(0, 200) : '',
+            imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
+            category: item.category,
+            subcategory: item.subcategory,
+            owner: item.owner,
+            timestamp: item.timestamp,
+            likes: item.likes,
+            views: item.views,
+            quality: item.quality,
+            isDraft: item.isDraft,
+            // Omit heavy fields: specs, comments, likedBy, relatedIds, tradeRequest
             _isLite: true
         }));
         res.json(items);
@@ -420,7 +435,8 @@ api.get('/feed', async (req, res) => {
 
 api.get('/users', async (req, res) => {
     try {
-        const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT 50');
+        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
+        const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT $1', [limit]);
         const users = result.rows.map(row => {
             const u = mapRow(row);
             if(u) { delete u.password; delete u.email; delete u.settings; }
@@ -432,7 +448,8 @@ api.get('/users', async (req, res) => {
 
 api.get('/wishlist', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT 50');
+        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
+        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT $1', [limit]);
         res.json(result.rows.map(mapRow));
     } catch (e) { res.status(500).json({error: e.message}); }
 });
