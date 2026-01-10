@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://neoarchive.ru/sitemap.xml
+Host: https://neoarchive.ru
