@@ -487,15 +487,66 @@ api.post('/users', async (req, res) => {
         if (!username) return res.status(400).json({ error: "Username required" });
 
         await query(`
-            INSERT INTO users (username, data, updated_at) 
+            INSERT INTO users (username, data, updated_at)
             VALUES ($1, $2, NOW())
             ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()
         `, [username, userData]);
-        
+
         cache.del('users_global');
         res.json({ success: true });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: e.message }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ADMIN: Fix user email (emergency endpoint)
+api.post('/admin/fix-user-email', async (req, res) => {
+    try {
+        const { username, email, adminKey } = req.body;
+
+        // Simple admin key check (change this to a secure value in production)
+        const ADMIN_KEY = process.env.ADMIN_KEY || 'change-me-in-production';
+        if (adminKey !== ADMIN_KEY) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (!username || !email) {
+            return res.status(400).json({ error: "Username and email required" });
+        }
+
+        // Get current user data
+        const result = await query(
+            `SELECT * FROM users WHERE LOWER(username) = LOWER($1)`,
+            [username]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = mapRow(result.rows[0]);
+        const oldEmail = user.email;
+
+        // Update email
+        user.email = email.trim();
+
+        await query(
+            `UPDATE users SET data = $1, updated_at = NOW() WHERE LOWER(username) = LOWER($2)`,
+            [user, username]
+        );
+
+        cache.del('users_global');
+
+        console.log(`[Admin] Email restored for ${username}: ${oldEmail} → ${email}`);
+        res.json({
+            success: true,
+            username: username,
+            oldEmail: oldEmail || '(none)',
+            newEmail: email
+        });
+    } catch (e) {
+        console.error('[Admin] Fix email error:', e);
+        res.status(500).json({ error: e.message });
     }
 });
 

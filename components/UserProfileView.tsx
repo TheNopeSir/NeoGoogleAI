@@ -123,9 +123,16 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     // Edit State
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
-    
+
     // New: State for changing email
     const [editEmail, setEditEmail] = useState(user.email);
+
+    // Sync editEmail with user.email when it changes
+    useEffect(() => {
+        if (user.email !== editEmail) {
+            setEditEmail(user.email);
+        }
+    }, [user.email]);
 
     // Filtered Data
     const userExhibits = exhibits.filter(e => e.owner === viewedProfileUsername);
@@ -165,18 +172,25 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     const handleSaveProfileExtended = async () => {
         if (!isCurrentUser) return;
-        
-        const updated = { 
-            ...user, 
-            tagline: editTagline, 
-            bio: editBio, 
-            status: editStatus, 
-            telegram: editTelegram,
-            email: editEmail // Added email update
+
+        const updated = {
+            ...user,
+            tagline: editTagline,
+            bio: editBio,
+            status: editStatus,
+            telegram: editTelegram
         };
-        
+
+        // Only update email if it's not empty (prevent overwriting existing email with empty value)
+        if (editEmail && editEmail.trim()) {
+            updated.email = editEmail.trim();
+        } else if (user.email) {
+            // Preserve existing email if new value is empty
+            updated.email = user.email;
+        }
+
         if (editPassword) updated.password = editPassword;
-        
+
         await db.updateUserProfile(updated);
         setIsEditingProfile(false);
         setEditPassword('');
