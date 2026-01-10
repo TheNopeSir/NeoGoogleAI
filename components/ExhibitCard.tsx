@@ -27,8 +27,22 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
 
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
-  
-  const imageUrl = item.imageUrls?.[0] || 'https://placehold.co/600x400?text=NO+IMAGE';
+
+  // Получаем оптимизированное изображение (thumbnail для превью)
+  const getImageUrl = (): string => {
+    const firstImage = item.imageUrls?.[0];
+    if (!firstImage) return 'https://placehold.co/600x400?text=NO+IMAGE';
+
+    // Новый формат (объект с путями к разным размерам)
+    if (typeof firstImage === 'object' && firstImage.thumbnail) {
+      return firstImage.thumbnail;
+    }
+
+    // Старый формат (Base64 Data URI или обычный URL)
+    return typeof firstImage === 'string' ? firstImage : 'https://placehold.co/600x400?text=NO+IMAGE';
+  };
+
+  const imageUrl = getImageUrl();
 
   if (isWinamp) {
       return (
