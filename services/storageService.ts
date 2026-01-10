@@ -234,11 +234,30 @@ const deleteGeneric = async (id: string) => {
     await db.delete('generic', id);
 };
 
-// CRITICAL FEED LOADER - Loads feed data synchronously before UI renders
+// CRITICAL FEED LOADER - Loads minimal feed data for fast startup
 const loadCriticalFeedData = async () => {
     try {
+        // If we already have data from IDB, skip network request and update in background
+        if (hotCache.exhibits.length > 0) {
+            console.log("✅ [Sync] Using cached feed data, will refresh in background");
+            // Refresh in background without blocking
+            apiCall('/feed?limit=10').then(data => {
+                if (!Array.isArray(data)) return;
+                hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                notifyListeners();
+                // Persist to IDB
+                getDB().then(db => {
+                    const tx = db.transaction('exhibits', 'readwrite');
+                    data.forEach(item => tx.store.put(item));
+                    return tx.done;
+                });
+            }).catch(e => console.warn("[Sync] Background feed refresh failed:", e));
+            return;
+        }
+
+        // No cached data - load minimal set (10 items only)
         console.log("📦 [Sync] Loading critical feed data...");
-        const data = await apiCall('/feed');
+        const data = await apiCall('/feed?limit=10');
         if (!Array.isArray(data)) return;
 
         // Update hotCache immediately
@@ -311,7 +330,10 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         }
     };
 
-    // Fetch all data in parallel (non-blocking)
+    // Fetch extended feed data (30 items) to fill the feed for scrolling
+    fetchAndApply('/feed?limit=30', 'exhibits', undefined, 'exhibits');
+
+    // Fetch all other data in parallel (non-blocking)
     fetchAndApply('/users', 'users', undefined, 'users');
     fetchAndApply('/collections', 'collections', undefined, 'collections');
     fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
