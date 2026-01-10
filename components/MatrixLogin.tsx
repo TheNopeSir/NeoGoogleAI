@@ -44,7 +44,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
               setIsLoading(true);
               try {
                   const userProfile = await db.loginViaTelegram(user);
-                  onLogin(userProfile, true);
+                  await onLogin(userProfile, true);
               }
               catch (err: any) {
                   setError("LOGIN FAILED: " + (err.message || "Server Error"));
@@ -62,7 +62,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
           script.setAttribute('data-request-access', 'write');
           telegramWrapperRef.current.appendChild(script);
       }
-  }, [step]);
+  }, [step, onLogin]);
 
   const resetForm = () => { setError(''); setInfoMessage(''); setShowRecoverOption(false); setPassword(''); setUsername(''); setShowPassword(false); };
   const generateSecurePassword = () => {
@@ -80,7 +80,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
 
       try {
           const user = await db.loginUser(cleanEmail, cleanPassword);
-          onLogin(user, rememberMe);
+          await onLogin(user, rememberMe);
       }
       catch (err: any) {
           setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ');

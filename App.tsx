@@ -241,6 +241,13 @@ export default function App() {
     );
   }
 
+  const handleLogin = useCallback(async (u: UserProfile, remember: boolean) => {
+     setUser(u);
+     if (u.settings?.theme) setTheme(u.settings.theme);
+     if (!remember) localStorage.removeItem('neo_active_user');
+     await syncFromUrl();
+  }, [syncFromUrl]);
+
   if (view === 'AUTH') {
     return (
       <div className="min-h-screen bg-dark-bg text-white relative overflow-hidden">
@@ -248,13 +255,7 @@ export default function App() {
         <MatrixRain theme="dark" />
         <CRTOverlay />
         <div className="relative z-10">
-          <MatrixLogin theme="dark" onLogin={(u, remember) => {
-             setUser(u);
-             if (u.settings?.theme) setTheme(u.settings.theme);
-             if (!remember) localStorage.removeItem('neo_active_user');
-             // Call syncFromUrl asynchronously but don't block the login flow
-             syncFromUrl().catch(err => console.error('Sync failed:', err));
-          }} />
+          <MatrixLogin theme="dark" onLogin={handleLogin} />
         </div>
       </div>
     );
