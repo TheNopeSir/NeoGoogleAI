@@ -209,6 +209,7 @@ api.post('/auth/register', async (req, res) => {
     const cleanPassword = password.trim();
 
     try {
+        // Robust duplicate check
         const check = await query(
             `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($2)`, 
             [cleanUsername, cleanEmail]
@@ -248,7 +249,7 @@ api.post('/auth/register', async (req, res) => {
     }
 });
 
-// AUTH: LOGIN
+// AUTH: LOGIN (ROBUST)
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     const cleanIdentifier = identifier ? identifier.trim() : '';
@@ -257,24 +258,38 @@ api.post('/auth/login', async (req, res) => {
     console.log(`[Auth] Attempting login for: ${cleanIdentifier}`);
 
     try {
-        const result = await query(
-            `SELECT * FROM users WHERE TRIM(LOWER(username)) = LOWER($1) OR TRIM(LOWER(data->>'email')) = LOWER($1)`, 
+        // STRATEGY: Try Username match first, then Email match.
+        // This is safer than a complex OR condition with JSONB in some postgres drivers.
+        
+        // 1. Try finding by Username (case-insensitive)
+        let result = await query(
+            `SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, 
             [cleanIdentifier]
         );
+
+        // 2. If not found, try finding by Email inside JSON (case-insensitive)
+        if (result.rows.length === 0) {
+            result = await query(
+                `SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`,
+                [cleanIdentifier]
+            );
+        }
         
         if (result.rows.length === 0) {
-            console.log(`[Auth] User not found for: ${cleanIdentifier}`);
+            console.log(`[Auth] User not found for identifier: ${cleanIdentifier}`);
             return res.status(404).json({ error: "Пользователь не найден" });
         }
         
         const user = mapRow(result.rows[0]);
         let passIsValid = user.password === cleanPassword;
+        
+        // Fallback for whitespace issues in older records
         if (!passIsValid && user.password && user.password.trim() === cleanPassword) {
             passIsValid = true;
         }
 
         if (!passIsValid) {
-            console.log(`[Auth] Password mismatch for ${user.username}.`); 
+            console.log(`[Auth] Password mismatch for ${user.username}`); 
             return res.status(401).json({ error: "Неверный пароль" });
         }
         
@@ -298,6 +313,7 @@ api.post('/auth/telegram', async (req, res) => {
         let user;
         if (check.rows.length > 0) {
             user = mapRow(check.rows[0]);
+            // Auto-update avatar if changed on TG
             if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
                 user.avatarUrl = tgUser.photo_url;
                 await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
@@ -365,11 +381,6 @@ api.post('/auth/recover', async (req, res) => {
 
 // FEED (Optimized)
 api.get('/feed', async (req, res) => {
-    // Disable caching for feed to ensure fresh data on mobile
-    // const cacheKey = 'feed_global_lite';
-    // const cached = cache.get(cacheKey);
-    // if (cached) return res.json(cached);
-
     try {
         // Limit to 50 to prevent massive payloads on mobile
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
@@ -385,7 +396,6 @@ api.get('/feed', async (req, res) => {
             _isLite: true
         }));
         
-        // cache.set(cacheKey, items, 30);
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -394,7 +404,6 @@ api.get('/feed', async (req, res) => {
 });
 
 api.get('/users', async (req, res) => {
-    // Disable caching for user list
     try {
         const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT 50');
         const users = result.rows.map(row => {

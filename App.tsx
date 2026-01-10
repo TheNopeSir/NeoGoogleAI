@@ -29,8 +29,6 @@ import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
-import AboutPage from './components/AboutPage';
-import Footer from './components/Footer';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus } from './types';
@@ -108,7 +106,6 @@ export default function App() {
       else if (root === 'search') setView('SEARCH');
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
-      else if (root === 'about') setView('ABOUT');
       else if (root === 'u' || root === 'profile') {
           const username = segments[1];
           if (username) {
@@ -154,7 +151,6 @@ export default function App() {
       else if (newView === 'SEARCH') path = '/search';
       else if (newView === 'CREATE_HUB') path = '/create';
       else if (newView === 'MY_COLLECTION') path = '/my-collection';
-      else if (newView === 'ABOUT') path = '/about';
       
       window.history.pushState({ view: newView, params }, '', path);
       window.scrollTo(0, 0);
@@ -493,16 +489,7 @@ export default function App() {
             {view === 'HALL_OF_FAME' && user && (
                  <HallOfFame theme={theme} achievements={user.achievements} onBack={handleBack} />
             )}
-
-            {view === 'ABOUT' && (
-                <AboutPage theme={theme} onBack={handleBack} />
-            )}
         </div>
-
-        {/* Footer - показывается только на десктопе, не для AUTH и не мешает мобильной навигации */}
-        {view !== 'AUTH' && user && (
-          <Footer theme={theme} onAboutClick={() => navigateTo('ABOUT')} />
-        )}
     </div>
   );
 }
