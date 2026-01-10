@@ -1,6 +1,6 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority } from './types';
-import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Sparkles, Gem } from 'lucide-react';
+import { Exhibit, TierType, TradeStatus, WishlistPriority, ReactionType } from './types';
+import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Sparkles, Gem, Heart, ThumbsUp } from 'lucide-react';
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
@@ -63,6 +63,15 @@ export const BADGE_CONFIG = {
 };
 
 export const BADGES = BADGE_CONFIG;
+
+export const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string; color: string }> = {
+    'LIKE': { emoji: '👍', label: 'Нравится', color: 'text-blue-500' },
+    'FIRE': { emoji: '🔥', label: 'Огонь', color: 'text-orange-500' },
+    'HEART': { emoji: '❤️', label: 'Обожаю', color: 'text-red-500' },
+    'STAR': { emoji: '⭐', label: 'Отлично', color: 'text-yellow-500' },
+    'TROPHY': { emoji: '🏆', label: 'Грааль', color: 'text-yellow-600' },
+    'COOL': { emoji: '😎', label: 'Круто', color: 'text-purple-500' }
+};
 
 export const STATUS_OPTIONS = {
     'ONLINE': { label: 'В сети', color: 'text-green-500', icon: Circle },
