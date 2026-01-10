@@ -402,30 +402,42 @@ api.post('/auth/recover', async (req, res) => {
     }
 });
 
-// FEED (Optimized with pagination)
+// FEED (Optimized with pagination and caching)
 api.get('/feed', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
+        const limit = parseInt(req.query.limit) || 20;
         const offset = parseInt(req.query.offset) || 0;
+        const cacheKey = `feed:${limit}:${offset}`;
 
-        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
-        const items = result.rows.map(mapRow).map(item => ({
-            id: item.id,
-            slug: item.slug,
-            title: item.title,
-            description: item.description ? item.description.slice(0, 200) : '',
-            imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
-            category: item.category,
-            subcategory: item.subcategory,
-            owner: item.owner,
-            timestamp: item.timestamp,
-            likes: item.likes,
-            views: item.views,
-            quality: item.quality,
-            isDraft: item.isDraft,
-            // Omit heavy fields: specs, comments, likedBy, relatedIds, tradeRequest
-            _isLite: true
-        }));
+        // Check cache first (30 second TTL)
+        let items = cache.get(cacheKey);
+
+        if (!items) {
+            const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
+            items = result.rows.map(mapRow).map(item => ({
+                id: item.id,
+                slug: item.slug,
+                title: item.title,
+                description: item.description ? item.description.slice(0, 200) : '',
+                imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
+                category: item.category,
+                subcategory: item.subcategory,
+                owner: item.owner,
+                timestamp: item.timestamp,
+                likes: item.likes,
+                views: item.views,
+                quality: item.quality,
+                isDraft: item.isDraft,
+                // Omit heavy fields: specs, comments, likedBy, relatedIds, tradeRequest
+                _isLite: true
+            }));
+
+            // Cache for 30 seconds
+            cache.set(cacheKey, items, 30);
+        }
+
+        // Set HTTP cache headers (30 seconds)
+        res.set('Cache-Control', 'public, max-age=30');
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -435,22 +447,39 @@ api.get('/feed', async (req, res) => {
 
 api.get('/users', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
-        const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT $1', [limit]);
-        const users = result.rows.map(row => {
-            const u = mapRow(row);
-            if(u) { delete u.password; delete u.email; delete u.settings; }
-            return u;
-        });
+        const limit = parseInt(req.query.limit) || 20;
+        const cacheKey = `users:${limit}`;
+
+        let users = cache.get(cacheKey);
+        if (!users) {
+            const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT $1', [limit]);
+            users = result.rows.map(row => {
+                const u = mapRow(row);
+                if(u) { delete u.password; delete u.email; delete u.settings; }
+                return u;
+            });
+            cache.set(cacheKey, users, 60); // Cache for 60 seconds
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(users);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
 api.get('/wishlist', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 20; // Reduced from 50 to 20
-        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT $1', [limit]);
-        res.json(result.rows.map(mapRow));
+        const limit = parseInt(req.query.limit) || 20;
+        const cacheKey = `wishlist:${limit}`;
+
+        let items = cache.get(cacheKey);
+        if (!items) {
+            const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT $1', [limit]);
+            items = result.rows.map(mapRow);
+            cache.set(cacheKey, items, 60); // Cache for 60 seconds
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(items);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
@@ -581,25 +610,37 @@ const createCrudRoutes = (router, table) => {
             const { id } = req.body;
             const recordId = id || req.body.id;
             if (!recordId) return res.status(400).json({ error: "ID required" });
-            
+
             await query(`
-                INSERT INTO "${table}" (id, data, updated_at) 
+                INSERT INTO "${table}" (id, data, updated_at)
                 VALUES ($1, $2, NOW())
                 ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
             `, [recordId, req.body]);
-            
-            if (table === 'exhibits') { cache.del('feed_global_lite'); }
-            
+
+            // Invalidate all related caches
+            if (table === 'exhibits') {
+                cache.flushPattern('feed:');
+            } else if (table === 'wishlist') {
+                cache.flushPattern('wishlist:');
+            }
+
             res.json({ success: true });
-        } catch (e) { 
-            res.status(500).json({ success: false, error: e.message }); 
+        } catch (e) {
+            res.status(500).json({ success: false, error: e.message });
         }
     });
 
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
-            if (table === 'exhibits') { cache.del('feed_global_lite'); }
+
+            // Invalidate all related caches
+            if (table === 'exhibits') {
+                cache.flushPattern('feed:');
+            } else if (table === 'wishlist') {
+                cache.flushPattern('wishlist:');
+            }
+
             res.json({ success: true });
         } catch (e) { res.status(500).json({ success: false, error: e.message }); }
     });
