@@ -288,9 +288,10 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     };
 
     // 1. FETCH FEED FIRST (Most important for "Instant" feel)
-    fetchAndApply('/feed', 'exhibits', undefined, 'exhibits');
+    // AWAIT feed to ensure artifacts load before showing empty state
+    await fetchAndApply('/feed', 'exhibits', undefined, 'exhibits');
 
-    // 2. Fetch others in parallel (don't await feed)
+    // 2. Fetch others in parallel (don't await these)
     fetchAndApply('/users', 'users', undefined, 'users');
     fetchAndApply('/collections', 'collections', undefined, 'collections');
     fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
@@ -381,8 +382,8 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     }
 
     // 3. Trigger Progressive Background Sync IMMEDIATELY
-    // Do not await this. Let it populate the UI as data arrives.
-    performBackgroundSync(activeUserUsername);
+    // AWAIT to ensure feed data loads before showing UI (fixes empty feed after cache reset)
+    await performBackgroundSync(activeUserUsername);
 
     // 4. Return user immediately from local cache if present
     if (activeUserUsername) {
