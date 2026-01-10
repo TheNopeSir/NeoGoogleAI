@@ -84,6 +84,19 @@ export const CATEGORY_CONDITIONS: Record<string, string[]> = {
   [DefaultCategory.MISC]: ['ИДЕАЛ', 'ХОРОШЕЕ', 'ПОТЕРТОЕ', 'СЛОМАНО']
 };
 
+// Category base tier (multiplier for tier calculation)
+export const CATEGORY_TIER_MULTIPLIER: Record<string, number> = {
+  [DefaultCategory.PHONES]: 1.2,      // Телефоны - более ценные, выше шанс на редкий тир
+  [DefaultCategory.GAMES]: 1.5,       // Игры - коллекционные, высокий спрос
+  [DefaultCategory.MAGAZINES]: 1.0,   // Журналы - стандартная ценность
+  [DefaultCategory.MUSIC]: 1.3,       // Музыка - винил и редкие издания
+  [DefaultCategory.VIDEO]: 1.1,       // Видео - VHS и редкие диски
+  [DefaultCategory.TOYS]: 1.4,        // Игрушки - коллекционные, винтажные
+  [DefaultCategory.COMPUTERS]: 1.6,   // Компьютеры - ретро-техника, очень ценная
+  [DefaultCategory.CAMERAS]: 1.7,     // Камеры - раритетная техника, высокая ценность
+  [DefaultCategory.MISC]: 0.9         // Прочее - базовая ценность
+};
+
 export const getArtifactTier = (item: Exhibit): TierType => {
     // Special case: CURSED items (manually marked or specific conditions)
     if (item.title.toUpperCase().includes('CURSED') || (item.title === 'вфуфвф' && (item.owner === 'Truester' || item.owner === '@Truester'))) {
@@ -98,7 +111,10 @@ export const getArtifactTier = (item: Exhibit): TierType => {
     const ageInDays = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60 * 24);
     const ageMultiplier = ageInDays < 7 ? 1.2 : 1.0;
 
-    const finalScore = engagementScore * ageMultiplier;
+    // Category multiplier: some categories are inherently more valuable
+    const categoryMultiplier = CATEGORY_TIER_MULTIPLIER[item.category] || 1.0;
+
+    const finalScore = engagementScore * ageMultiplier * categoryMultiplier;
 
     // Progressive tier thresholds
     if (finalScore >= 15000) return 'MYTHIC';      // Ultra rare, godlike

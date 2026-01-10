@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, DollarSign, Package } from 'lucide-react';
 import { Notification, Message, UserProfile } from '../types';
-import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase } from '../services/storageService';
+import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, getFullDatabase } from '../services/storageService';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -259,8 +259,109 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {activeTab === 'TRADES' && (
                 <div>
-                    {/* Trades Logic (simplified) */}
-                    <div className="text-center opacity-30 py-10 font-pixel text-xs">АКТИВНЫЕ СДЕЛКИ</div>
+                    {(() => {
+                        const db = getFullDatabase();
+                        const myTrades = db.tradeRequests || [];
+                        const userTrades = myTrades.filter(t =>
+                            t.sender === currentUser.username || t.recipient === currentUser.username
+                        ).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+                        if (userTrades.length === 0) {
+                            return (
+                                <div className="text-center py-20 opacity-30 font-pixel text-xs border-2 border-dashed border-white/10 rounded-3xl">
+                                    НЕТ АКТИВНЫХ СДЕЛОК
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="space-y-3">
+                                {userTrades.map(trade => {
+                                    const isIncoming = trade.recipient === currentUser.username;
+                                    const partner = isIncoming ? trade.sender : trade.recipient;
+                                    const statusColor =
+                                        trade.status === 'ACCEPTED' ? 'text-green-500' :
+                                        trade.status === 'REJECTED' ? 'text-red-500' :
+                                        trade.status === 'COMPLETED' ? 'text-blue-500' :
+                                        'text-yellow-500';
+
+                                    return (
+                                        <div
+                                            key={trade.id}
+                                            className={`p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'}`}
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <img src={getUserAvatar(partner)} className="w-10 h-10 rounded-full border border-white/20" />
+                                                    <div>
+                                                        <div className="font-bold font-pixel text-sm flex items-center gap-2">
+                                                            @{partner}
+                                                            <span className={`text-[9px] px-2 py-0.5 rounded-full border ${statusColor} border-current`}>
+                                                                {trade.status}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] opacity-50 font-mono mt-0.5">
+                                                            {isIncoming ? '→ Входящее предложение' : '← Исходящее предложение'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[10px] opacity-40 font-mono">
+                                                        {new Date(trade.updatedAt).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Trade Details */}
+                                            <div className="flex items-center gap-4 p-3 bg-black/20 rounded-lg">
+                                                <div className="flex-1">
+                                                    <div className="text-[9px] opacity-50 mb-1 uppercase">Предлагает</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Package size={14} className="text-blue-400" />
+                                                        <span className="text-xs font-mono">{trade.senderItems.length} предмет(ов)</span>
+                                                    </div>
+                                                </div>
+
+                                                <ArrowRight size={16} className="opacity-30" />
+
+                                                <div className="flex-1">
+                                                    <div className="text-[9px] opacity-50 mb-1 uppercase">За</div>
+                                                    <div className="flex items-center gap-2">
+                                                        {trade.price ? (
+                                                            <>
+                                                                <DollarSign size={14} className="text-green-400" />
+                                                                <span className="text-xs font-mono font-bold text-green-400">
+                                                                    {trade.price} {trade.currency || 'RUB'}
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Package size={14} className="text-purple-400" />
+                                                                <span className="text-xs font-mono">{trade.recipientItems.length} предмет(ов)</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Trade Type Badge */}
+                                            {trade.type && (
+                                                <div className="mt-2 text-[9px] opacity-50 font-mono flex items-center gap-2">
+                                                    <span>Тип:</span>
+                                                    <span className="px-2 py-0.5 rounded bg-white/10">{trade.type}</span>
+                                                    {trade.isWishlistFulfillment && (
+                                                        <span className="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500">
+                                                            🎯 Из вишлиста
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </div>
