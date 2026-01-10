@@ -37,7 +37,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
         return 'TRENDS';
     };
 
-    const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab);
+    const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab());
     
     const isWinamp = theme === 'winamp';
 
