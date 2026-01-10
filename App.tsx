@@ -62,7 +62,7 @@ export default function App() {
 
   // Feed State
   const [selectedCategory, setSelectedCategory] = useState<string>('ВСЕ');
-  const [feedMode, setFeedMode] = useState<'ARTIFACTS' | 'WISHLIST'>('ARTIFACTS');
+  const [feedMode, setFeedMode] = useState<'ARTIFACTS' | 'WISHLIST' | 'COLLECTIONS'>('ARTIFACTS');
   const [feedViewMode, setFeedViewMode] = useState<'GRID' | 'LIST'>('GRID');
   const [feedType, setFeedType] = useState<'FOR_YOU' | 'FOLLOWING'>('FOR_YOU');
 
@@ -293,7 +293,7 @@ export default function App() {
               case 'COMMUNITY_HUB': return <Radio size={24} />;
               case 'CREATE_HUB': return <Zap size={24} />;
               case 'ACTIVITY': return <Activity size={24} />;
-              default: return null; 
+              default: return null;
           }
       }
       if (theme === 'xp') {
@@ -314,12 +314,29 @@ export default function App() {
       }
   };
 
+  // Swipe Navigation between main tabs
+  const mainTabs: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'CREATE_HUB', 'ACTIVITY'];
+  const currentTabIndex = mainTabs.indexOf(view);
+
+  const swipeHandlers = useSwipe({
+      onSwipeLeft: () => {
+          if (currentTabIndex >= 0 && currentTabIndex < mainTabs.length - 1) {
+              navigateTo(mainTabs[currentTabIndex + 1]);
+          }
+      },
+      onSwipeRight: () => {
+          if (currentTabIndex > 0) {
+              navigateTo(mainTabs[currentTabIndex - 1]);
+          }
+      }
+  });
+
   return (
-    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
+    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} {...swipeHandlers}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
-        
+
         <ToastContainer />
 
         {isOffline && (
@@ -384,7 +401,7 @@ export default function App() {
 
         <div className="md:pt-16">
             {view === 'FEED' && user && (
-                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onLike={handleLike} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onLike={handleLike} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
             )}
 
             {view === 'ACTIVITY' && user && (

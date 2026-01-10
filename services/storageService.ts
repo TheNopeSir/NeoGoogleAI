@@ -367,9 +367,9 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
 
     // 1. Load Critical Data (Users/Session)
     await hydrateCritical();
-    
-    // 2. Start Heavy Load (Exhibits from IDB)
-    hydrateContent();
+
+    // 2. Start Heavy Load (Exhibits from IDB) - AWAIT to ensure data loads
+    await hydrateContent();
 
     let activeUserUsername: string | undefined;
     try {
