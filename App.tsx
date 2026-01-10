@@ -252,7 +252,8 @@ export default function App() {
              setUser(u);
              if (u.settings?.theme) setTheme(u.settings.theme);
              if (!remember) localStorage.removeItem('neo_active_user');
-             syncFromUrl();
+             // Call syncFromUrl asynchronously but don't block the login flow
+             syncFromUrl().catch(err => console.error('Sync failed:', err));
           }} />
         </div>
       </div>
