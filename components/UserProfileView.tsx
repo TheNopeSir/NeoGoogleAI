@@ -4,7 +4,7 @@ import {
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings, 
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
-    AlertTriangle, RefreshCw, Crown
+    AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
 import { STATUS_OPTIONS } from '../constants';
@@ -114,6 +114,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const isCurrentUser = user?.username === viewedProfileUsername;
     const isSubscribed = user?.following?.includes(viewedProfileUsername) || false;
     const isWinamp = theme === 'winamp';
+    const isPlaceholderEmail = user.email?.includes('placeholder') || user.email?.includes('tg_');
 
     // Tabs
     const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST'>('SHELF');
@@ -122,6 +123,9 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     // Edit State
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
+    
+    // New: State for changing email
+    const [editEmail, setEditEmail] = useState(user.email);
 
     // Filtered Data
     const userExhibits = exhibits.filter(e => e.owner === viewedProfileUsername);
@@ -157,6 +161,25 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         if (key === 'theme' && onThemeChange) onThemeChange(value); 
         const updatedUser = { ...user, settings: newSettings }; 
         await db.updateUserProfile(updatedUser); 
+    };
+
+    const handleSaveProfileExtended = async () => {
+        if (!isCurrentUser) return;
+        
+        const updated = { 
+            ...user, 
+            tagline: editTagline, 
+            bio: editBio, 
+            status: editStatus, 
+            telegram: editTelegram,
+            email: editEmail // Added email update
+        };
+        
+        if (editPassword) updated.password = editPassword;
+        
+        await db.updateUserProfile(updated);
+        setIsEditingProfile(false);
+        setEditPassword('');
     };
 
     const handleGuestbookSubmit = () => {
@@ -254,6 +277,19 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             <div className="space-y-4">
                                 {isEditingProfile && isCurrentUser ? (
                                     <div className="space-y-4 bg-black/5 p-4 rounded-xl border border-dashed border-white/10">
+                                        
+                                        {isPlaceholderEmail && (
+                                            <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-lg flex items-start gap-3">
+                                                <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+                                                <div>
+                                                    <h3 className="text-red-500 font-bold text-xs mb-1">НЕОБХОДИМО ПРИВЯЗАТЬ EMAIL</h3>
+                                                    <p className="text-[10px] opacity-70">
+                                                        Вы вошли через Telegram. Ваш текущий email - временный. Установите реальный email и пароль, чтобы иметь возможность входа через форму.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div>
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 block">Статус / Слоган</label>
                                             <input value={editTagline} onChange={(e) => setEditTagline(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
@@ -262,8 +298,24 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 block">О себе</label>
                                             <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={3} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none resize-none"/>
                                         </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                                            <div>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><Mail size={12}/> Email (Для входа)</label>
+                                                <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><Key size={12}/> Новый пароль</label>
+                                                <div className="flex gap-2">
+                                                    <input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} type={showPassword ? "text" : "password"} placeholder="Изменить пароль..." className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
+                                                    <button onClick={() => setShowPassword(!showPassword)} className="p-2 border rounded-lg hover:bg-white/10"><Eye size={14}/></button>
+                                                    <button onClick={generateSecurePassword} className="p-2 border rounded-lg hover:bg-white/10"><Wand2 size={14}/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="flex gap-2 pt-2">
-                                            <button onClick={onSaveProfile} className="flex-1 bg-green-600 text-white px-4 py-2 rounded font-bold text-xs uppercase">Сохранить</button>
+                                            <button onClick={handleSaveProfileExtended} className="flex-1 bg-green-600 text-white px-4 py-2 rounded font-bold text-xs uppercase">Сохранить</button>
                                             <button onClick={() => setIsEditingProfile(false)} className="px-4 py-2 rounded border hover:bg-white/10 text-xs uppercase">Отмена</button>
                                         </div>
                                     </div>
@@ -274,7 +326,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                                                 {isCurrentUser ? (
                                                     <>
-                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setIsEditingProfile(true); }} className="flex-1 md:flex-none px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center justify-center gap-2"><Edit2 size={12} /> Ред.</button>
+                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setEditEmail(user?.email || ''); setIsEditingProfile(true); }} className="flex-1 md:flex-none px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center justify-center gap-2"><Edit2 size={12} /> Ред.</button>
                                                         <button onClick={onLogout} className="px-3 py-1.5 border border-red-500/30 text-red-500 rounded-lg"><LogOut size={12} /></button>
                                                     </>
                                                 ) : (
@@ -286,6 +338,13 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             </div>
                                         </div>
                                         {profileUser.bio && <p className="font-mono text-xs opacity-70 whitespace-pre-wrap leading-relaxed max-w-2xl">{profileUser.bio}</p>}
+                                        
+                                        {isCurrentUser && isPlaceholderEmail && !isEditingProfile && (
+                                            <div onClick={() => setIsEditingProfile(true)} className="mt-2 bg-red-500/10 border border-red-500/50 p-2 rounded flex items-center gap-2 cursor-pointer hover:bg-red-500/20">
+                                                <AlertCircle size={14} className="text-red-500"/>
+                                                <span className="text-[10px] text-red-400 font-bold">Нажмите "Ред.", чтобы установить Email и Пароль.</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

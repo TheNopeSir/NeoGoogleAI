@@ -78,6 +78,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // Логгер запросов
 app.use((req, res, next) => {
+    // console.log(`[Request] ${req.method} ${req.path}`);
     next();
 });
 
@@ -101,7 +102,9 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false
     },
     connectionTimeout: 20000,
-    greetingTimeout: 20000
+    greetingTimeout: 20000,
+    debug: true, // Enable debug output
+    logger: true // Log to console
 });
 
 transporter.verify(function (error, success) {
@@ -235,12 +238,13 @@ api.post('/auth/register', async (req, res) => {
             [cleanUsername, newUser]
         );
         
+        // Try sending email, but don't fail registration if it fails
         transporter.sendMail({
             from: `"NeoArchive" <${SMTP_EMAIL}>`,
             to: cleanEmail,
             subject: 'WELCOME TO THE ARCHIVE',
             html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
-        }).catch(err => console.error("[MAIL] Failed:", err.message));
+        }).catch(err => console.error("[MAIL] Welcome Email Failed:", err.message));
 
         res.json(newUser);
     } catch (e) {
@@ -255,28 +259,25 @@ api.post('/auth/login', async (req, res) => {
     const cleanIdentifier = identifier ? identifier.trim() : '';
     const cleanPassword = password ? password.trim() : '';
 
-    console.log(`[Auth] Attempting login for: ${cleanIdentifier}`);
+    console.log(`[Auth] Login attempt: ${cleanIdentifier}`);
 
     try {
-        // STRATEGY: Try Username match first, then Email match.
-        // This is safer than a complex OR condition with JSONB in some postgres drivers.
-        
         // 1. Try finding by Username (case-insensitive)
         let result = await query(
             `SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, 
             [cleanIdentifier]
         );
 
-        // 2. If not found, try finding by Email inside JSON (case-insensitive)
+        // 2. If not found, try finding by Email inside JSON (case-insensitive, trimmed)
         if (result.rows.length === 0) {
             result = await query(
-                `SELECT * FROM users WHERE LOWER(data->>'email') = LOWER($1)`,
+                `SELECT * FROM users WHERE LOWER(TRIM(data->>'email')) = LOWER($1)`,
                 [cleanIdentifier]
             );
         }
         
         if (result.rows.length === 0) {
-            console.log(`[Auth] User not found for identifier: ${cleanIdentifier}`);
+            console.warn(`[Auth] 404 User not found: ${cleanIdentifier}`);
             return res.status(404).json({ error: "Пользователь не найден" });
         }
         
@@ -289,7 +290,7 @@ api.post('/auth/login', async (req, res) => {
         }
 
         if (!passIsValid) {
-            console.log(`[Auth] Password mismatch for ${user.username}`); 
+            console.warn(`[Auth] 401 Invalid password for: ${user.username}`); 
             return res.status(401).json({ error: "Неверный пароль" });
         }
         
@@ -297,7 +298,7 @@ api.post('/auth/login', async (req, res) => {
         res.json(user);
     } catch (e) {
         console.error("[Auth] Login Error:", e);
-        res.status(500).json({ error: "Ошибка сервера при входе: " + e.message });
+        res.status(500).json({ error: "Ошибка сервера при входе" });
     }
 });
 
@@ -321,6 +322,7 @@ api.post('/auth/telegram', async (req, res) => {
         } else {
             user = {
                 username,
+                // PLACEHOLDER EMAIL - Real issue for login by email
                 email: `tg_${tgUser.id}@neoarchive.placeholder`,
                 password: crypto.randomBytes(16).toString('hex'),
                 tagline: `Странник из Telegram`,
@@ -353,49 +355,62 @@ api.post('/auth/recover', async (req, res) => {
     const cleanEmail = email.trim();
 
     try {
+        // 1. Check if user exists
         const result = await query(`SELECT * FROM users WHERE TRIM(LOWER(data->>'email')) = LOWER($1)`, [cleanEmail]);
         if (result.rows.length === 0) {
+            console.log(`[Recover] Email not found: ${cleanEmail}`);
+            // Security: always return success
             return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
         }
 
         const rawUser = result.rows[0];
         const user = mapRow(rawUser);
-        const newPass = crypto.randomBytes(4).toString('hex');
-        user.password = newPass;
+        const newPass = crypto.randomBytes(6).toString('hex'); // 12 chars
         
-        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
+        // 2. SEND EMAIL FIRST
+        // If this fails, we do NOT update the password in DB, preventing lockout.
+        try {
+            await transporter.sendMail({
+                from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
+                to: cleanEmail,
+                subject: 'PASSWORD RESET // NEO_ARCHIVE',
+                html: `
+                    <div style="background: #000; color: #00ff00; padding: 20px; font-family: monospace;">
+                        <h2>NEO_ARCHIVE // SECURITY PROTOCOL</h2>
+                        <p>Ваш новый ключ доступа:</p>
+                        <h1 style="border: 1px dashed #00ff00; padding: 10px; display: inline-block;">${newPass}</h1>
+                        <p>Используйте его для входа. Рекомендуем сменить пароль в профиле.</p>
+                    </div>
+                `
+            });
+            console.log(`[Recover] Email sent to ${cleanEmail}`);
+        } catch (mailError) {
+            console.error(`[Recover] SMTP Failed for ${cleanEmail}:`, mailError);
+            return res.status(500).json({ error: "Ошибка отправки письма. Попробуйте позже или свяжитесь с поддержкой." });
+        }
 
-        transporter.sendMail({
-            from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
-            to: cleanEmail,
-            subject: 'PASSWORD RESET // NEO_ARCHIVE',
-            html: `<div style="background: #000; color: #0f0; padding: 20px;">New Key: ${newPass}</div>`
-        }).catch(err => console.error("[MAIL] Recovery Failed:", err.message));
+        // 3. Update DB only if email sent
+        user.password = newPass;
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
 
         res.json({ success: true });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: "Ошибка восстановления" });
+        res.status(500).json({ error: "Ошибка сервера" });
     }
 });
 
 // FEED (Optimized)
 api.get('/feed', async (req, res) => {
     try {
-        // Limit to 50 to prevent massive payloads on mobile
         const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
-        
         const items = result.rows.map(mapRow).map(item => ({
             ...item,
-            // Keep only first image for feed preview
             imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
-            // Remove heavy comments array for feed (saves bandwidth)
             comments: [],
-            // Truncate description to save bandwidth
             description: item.description ? item.description.slice(0, 200) : '',
             _isLite: true
         }));
-        
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -528,7 +543,6 @@ api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        // Enforce ordering by timestamp within the JSON data for correctness
         const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
         res.json(result.rows.map(mapRow));
     } catch (e) { res.status(500).json({ error: e.message }); }
