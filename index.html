@@ -40,10 +40,18 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=16&bold=true" />
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=192&bold=true" />
 
+    <!-- Preconnect to critical domains (DNS prefetch + connection setup) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://ui-avatars.com">
+    <link rel="dns-prefetch" href="https://mc.yandex.ru">
+
     <!-- Font Stack: Orbitron (Headers), Exo 2 (Body), VT323 (Winamp) -->
+    <!-- font-display=swap prevents font blocking, text shows immediately with fallback -->
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Orbitron:wght@400..900&family=VT323&display=swap" rel="stylesheet">
+
+    <!-- Preload critical module to reduce waterfall -->
+    <link rel="modulepreload" href="/index.tsx">
     
     <script type="importmap">
     {
