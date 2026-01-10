@@ -401,17 +401,19 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 3. Load CRITICAL feed data FIRST (blocks until feed loads)
+    // 3. Load CRITICAL feed data ONLY if user is logged in
     // This ensures artifacts appear in feed after cache reset
-    await loadCriticalFeedData();
-
-    // 4. Trigger background sync for other data (non-blocking)
-    performBackgroundSync(activeUserUsername);
-
-    // 5. Return user immediately from local cache if present
     if (activeUserUsername) {
+        await loadCriticalFeedData();
+
+        // 4. Trigger background sync for other data (non-blocking)
+        performBackgroundSync(activeUserUsername);
+
+        // 5. Return user from local cache
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
+
+    // User not logged in - return null to show AUTH screen
     return null;
 };
 
@@ -419,18 +421,21 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
 
 export const loginUser = async (identifier: string, password: string): Promise<UserProfile> => {
     const user = await apiCall('/auth/login', 'POST', { identifier, password });
-    
+
     const db = await getDB();
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
-    
+
     // Update Hot Cache
     const idx = hotCache.users.findIndex(u => u.username === user.username);
     if (idx !== -1) hotCache.users[idx] = user; else hotCache.users.push(user);
-    
+
     notifyListeners();
-    // Trigger sync after login to get fresh data
+
+    // Load critical feed data first, then trigger background sync
+    await loadCriticalFeedData();
     performBackgroundSync(user.username);
+
     return user;
 };
 
@@ -441,7 +446,11 @@ export const registerUser = async (username: string, password: string, tagline: 
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
+
+    // Load critical feed data first, then trigger background sync
+    await loadCriticalFeedData();
     performBackgroundSync(user.username);
+
     return user;
 };
 
