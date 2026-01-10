@@ -248,11 +248,11 @@ export default function App() {
         <MatrixRain theme="dark" />
         <CRTOverlay />
         <div className="relative z-10">
-          <MatrixLogin theme="dark" onLogin={(u, remember) => {
+          <MatrixLogin theme="dark" onLogin={async (u, remember) => {
              setUser(u);
              if (u.settings?.theme) setTheme(u.settings.theme);
              if (!remember) localStorage.removeItem('neo_active_user');
-             syncFromUrl();
+             await syncFromUrl();
           }} />
         </div>
       </div>
