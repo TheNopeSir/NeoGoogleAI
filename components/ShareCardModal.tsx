@@ -44,7 +44,8 @@ const ShareCardModal: React.FC<ShareCardModalProps> = ({ exhibit, user, onClose 
         // 2. Load Image
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = exhibit.imageUrls[0];
+        const firstImage = exhibit.imageUrls[0];
+        img.src = typeof firstImage === 'string' ? firstImage : (firstImage?.medium || 'https://placehold.co/600x400?text=NO+IMAGE');
         
         await new Promise((resolve) => {
             img.onload = resolve;
