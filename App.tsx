@@ -240,6 +240,23 @@ export default function App() {
      await syncFromUrl();
   }, [syncFromUrl]);
 
+  // Swipe Navigation between main tabs
+  const mainTabs: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'CREATE_HUB', 'ACTIVITY'];
+  const currentTabIndex = mainTabs.indexOf(view);
+
+  const swipeHandlers = useSwipe({
+      onSwipeLeft: () => {
+          if (currentTabIndex >= 0 && currentTabIndex < mainTabs.length - 1) {
+              navigateTo(mainTabs[currentTabIndex + 1]);
+          }
+      },
+      onSwipeRight: () => {
+          if (currentTabIndex > 0) {
+              navigateTo(mainTabs[currentTabIndex - 1]);
+          }
+      }
+  });
+
   // Early returns AFTER all hooks
   if (isInitializing || showSplash) {
     return (
@@ -317,23 +334,6 @@ export default function App() {
           default: return null;
       }
   };
-
-  // Swipe Navigation between main tabs
-  const mainTabs: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'CREATE_HUB', 'ACTIVITY'];
-  const currentTabIndex = mainTabs.indexOf(view);
-
-  const swipeHandlers = useSwipe({
-      onSwipeLeft: () => {
-          if (currentTabIndex >= 0 && currentTabIndex < mainTabs.length - 1) {
-              navigateTo(mainTabs[currentTabIndex + 1]);
-          }
-      },
-      onSwipeRight: () => {
-          if (currentTabIndex > 0) {
-              navigateTo(mainTabs[currentTabIndex - 1]);
-          }
-      }
-  });
 
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} {...swipeHandlers}>
