@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { 
-  LayoutGrid, List as ListIcon, Search, Heart, 
-  Zap, Radar, SlidersHorizontal, Clock, ArrowUpCircle
+import {
+  LayoutGrid, List as ListIcon, Search, Heart,
+  Zap, Radar, ArrowUpCircle, Folder
 } from 'lucide-react';
-import { UserProfile, Exhibit, WishlistItem } from '../types';
+import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
 import { calculateFeedScore } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import WishlistCard from './WishlistCard';
+import CollectionCard from './CollectionCard';
 
 interface FeedViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -16,9 +17,10 @@ interface FeedViewProps {
   stories: { username: string; avatar: string; latestItem?: Exhibit }[];
   exhibits: Exhibit[];
   wishlist: WishlistItem[];
-  
-  feedMode: 'ARTIFACTS' | 'WISHLIST';
-  setFeedMode: (mode: 'ARTIFACTS' | 'WISHLIST') => void;
+  collections: Collection[];
+
+  feedMode: 'ARTIFACTS' | 'WISHLIST' | 'COLLECTIONS';
+  setFeedMode: (mode: 'ARTIFACTS' | 'WISHLIST' | 'COLLECTIONS') => void;
   feedViewMode: 'GRID' | 'LIST';
   setFeedViewMode: (mode: 'GRID' | 'LIST') => void;
   feedType: 'FOR_YOU' | 'FOLLOWING';
@@ -31,6 +33,7 @@ interface FeedViewProps {
   onLike: (id: string, e?: React.MouseEvent) => void;
   onUserClick: (username: string) => void;
   onWishlistClick: (item: WishlistItem) => void;
+  onCollectionClick: (col: Collection) => void;
 }
 
 const FeedSkeleton: React.FC<{ viewMode: 'GRID' | 'LIST' }> = ({ viewMode }) => (
@@ -43,6 +46,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   stories,
   exhibits,
   wishlist,
+  collections,
   feedMode,
   setFeedMode,
   feedViewMode,
@@ -55,14 +59,12 @@ const FeedView: React.FC<FeedViewProps> = ({
   onExhibitClick,
   onLike,
   onUserClick,
-  onWishlistClick
+  onWishlistClick,
+  onCollectionClick
 }) => {
   const isWinamp = theme === 'winamp';
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
-  
-  // Sorting Mode: SMART (Algo) vs FRESH (Chronological)
-  const [sortMode, setSortMode] = useState<'SMART' | 'FRESH'>('SMART');
-  
+
   // Infinite Scroll State
   const [visibleCount, setVisibleCount] = useState(20);
   const observerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   useEffect(() => {
     setSelectedSubcategory(null);
     setVisibleCount(20); // Reset scroll on filter change
-  }, [selectedCategory, feedType, sortMode]);
+  }, [selectedCategory, feedType]);
 
   // --- CORE FILTERING & SORTING LOGIC ---
   const processedExhibits = useMemo(() => {
@@ -91,30 +93,20 @@ const FeedView: React.FC<FeedViewProps> = ({
           return true;
       });
 
-      // 2. SCORING & SORTING (Fixes Problem #2 - Jumping)
-      // We calculate score once per item-set to ensure stability
+      // 2. SORTING BY TIME (Most Recent First)
       const scoredItems = items.map(item => ({
           ...item,
-          // Calculate numeric timestamp once
-          _ts: new Date(item.timestamp).getTime(),
-          // Calculate algorithmic score
-          _score: calculateFeedScore(item, user)
+          _ts: new Date(item.timestamp).getTime()
       }));
 
       return scoredItems.sort((a, b) => {
-          if (sortMode === 'SMART') {
-              // Primary: Score (High to Low)
-              if (b._score !== a._score) return b._score - a._score;
-          }
-          
-          // Secondary (or Primary for FRESH): Time (New to Old)
+          // Primary: Time (New to Old)
           if (b._ts !== a._ts) return b._ts - a._ts;
-
-          // Tertiary: ID (Deterministic tie-breaker to stop jumping)
+          // Secondary: ID (Deterministic tie-breaker)
           return b.id.localeCompare(a.id);
       });
 
-  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode]);
+  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType]);
 
   const processedWishlist = useMemo(() => {
       return wishlist.filter(w => {
@@ -124,6 +116,14 @@ const FeedView: React.FC<FeedViewProps> = ({
           return true;
       }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [wishlist, user.username, selectedCategory, feedType]);
+
+  const processedCollections = useMemo(() => {
+      return collections.filter(c => {
+          if (c.owner === user.username) return false; // Exclude self
+          if (feedType === 'FOLLOWING' && !user.following.includes(c.owner)) return false;
+          return true;
+      }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [collections, user.username, feedType]);
 
   // --- INFINITE SCROLL ---
   useEffect(() => {
@@ -135,10 +135,11 @@ const FeedView: React.FC<FeedViewProps> = ({
 
       if (observerRef.current) observer.observe(observerRef.current);
       return () => observer.disconnect();
-  }, [processedExhibits.length, processedWishlist.length]);
+  }, [processedExhibits.length, processedWishlist.length, processedCollections.length]);
 
   const visibleExhibits = processedExhibits.slice(0, visibleCount);
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
+  const visibleCollections = processedCollections.slice(0, visibleCount);
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in">
@@ -180,6 +181,9 @@ const FeedView: React.FC<FeedViewProps> = ({
                         <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow-lg') : 'opacity-50'}`}>
                             <LayoutGrid size={14} /> ЛЕНТА
                         </button>
+                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-blue-500 text-white shadow-lg') : 'opacity-50'}`}>
+                            <Folder size={14} /> КОЛЛЕКЦИИ
+                        </button>
                         <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'WISHLIST' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-purple-500 text-white shadow-lg') : 'opacity-50'}`}>
                             <Radar size={14} /> ВИШЛИСТ
                         </button>
@@ -195,17 +199,6 @@ const FeedView: React.FC<FeedViewProps> = ({
                         <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ГЛАВНАЯ</button>
                         <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ПОДПИСКИ</button>
                     </div>
-
-                    {feedMode === 'ARTIFACTS' && (
-                        <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
-                            <button onClick={() => setSortMode('SMART')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${sortMode === 'SMART' ? 'bg-blue-500 text-white shadow' : 'opacity-50'}`}>
-                                <Zap size={10}/> УМНАЯ
-                            </button>
-                            <button onClick={() => setSortMode('FRESH')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${sortMode === 'FRESH' ? 'bg-blue-500 text-white shadow' : 'opacity-50'}`}>
-                                <Clock size={10}/> СВЕЖЕЕ
-                            </button>
-                        </div>
-                    )}
 
                     <div className="flex gap-1 shrink-0 ml-auto">
                         <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg ${feedViewMode === 'GRID' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><LayoutGrid size={16}/></button>
@@ -279,6 +272,19 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     )}
                 </>
+            ) : feedMode === 'COLLECTIONS' ? (
+                /* COLLECTIONS MODE */
+                <>
+                    {processedCollections.length === 0 ? (
+                        <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">КОЛЛЕКЦИЙ НЕТ</div>
+                    ) : (
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                            {visibleCollections.map(col => (
+                                <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={() => {}} />
+                            ))}
+                        </div>
+                    )}
+                </>
             ) : (
                 /* WISHLIST MODE */
                 <>
@@ -296,7 +302,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
             {/* Infinite Scroll Trigger */}
             <div ref={observerRef} className="h-20 flex items-center justify-center opacity-30">
-                {(visibleCount < (feedMode === 'ARTIFACTS' ? processedExhibits.length : processedWishlist.length)) && (
+                {(visibleCount < (feedMode === 'ARTIFACTS' ? processedExhibits.length : feedMode === 'COLLECTIONS' ? processedCollections.length : processedWishlist.length)) && (
                     <div className="animate-pulse flex items-center gap-2 text-xs font-mono"><ArrowUpCircle size={16}/> ЗАГРУЗКА ДАННЫХ...</div>
                 )}
             </div>
