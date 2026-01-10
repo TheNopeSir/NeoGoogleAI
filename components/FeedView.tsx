@@ -287,17 +287,77 @@ const FeedView: React.FC<FeedViewProps> = ({
                     )}
                 </>
             ) : (
-                /* WISHLIST MODE */
+                /* WISHLIST MODE - Grouped by Priority */
                 <>
                     {processedWishlist.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">ВИШЛИСТ ПУСТ</div>
-                    ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
-                            {visibleWishlist.map(item => (
-                                <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />
-                            ))}
-                        </div>
-                    )}
+                    ) : (() => {
+                        // Group wishlist by priority
+                        const grails = visibleWishlist.filter(w => w.priority === 'GRAIL');
+                        const high = visibleWishlist.filter(w => w.priority === 'HIGH');
+                        const medium = visibleWishlist.filter(w => w.priority === 'MEDIUM');
+                        const low = visibleWishlist.filter(w => w.priority === 'LOW');
+
+                        return (
+                            <div className="space-y-8">
+                                {/* GRAIL Items - Special Section */}
+                                {grails.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 pb-2 border-b border-yellow-500/30">
+                                            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.8)]"></div>
+                                            <h3 className="font-pixel text-sm text-yellow-500 uppercase tracking-wider">🏆 Священный Грааль</h3>
+                                            <span className="text-[10px] opacity-50 font-mono">{grails.length}</span>
+                                        </div>
+                                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                            {grails.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* HIGH Priority */}
+                                {high.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 pb-2 border-b border-orange-500/20">
+                                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                            <h3 className="font-pixel text-xs text-orange-400 uppercase tracking-wider">🎯 Активная Охота</h3>
+                                            <span className="text-[10px] opacity-50 font-mono">{high.length}</span>
+                                        </div>
+                                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                            {high.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* MEDIUM Priority */}
+                                {medium.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 pb-2 border-b border-blue-500/20">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            <h3 className="font-pixel text-xs text-blue-400 uppercase tracking-wider">🔍 Интересует</h3>
+                                            <span className="text-[10px] opacity-50 font-mono">{medium.length}</span>
+                                        </div>
+                                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                            {medium.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* LOW Priority */}
+                                {low.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 pb-2 border-b border-gray-500/20">
+                                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                                            <h3 className="font-pixel text-xs text-gray-400 uppercase tracking-wider">👁️ Наблюдаю</h3>
+                                            <span className="text-[10px] opacity-50 font-mono">{low.length}</span>
+                                        </div>
+                                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                            {low.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </>
             )}
 

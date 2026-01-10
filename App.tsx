@@ -203,8 +203,16 @@ export default function App() {
     const sessionKey = `neo_viewed_${item.id}`;
     const hasViewed = sessionStorage.getItem(sessionKey);
     let updatedItem = item;
-    if (!hasViewed) {
-        updatedItem = { ...item, views: (item.views || 0) + 1 };
+    if (!hasViewed && user) {
+        // Track unique viewers
+        const viewedBy = item.viewedBy || [];
+        const alreadyViewed = viewedBy.includes(user.username);
+
+        updatedItem = {
+            ...item,
+            views: (item.views || 0) + 1,
+            viewedBy: alreadyViewed ? viewedBy : [...viewedBy, user.username]
+        };
         setExhibits(prev => prev.map(e => e.id === item.id ? updatedItem : e));
         sessionStorage.setItem(sessionKey, 'true');
         await db.updateExhibit(updatedItem);
