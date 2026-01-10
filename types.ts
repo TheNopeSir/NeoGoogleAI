@@ -26,12 +26,21 @@ export interface WishlistItem {
     timestamp: string;
 }
 
+export interface ProcessedImage {
+  thumbnail: string;
+  medium: string;
+  large: string;
+  originalFormat?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+}
+
 export interface Exhibit {
   id: string;
   slug?: string;
   title: string;
   description: string;
-  imageUrls: string[];
+  imageUrls: (string | ProcessedImage)[];
   videoUrl?: string; 
   category: string; 
   subcategory?: string;

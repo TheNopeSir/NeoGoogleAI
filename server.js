@@ -9,6 +9,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
+import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri, migrateOldImages } from './imageProcessor.js';
 
 // ==========================================
 // 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
@@ -666,7 +667,127 @@ const createCrudRoutes = (router, table) => {
     });
 };
 
-['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
+// Создаем CRUD маршруты для всех таблиц кроме exhibits (для него свой обработчик)
+['collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
+
+// ==========================================
+// 🖼️ СПЕЦИАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ EXHIBITS
+// ==========================================
+
+// GET /exhibits/:id - стандартный CRUD
+api.get('/exhibits/:id', async (req, res) => {
+    try {
+        const result = await query(`SELECT * FROM exhibits WHERE id = $1`, [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+        res.json(mapRow(result.rows[0]));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /exhibits - с обработкой изображений
+api.post('/exhibits', async (req, res) => {
+    try {
+        const { id, imageUrls } = req.body;
+        const recordId = id || req.body.id;
+        if (!recordId) return res.status(400).json({ error: "ID required" });
+
+        let processedData = { ...req.body };
+
+        // Обработка изображений если они есть и являются Base64
+        if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+            const hasBase64Images = imageUrls.some(url => isBase64DataUri(url));
+
+            if (hasBase64Images) {
+                console.log(`[Exhibits] Processing ${imageUrls.length} images for exhibit ${recordId}...`);
+                const startTime = Date.now();
+
+                try {
+                    // Обрабатываем только Base64 изображения
+                    const base64Images = imageUrls.filter(url => isBase64DataUri(url));
+                    const alreadyProcessed = imageUrls.filter(url => !isBase64DataUri(url));
+
+                    const processedImages = await processExhibitImages(base64Images, recordId);
+
+                    // Объединяем уже обработанные и новые изображения
+                    processedData.imageUrls = [...alreadyProcessed, ...processedImages];
+
+                    const duration = Date.now() - startTime;
+                    console.log(`[Exhibits] ✅ Processed ${processedImages.length} images in ${duration}ms`);
+                } catch (imgError) {
+                    console.error('[Exhibits] Image processing error:', imgError);
+                    // В случае ошибки оставляем оригинальные изображения
+                    processedData.imageUrls = imageUrls;
+                }
+            } else {
+                // Изображения уже обработаны (объекты с путями)
+                processedData.imageUrls = imageUrls;
+            }
+        }
+
+        // Сохраняем в БД
+        await query(`
+            INSERT INTO exhibits (id, data, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
+        `, [recordId, processedData]);
+
+        // Инвалидируем кеш фида
+        cache.flushPattern('feed:');
+
+        res.json({ success: true, processedImages: processedData.imageUrls?.length || 0 });
+    } catch (e) {
+        console.error('[Exhibits] Save error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// DELETE /exhibits/:id - с удалением изображений
+api.delete('/exhibits/:id', async (req, res) => {
+    try {
+        const exhibitId = req.params.id;
+
+        // Удаляем изображения из файловой системы
+        await deleteExhibitImages(exhibitId);
+
+        // Удаляем запись из БД
+        await query(`DELETE FROM exhibits WHERE id = $1`, [exhibitId]);
+
+        // Инвалидируем кеш
+        cache.flushPattern('feed:');
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[Exhibits] Delete error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ==========================================
+// 🖼️ ENDPOINT ДЛЯ РАЗДАЧИ ИЗОБРАЖЕНИЙ
+// ==========================================
+
+api.get('/images/:exhibitId/:filename', (req, res) => {
+    try {
+        const { exhibitId, filename } = req.params;
+        const imagePath = path.join(getImagesDir(), exhibitId, filename);
+
+        // Проверяем существование файла
+        if (!fs.existsSync(imagePath)) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
+
+        // Устанавливаем агрессивное кеширование для изображений (1 год)
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', 'image/webp');
+
+        // Отправляем файл
+        res.sendFile(imagePath);
+    } catch (e) {
+        console.error('[Images] Error serving image:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
 
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
