@@ -5,7 +5,7 @@ node_modules
 .pnp.js
 
 # Production build
-dist
+# dist
 
 # Local data (do not sync user DB to git)
 data/db.json
