@@ -8,6 +8,7 @@ import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
 import { calculateFeedScore } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
+import { getFirstImageUrl } from '../utils/imageUtils';
 import WishlistCard from './WishlistCard';
 import CollectionCard from './CollectionCard';
 
@@ -257,7 +258,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                     />
                                 ) : (
                                     <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
-                                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={item.imageUrls[0]} className="w-full h-full object-cover" /></div>
+                                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" /></div>
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
                                                 <div className="flex justify-between"><span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span><div className="flex items-center gap-1 text-[10px] opacity-60"><Heart size={10}/> {item.likes}</div></div>
