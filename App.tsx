@@ -232,6 +232,15 @@ export default function App() {
     }
   };
 
+  // IMPORTANT: All hooks must be defined before any conditional returns
+  const handleLogin = useCallback(async (u: UserProfile, remember: boolean) => {
+     setUser(u);
+     if (u.settings?.theme) setTheme(u.settings.theme);
+     if (!remember) localStorage.removeItem('neo_active_user');
+     await syncFromUrl();
+  }, [syncFromUrl]);
+
+  // Early returns AFTER all hooks
   if (isInitializing || showSplash) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -240,13 +249,6 @@ export default function App() {
       </div>
     );
   }
-
-  const handleLogin = useCallback(async (u: UserProfile, remember: boolean) => {
-     setUser(u);
-     if (u.settings?.theme) setTheme(u.settings.theme);
-     if (!remember) localStorage.removeItem('neo_active_user');
-     await syncFromUrl();
-  }, [syncFromUrl]);
 
   if (view === 'AUTH') {
     return (
