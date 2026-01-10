@@ -506,8 +506,17 @@ api.get('/wishlist', async (req, res) => {
 
 api.get('/collections', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 20');
-        res.json(result.rows.map(mapRow));
+        const cacheKey = 'collections:all';
+        let collections = cache.get(cacheKey);
+
+        if (!collections) {
+            const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 20');
+            collections = result.rows.map(mapRow);
+            cache.set(cacheKey, collections, 60); // Cache for 60 seconds
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(collections);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
@@ -515,11 +524,20 @@ api.get('/messages', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        const result = await query(
-            `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`, 
-            [username]
-        );
-        res.json(result.rows.map(mapRow));
+        const cacheKey = `messages:${username}`;
+        let messages = cache.get(cacheKey);
+
+        if (!messages) {
+            const result = await query(
+                `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`,
+                [username]
+            );
+            messages = result.rows.map(mapRow);
+            cache.set(cacheKey, messages, 30); // Cache for 30 seconds (more dynamic data)
+        }
+
+        res.set('Cache-Control', 'private, max-age=30'); // Private cache for user data
+        res.json(messages);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -527,8 +545,17 @@ api.get('/messages', async (req, res) => {
 
 api.get('/guestbook', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 50`);
-        res.json(result.rows.map(mapRow));
+        const cacheKey = 'guestbook:all';
+        let entries = cache.get(cacheKey);
+
+        if (!entries) {
+            const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 50`);
+            entries = result.rows.map(mapRow);
+            cache.set(cacheKey, entries, 60); // Cache for 60 seconds
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(entries);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -538,9 +565,18 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
-        const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
-        res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
+        const cacheKey = `sync:${username}`;
+        let syncData = cache.get(cacheKey);
+
+        if (!syncData) {
+            const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
+            const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
+            syncData = { users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) };
+            cache.set(cacheKey, syncData, 30); // Cache for 30 seconds
+        }
+
+        res.set('Cache-Control', 'private, max-age=30'); // Private cache for user data
+        res.json(syncData);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -793,8 +829,17 @@ api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
-        res.json(result.rows.map(mapRow));
+        const cacheKey = `notifications:${username}`;
+        let notifications = cache.get(cacheKey);
+
+        if (!notifications) {
+            const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
+            notifications = result.rows.map(mapRow);
+            cache.set(cacheKey, notifications, 30); // Cache for 30 seconds
+        }
+
+        res.set('Cache-Control', 'private, max-age=30'); // Private cache for user data
+        res.json(notifications);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

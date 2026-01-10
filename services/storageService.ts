@@ -129,46 +129,72 @@ export const subscribeToToasts = (listener: ToastListener) => {
 const notifyListeners = () => listeners.forEach(l => l());
 
 // --- API HELPER WITH TIMEOUT ---
+// Request deduplication cache - prevents duplicate concurrent requests
+const pendingRequests = new Map<string, Promise<any>>();
+
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
+    // Deduplication key (only for GET requests without body)
+    const cacheKey = method === 'GET' ? `${method}:${endpoint}` : null;
+
+    // Return existing pending request if available (deduplication)
+    if (cacheKey && pendingRequests.has(cacheKey)) {
+        console.log(`[API] Deduplicating request: ${endpoint}`);
+        return pendingRequests.get(cacheKey)!;
+    }
+
     const controller = new AbortController();
     // Increased to 15 seconds for mobile networks
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    try {
-        const headers: any = { 'Content-Type': 'application/json' };
-        const options: RequestInit = { 
-            method, 
-            headers,
-            signal: controller.signal 
-        };
-        if (body) options.body = JSON.stringify(body);
-        
-        let fullPath = `${API_BASE}${endpoint}`;
-        
-        // Anti-Caching strategy for mobile browsers
-        if (method === 'GET') {
-            const separator = fullPath.includes('?') ? '&' : '?';
-            fullPath += `${separator}_t=${Date.now()}`;
-        }
+    const requestPromise = (async () => {
+        try {
+            const headers: any = { 'Content-Type': 'application/json' };
+            const options: RequestInit = {
+                method,
+                headers,
+                signal: controller.signal
+            };
+            if (body) options.body = JSON.stringify(body);
 
-        const res = await fetch(fullPath, options);
-        
-        clearTimeout(timeoutId);
+            let fullPath = `${API_BASE}${endpoint}`;
 
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
+            // Anti-Caching strategy for mobile browsers
+            if (method === 'GET') {
+                const separator = fullPath.includes('?') ? '&' : '?';
+                fullPath += `${separator}_t=${Date.now()}`;
+            }
+
+            const res = await fetch(fullPath, options);
+
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
+            }
+            return await res.json();
+        } catch (e: any) {
+            clearTimeout(timeoutId);
+            if (e.name === 'AbortError') {
+                console.warn(`[API] Timeout on ${endpoint} - switching to offline mode logic`);
+                throw new Error('Network timeout');
+            }
+            console.error(`❌ API Call Failed [${endpoint}]:`, e.message);
+            throw e;
+        } finally {
+            // Clean up pending request cache
+            if (cacheKey) {
+                pendingRequests.delete(cacheKey);
+            }
         }
-        return await res.json();
-    } catch (e: any) {
-        clearTimeout(timeoutId);
-        if (e.name === 'AbortError') {
-            console.warn(`[API] Timeout on ${endpoint} - switching to offline mode logic`);
-            throw new Error('Network timeout');
-        }
-        console.error(`❌ API Call Failed [${endpoint}]:`, e.message);
-        throw e;
+    })();
+
+    // Store pending request for deduplication
+    if (cacheKey) {
+        pendingRequests.set(cacheKey, requestPromise);
     }
+
+    return requestPromise;
 };
 
 export const isOffline = () => !navigator.onLine;
@@ -330,14 +356,20 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         }
     };
 
-    // Fetch extended feed data (30 items) to fill the feed for scrolling
-    fetchAndApply('/feed?limit=30', 'exhibits', undefined, 'exhibits');
-
-    // Fetch all other data in parallel (non-blocking)
-    fetchAndApply('/users', 'users', undefined, 'users');
-    fetchAndApply('/collections', 'collections', undefined, 'collections');
-    fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
-    fetchAndApply('/guestbook', 'generic', 'guestbook', 'guestbook');
+    // Fetch all global data in PARALLEL (truly concurrent)
+    // Using Promise.allSettled to prevent one failure from blocking others
+    Promise.allSettled([
+        fetchAndApply('/feed?limit=30', 'exhibits', undefined, 'exhibits'),
+        fetchAndApply('/users', 'users', undefined, 'users'),
+        fetchAndApply('/collections', 'collections', undefined, 'collections'),
+        fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
+        fetchAndApply('/guestbook', 'generic', 'guestbook', 'guestbook')
+    ]).then(results => {
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+            console.warn(`[Sync] ${failures.length} requests failed`);
+        }
+    });
 
     // 3. User Specific Sync
     if (activeUserUsername) {
