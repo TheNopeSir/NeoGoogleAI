@@ -62,7 +62,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
           script.setAttribute('data-request-access', 'write');
           telegramWrapperRef.current.appendChild(script);
       }
-  }, [step]);
+  }, [step, onLogin]);
 
   const resetForm = () => { setError(''); setInfoMessage(''); setShowRecoverOption(false); setPassword(''); setUsername(''); setShowPassword(false); };
   const generateSecurePassword = () => {
