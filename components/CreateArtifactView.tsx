@@ -4,6 +4,7 @@ import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Awa
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface CreateArtifactViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -93,9 +94,9 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
             {images.map((img, idx) => (
               <div key={idx} className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 group">
-                <img src={img} className="w-full h-full object-cover rounded-2xl border-2 border-white/10" />
-                <button 
-                  onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))} 
+                <img src={getImageUrl(img, 'thumbnail')} className="w-full h-full object-cover rounded-2xl border-2 border-white/10" />
+                <button
+                  onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
                   className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X size={14} />

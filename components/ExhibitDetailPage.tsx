@@ -80,22 +80,25 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
 
   const [showTradeModal, setShowTradeModal] = useState(false);
-  
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const isWinamp = theme === 'winamp';
 
   const slides = useMemo(() => {
-      const media: Array<{type: 'image' | 'video', url: string}> = [];
+      const media: Array<{type: 'image' | 'video', url: string, largeUrl?: string}> = [];
 
       // Получаем оптимизированные изображения (medium для детального просмотра)
-      const getOptimizedImageUrl = (imageData: any) => {
+      const getOptimizedImageUrl = (imageData: any, size: 'medium' | 'large' = 'medium') => {
           if (!imageData) return 'https://placehold.co/600x400?text=NO+IMAGE';
 
           // Новый формат (объект с путями к разным размерам)
-          if (typeof imageData === 'object' && imageData.medium) {
-              return imageData.medium;
+          if (typeof imageData === 'object' && imageData[size]) {
+              return imageData[size];
           }
 
           // Старый формат (Base64 Data URI или обычный URL)
@@ -103,13 +106,21 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       };
 
       const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : ['https://placehold.co/600x400?text=NO+IMAGE'];
-      media.push({ type: 'image', url: getOptimizedImageUrl(imageUrls[0]) });
+      media.push({
+          type: 'image',
+          url: getOptimizedImageUrl(imageUrls[0], 'medium'),
+          largeUrl: getOptimizedImageUrl(imageUrls[0], 'large')
+      });
       if (exhibit.videoUrl) {
           const embed = getEmbedUrl(exhibit.videoUrl);
           if (embed) media.push({ type: 'video', url: embed });
       }
       if (imageUrls.length > 1) {
-          imageUrls.slice(1).forEach(imageData => media.push({ type: 'image', url: getOptimizedImageUrl(imageData) }));
+          imageUrls.slice(1).forEach(imageData => media.push({
+              type: 'image',
+              url: getOptimizedImageUrl(imageData, 'medium'),
+              largeUrl: getOptimizedImageUrl(imageData, 'large')
+          }));
       }
       return media;
   }, [exhibit.imageUrls, exhibit.videoUrl]);
@@ -136,22 +147,29 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   useEffect(() => {
       setCurrentSlideIndex(0);
+      setZoomLevel(1);
+      setPanPosition({ x: 0, y: 0 });
   }, [exhibit.id]);
+
+  useEffect(() => {
+      setPanPosition({ x: 0, y: 0 });
+  }, [currentSlideIndex, zoomLevel]);
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
           if (e.key === 'Escape') {
               setIsFullscreen(false);
               setZoomLevel(1);
-          } else if (e.key === 'ArrowRight') {
+              setPanPosition({ x: 0, y: 0 });
+          } else if (e.key === 'ArrowRight' && !isDragging) {
               setCurrentSlideIndex(prev => (prev + 1) % slides.length);
-          } else if (e.key === 'ArrowLeft') {
+          } else if (e.key === 'ArrowLeft' && !isDragging) {
               setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length);
           }
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [slides.length]);
+  }, [slides.length, isDragging]);
 
   const commentTree = useMemo(() => {
       const roots = comments.filter(c => !c.parentId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -232,10 +250,58 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const selectMention = (username: string) => {
       const words = commentText.split(' ');
-      words.pop(); 
+      words.pop();
       const newText = [...words, `@${username} `].join(' ');
       setCommentText(newText);
       setMentionQuery(null);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+      if (zoomLevel > 1) {
+          setIsDragging(true);
+          setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+      }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+      if (isDragging && zoomLevel > 1) {
+          setPanPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      }
+  };
+
+  const handleMouseUp = () => {
+      setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (zoomLevel > 1 && e.touches.length === 1) {
+          setIsDragging(true);
+          setDragStart({
+              x: e.touches[0].clientX - panPosition.x,
+              y: e.touches[0].clientY - panPosition.y
+          });
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
+          setPanPosition({
+              x: e.touches[0].clientX - dragStart.x,
+              y: e.touches[0].clientY - dragStart.y
+          });
+      }
+  };
+
+  const handleTouchEnd = () => {
+      setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+      if (isFullscreen && slides[currentSlideIndex].type === 'image') {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? -0.2 : 0.2;
+          setZoomLevel(prev => Math.max(1, Math.min(4, prev + delta)));
+      }
   };
 
   const renderCommentNode = (c: Comment, depth = 0) => {
@@ -296,32 +362,61 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       {isFullscreen && (
           <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
               <div className="absolute top-4 right-4 z-50 flex gap-4">
-                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 3))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomIn size={24}/></button>
-                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomOut size={24}/></button>
-                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500"><X size={24}/></button>
+                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomIn size={24}/></button>
+                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomOut size={24}/></button>
+                  <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-500 transition-colors" title="Сбросить"><Home size={24}/></button>
+                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors"><X size={24}/></button>
               </div>
-              
-              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...gallerySwipeHandlers}>
-                  <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronLeft size={48}/></button>
-                  
-                  <div className="relative w-full h-full flex items-center justify-center p-4">
+
+              {zoomLevel > 1 && (
+                  <div className="absolute top-4 left-4 z-50 bg-black/50 text-white px-3 py-2 rounded-full text-sm font-mono">
+                      {Math.round(zoomLevel * 100)}%
+                  </div>
+              )}
+
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeHandlers : {})}>
+                  {zoomLevel === 1 && (
+                      <>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronLeft size={48}/></button>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronRight size={48}/></button>
+                      </>
+                  )}
+
+                  <div
+                      className="relative w-full h-full flex items-center justify-center p-4"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      onWheel={handleWheel}
+                      style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+                  >
                       {slides[currentSlideIndex].type === 'image' ? (
-                          <img 
-                            src={slides[currentSlideIndex].url} 
-                            className="max-w-full max-h-full object-contain transition-transform duration-300"
-                            style={{ transform: `scale(${zoomLevel})` }}
+                          <img
+                            src={slides[currentSlideIndex].largeUrl || slides[currentSlideIndex].url}
+                            className="max-w-full max-h-full object-contain select-none"
+                            style={{
+                                transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                                transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                            }}
+                            draggable={false}
                           />
                       ) : (
                           <iframe src={slides[currentSlideIndex].url} className="w-full h-full max-w-4xl max-h-[80vh]" frameBorder="0" allowFullScreen></iframe>
                       )}
                   </div>
-
-                  <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronRight size={48}/></button>
               </div>
 
               <div className="h-20 flex items-center justify-center gap-2 pb-4">
                   {slides.map((_, idx) => (
-                      <div key={idx} className={`w-2 h-2 rounded-full ${idx === currentSlideIndex ? 'bg-white' : 'bg-white/20'}`} />
+                      <button
+                          key={idx}
+                          onClick={() => setCurrentSlideIndex(idx)}
+                          className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`}
+                      />
                   ))}
               </div>
           </div>
