@@ -9,7 +9,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
-import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri, migrateOldImages } from './imageProcessor.js';
+import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri, migrateOldImages, processImage } from './imageProcessor.js';
 
 // ==========================================
 // 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
@@ -834,6 +834,145 @@ api.get('/images/:exhibitId/:filename', (req, res) => {
     }
 });
 
+// ==========================================
+// 🔄 ENDPOINT ДЛЯ МИГРАЦИИ ИЗОБРАЖЕНИЙ
+// ==========================================
+
+api.get('/migrate-images', async (req, res) => {
+    try {
+        const mode = req.query.mode || 'analyze';
+        const limit = parseInt(req.query.limit) || null;
+
+        console.log(`[Migration] Starting image migration - mode: ${mode}, limit: ${limit || 'all'}`);
+
+        // Получаем все артефакты с изображениями
+        const result = await query(`
+            SELECT id, data
+            FROM exhibits
+            ORDER BY updated_at DESC
+        `);
+
+        const stats = {
+            total: result.rows.length,
+            withImages: 0,
+            withBase64: 0,
+            withOptimized: 0,
+            processed: 0,
+            migrated: 0,
+            errors: 0,
+            needsMigration: []
+        };
+
+        // Анализируем артефакты
+        for (const row of result.rows) {
+            const data = row.data;
+            const imageUrls = data.imageUrls;
+
+            if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+                continue;
+            }
+
+            stats.withImages++;
+
+            const firstImage = imageUrls[0];
+
+            if (typeof firstImage === 'string' && isBase64DataUri(firstImage)) {
+                stats.withBase64++;
+                stats.needsMigration.push({
+                    id: row.id,
+                    title: data.title,
+                    imagesCount: imageUrls.length
+                });
+            } else if (typeof firstImage === 'object' && firstImage.thumbnail) {
+                stats.withOptimized++;
+            }
+        }
+
+        // Если режим только анализ - возвращаем статистику
+        if (mode === 'analyze') {
+            return res.json({
+                success: true,
+                mode: 'analyze',
+                stats: {
+                    total: stats.total,
+                    withImages: stats.withImages,
+                    withBase64: stats.withBase64,
+                    withOptimized: stats.withOptimized
+                },
+                needsMigration: stats.needsMigration.slice(0, 20) // Первые 20 для примера
+            });
+        }
+
+        // Режим выполнения - мигрируем изображения
+        if (mode === 'execute') {
+            const toProcess = limit ? stats.needsMigration.slice(0, limit) : stats.needsMigration;
+
+            console.log(`[Migration] Will process ${toProcess.length} exhibits`);
+
+            for (const item of toProcess) {
+                stats.processed++;
+
+                try {
+                    // Получаем полные данные артефакта
+                    const exhibitResult = await query(`SELECT data FROM exhibits WHERE id = $1`, [item.id]);
+                    if (exhibitResult.rows.length === 0) continue;
+
+                    const exhibitData = exhibitResult.rows[0].data;
+                    const imageUrls = exhibitData.imageUrls;
+
+                    // Проверяем наличие base64
+                    const hasBase64 = imageUrls.some(img =>
+                        typeof img === 'string' && isBase64DataUri(img)
+                    );
+
+                    if (!hasBase64) continue;
+
+                    console.log(`[Migration] Processing exhibit ${item.id}: "${item.title}"`);
+
+                    // Мигрируем изображения
+                    const newImageUrls = await migrateOldImages(imageUrls, item.id);
+
+                    if (newImageUrls.length > 0) {
+                        // Обновляем артефакт в БД
+                        exhibitData.imageUrls = newImageUrls;
+
+                        await query(
+                            'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                            [JSON.stringify(exhibitData), item.id]
+                        );
+
+                        stats.migrated++;
+                        console.log(`[Migration] ✓ Migrated exhibit ${item.id}`);
+                    }
+
+                } catch (error) {
+                    stats.errors++;
+                    console.error(`[Migration] ✗ Error processing exhibit ${item.id}:`, error.message);
+                }
+            }
+
+            // Очищаем кеш после миграции
+            cache.cache.clear();
+
+            return res.json({
+                success: true,
+                mode: 'execute',
+                results: {
+                    processed: stats.processed,
+                    migrated: stats.migrated,
+                    errors: stats.errors
+                }
+            });
+        }
+
+        res.status(400).json({ error: 'Invalid mode. Use ?mode=analyze or ?mode=execute' });
+
+    } catch (e) {
+        console.error('[Migration] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
@@ -853,6 +992,9 @@ api.get('/notifications', async (req, res) => {
 });
 
 app.use('/api', api);
+
+// Раздача публичных статических файлов (migration UI, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, filePath) => {
