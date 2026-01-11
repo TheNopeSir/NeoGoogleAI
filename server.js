@@ -95,7 +95,7 @@ const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 // FIX: Port 465 (SSL) is standard for secure connections.
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru',
-    port: 465, 
+    port: 465,
     secure: true, // True for 465
     auth: {
         user: SMTP_EMAIL,
@@ -104,8 +104,9 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
+    connectionTimeout: 60000, // Increased to 60s
+    greetingTimeout: 60000,   // Increased to 60s
+    socketTimeout: 60000,      // Added socket timeout
     debug: true, // Enable debug output
     logger: true // Log to console
 });
