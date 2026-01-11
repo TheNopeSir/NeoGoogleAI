@@ -4,6 +4,7 @@ import { Database, AlertCircle, CheckCircle, Loader, Book, ArrowLeft, Zap, Thumb
 interface MigrationViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
     onBack: () => void;
+    onMigrationComplete?: () => void;
 }
 
 interface MigrationResult {
@@ -25,7 +26,7 @@ interface GuestbookStats {
     }>;
 }
 
-const MigrationView: React.FC<MigrationViewProps> = ({ theme, onBack }) => {
+const MigrationView: React.FC<MigrationViewProps> = ({ theme, onBack, onMigrationComplete }) => {
     const [isMigrating, setIsMigrating] = useState(false);
     const [isCheckingGuestbook, setIsCheckingGuestbook] = useState(false);
     const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
@@ -47,6 +48,10 @@ const MigrationView: React.FC<MigrationViewProps> = ({ theme, onBack }) => {
 
             if (response.ok) {
                 setMigrationResult(result);
+                // Обновляем данные в приложении после успешной миграции
+                if (onMigrationComplete) {
+                    onMigrationComplete();
+                }
             } else {
                 setMigrationResult({
                     success: false,

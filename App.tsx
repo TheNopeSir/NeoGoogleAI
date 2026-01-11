@@ -579,7 +579,7 @@ export default function App() {
             )}
 
             {view === 'MIGRATION' && isUserAdmin(user) && (
-                <MigrationView theme={theme} onBack={handleBack} />
+                <MigrationView theme={theme} onBack={handleBack} onMigrationComplete={refreshData} />
             )}
         </div>
     </div>
