@@ -973,6 +973,75 @@ api.get('/migrate-images', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔍 ENDPOINT ДЛЯ ПРОВЕРКИ ФАЙЛОВ ИЗОБРАЖЕНИЙ
+// ==========================================
+
+api.get('/verify-image-files', async (req, res) => {
+    try {
+        console.log(`[VerifyFiles] Checking physical image files...`);
+
+        // Получаем все артефакты с изображениями
+        const result = await query(`
+            SELECT id, data
+            FROM exhibits
+            ORDER BY updated_at DESC
+            LIMIT 100
+        `);
+
+        const stats = {
+            checked: 0,
+            filesExist: 0,
+            filesMissing: 0,
+            missingFiles: []
+        };
+
+        // Проверяем каждый артефакт
+        for (const row of result.rows) {
+            const data = row.data;
+            const imageUrls = data.imageUrls;
+
+            if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+                continue;
+            }
+
+            stats.checked++;
+
+            const firstImage = imageUrls[0];
+
+            // Проверяем только оптимизированный формат
+            if (typeof firstImage === 'object' && firstImage.thumbnail) {
+                const thumbnailPath = firstImage.thumbnail.replace('/api/images/', '');
+                const fullPath = path.join(getImagesDir(), thumbnailPath);
+
+                if (fs.existsSync(fullPath)) {
+                    stats.filesExist++;
+                } else {
+                    stats.filesMissing++;
+                    stats.missingFiles.push({
+                        id: row.id,
+                        title: data.title,
+                        expectedPath: thumbnailPath,
+                        fullPath: fullPath,
+                        imageData: firstImage
+                    });
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            stats,
+            imagesDir: getImagesDir(),
+            missingFiles: stats.missingFiles.slice(0, 10)
+        });
+
+    } catch (e) {
+        console.error('[VerifyFiles] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
