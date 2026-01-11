@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User } from 'lucide-react';
+import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
@@ -36,6 +36,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const isAdmin = currentUser?.isAdmin === true;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -50,6 +52,44 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
 
   const toggleRelated = (id: string) => {
       setRelatedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    const newImages = [...images];
+    const [movedImage] = newImages.splice(fromIndex, 1);
+    newImages.splice(toIndex, 0, movedImage);
+    setImages(newImages);
+  };
+
+  const setAsMainImage = (index: number) => {
+    if (index === 0) return;
+    const newImages = [...images];
+    const [mainImage] = newImages.splice(index, 1);
+    newImages.unshift(mainImage);
+    setImages(newImages);
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      moveImage(draggedIndex, dropIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSubmit = (asDraft: boolean = false) => {
@@ -93,17 +133,78 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
         <div className="space-y-4">
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
             {images.map((img, idx) => (
-              <div key={idx} className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 group">
+              <div
+                key={idx}
+                draggable
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                className={`relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 group cursor-move transition-all ${
+                  draggedIndex === idx ? 'opacity-50 scale-95' : ''
+                } ${
+                  dragOverIndex === idx && draggedIndex !== idx ? 'scale-105 ring-2 ring-green-500' : ''
+                }`}
+              >
                 <img src={getImageUrl(img, 'thumbnail')} className="w-full h-full object-cover rounded-2xl border-2 border-white/10" />
+
+                {/* Main Image Indicator */}
+                {idx === 0 && (
+                  <div className="absolute top-2 left-2 bg-yellow-500 text-black p-1.5 rounded-full shadow-lg">
+                    <Star size={12} fill="currentColor" />
+                  </div>
+                )}
+
+                {/* Drag Handle */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-black/70 text-white p-1 rounded">
+                    <GripVertical size={14} />
+                  </div>
+                </div>
+
+                {/* Control Buttons */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-2xl">
+                  <div className="flex gap-1 justify-center">
+                    {idx > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); moveImage(idx, idx - 1); }}
+                        className="bg-white/20 hover:bg-white/30 text-white p-1 rounded transition-colors"
+                        title="Переместить влево"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                    )}
+                    {idx !== 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAsMainImage(idx); }}
+                        className="bg-yellow-500/80 hover:bg-yellow-500 text-black p-1 rounded transition-colors"
+                        title="Сделать главным"
+                      >
+                        <Star size={14} />
+                      </button>
+                    )}
+                    {idx < images.length - 1 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); moveImage(idx, idx + 1); }}
+                        className="bg-white/20 hover:bg-white/30 text-white p-1 rounded transition-colors"
+                        title="Переместить вправо"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delete Button */}
                 <button
                   onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
                 >
                   <X size={14} />
                 </button>
               </div>
             ))}
-            <button 
+            <button
               onClick={() => fileInputRef.current?.click()}
               className={`w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl transition-all ${isWinamp ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'dark' ? 'border-white/10 hover:border-green-500/50 bg-white/5' : 'border-black/10 hover:border-black/30'}`}
             >
@@ -113,7 +214,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
             <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
           </div>
           <p className="text-[10px] font-mono opacity-40 text-center md:text-left">
-             Загрузите до 5 фотографий.
+             Загрузите до 5 фотографий. Перетаскивайте для изменения порядка. Первое фото — главное превью.
           </p>
         </div>
 
