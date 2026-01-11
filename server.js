@@ -716,6 +716,54 @@ api.post('/admin/cleanup-user-data', async (req, res) => {
     }
 });
 
+// Admin endpoint to set user as admin
+api.post('/admin/set-admin', async (req, res) => {
+    try {
+        const { email, adminKey } = req.body;
+
+        const ADMIN_KEY = process.env.ADMIN_KEY || 'change-me-in-production';
+        if (adminKey !== ADMIN_KEY) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (!email) {
+            return res.status(400).json({ error: "Email required" });
+        }
+
+        // Find user by email
+        const result = await query(
+            `SELECT * FROM users WHERE LOWER(TRIM(data->>'email')) = LOWER($1)`,
+            [email.trim()]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = mapRow(result.rows[0]);
+        user.isAdmin = true;
+
+        const updatedData = extractDataFields(user);
+        await query(
+            `UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
+            [updatedData, user.username]
+        );
+
+        cache.del('users_global');
+
+        console.log(`[Admin] User ${user.username} is now admin`);
+        res.json({
+            success: true,
+            username: user.username,
+            email: user.email,
+            isAdmin: true
+        });
+    } catch (e) {
+        console.error('[Admin] Set admin error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 const createCrudRoutes = (router, table) => {
     router.get(`/${table}/:id`, async (req, res) => {
         try {

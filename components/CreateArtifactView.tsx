@@ -34,6 +34,17 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
 
   const isAdmin = currentUser?.isAdmin === true;
 
+  // Debug logging
+  if (initialData?.id) {
+    console.log('[CreateArtifact] Editing mode:', {
+      isAdmin,
+      currentUserIsAdmin: currentUser?.isAdmin,
+      currentUserUsername: currentUser?.username,
+      initialDataId: initialData?.id,
+      willShowAdminField: isAdmin && initialData?.id
+    });
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
