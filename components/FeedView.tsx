@@ -148,12 +148,29 @@ const FeedView: React.FC<FeedViewProps> = ({
   // Debug logging
   useEffect(() => {
     if (feedMode === 'ARTIFACTS') {
-      console.log('[FeedView] Total exhibits:', exhibits.length);
-      console.log('[FeedView] Processed exhibits:', processedExhibits.length);
-      console.log('[FeedView] Visible exhibits:', visibleExhibits.length);
-      console.log('[FeedView] User:', user.username);
+      console.log('[FeedView] ======================');
+      console.log('[FeedView] Total exhibits in DB:', exhibits.length);
+      console.log('[FeedView] Current user:', user.username);
+      console.log('[FeedView] Feed type:', feedType);
+      console.log('[FeedView] Selected category:', selectedCategory);
+
+      // Count filtering results
+      const ownCount = exhibits.filter(e => e.owner === user.username).length;
+      const draftCount = exhibits.filter(e => e.isDraft).length;
+      const afterBasicFilter = exhibits.filter(e => e.owner !== user.username && !e.isDraft).length;
+
+      console.log('[FeedView] Own artifacts (excluded):', ownCount);
+      console.log('[FeedView] Drafts (excluded):', draftCount);
+      console.log('[FeedView] After basic filter:', afterBasicFilter);
+      console.log('[FeedView] After all filters (processed):', processedExhibits.length);
+      console.log('[FeedView] Visible on screen:', visibleExhibits.length);
+
+      if (processedExhibits.length < 5 && exhibits.length > 10) {
+        console.warn('[FeedView] WARNING: Very few exhibits showing! Check filters.');
+        console.log('[FeedView] Sample exhibit owners:', exhibits.slice(0, 5).map(e => e.owner));
+      }
     }
-  }, [processedExhibits.length, visibleExhibits.length, feedMode]);
+  }, [processedExhibits.length, visibleExhibits.length, feedMode, exhibits.length]);
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in">
@@ -258,18 +275,19 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     ) : (
                         <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
-                            {visibleExhibits.map(item => (
-                                feedViewMode === 'GRID' ? (
-                                    <ExhibitCard
-                                        key={item.id}
-                                        item={item}
-                                        theme={theme}
-                                        onClick={onExhibitClick}
-                                        currentUsername={user?.username || ''}
-                                        onReact={(reactionType) => onReact(item.id, reactionType)}
-                                        onAuthorClick={onUserClick}
-                                    />
-                                ) : (
+                            {visibleExhibits.map((item, index) => {
+                                try {
+                                    return feedViewMode === 'GRID' ? (
+                                        <ExhibitCard
+                                            key={item.id}
+                                            item={item}
+                                            theme={theme}
+                                            onClick={onExhibitClick}
+                                            currentUsername={user?.username || ''}
+                                            onReact={(reactionType) => onReact(item.id, reactionType)}
+                                            onAuthorClick={onUserClick}
+                                        />
+                                    ) : (
                                     <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                                         <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" /></div>
                                         <div className="flex-1 flex flex-col justify-between">
@@ -281,8 +299,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             <div className="flex items-center gap-2 mt-2"><span className="text-[10px] font-bold opacity-70">@{item.owner}</span></div>
                                         </div>
                                     </div>
-                                )
-                            ))}
+                                    );
+                                } catch (error) {
+                                    console.error(`[FeedView] Error rendering exhibit card #${index} (${item.id}):`, error);
+                                    return null; // Skip broken cards instead of breaking entire feed
+                                }
+                            })}
                         </div>
                     )}
                 </>

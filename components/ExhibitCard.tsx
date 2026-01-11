@@ -25,10 +25,20 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const isHighTier = config.glow; // UNCOMMON and above get glow effects
   const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
 
-  // Get reaction info (ensure reactions is defined)
-  const reactions = item.reactions || [];
-  const totalReactions = getTotalReactions(reactions);
-  const userReaction = getUserReaction(reactions, currentUsername);
+  // Get reaction info (ensure reactions is defined with error handling)
+  let reactions = [];
+  let totalReactions = 0;
+  let userReaction = null;
+
+  try {
+    reactions = item.reactions || [];
+    totalReactions = getTotalReactions(reactions);
+    userReaction = getUserReaction(reactions, currentUsername);
+  } catch (error) {
+    console.error('[ExhibitCard] Error processing reactions for item:', item.id, error);
+    // Fallback to legacy likes if reactions fail
+    totalReactions = item.likes || 0;
+  }
   
   // Trade Status Logic
   const tradeStatus = item.tradeStatus || 'NONE';
@@ -173,7 +183,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                     <ReactionPicker
-                        reactions={item.reactions}
+                        reactions={reactions}
                         currentUsername={currentUsername}
                         onReact={onReact}
                         theme={theme}
