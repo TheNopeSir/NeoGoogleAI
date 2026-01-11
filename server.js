@@ -1384,6 +1384,18 @@ api.get('/notifications', async (req, res) => {
 
 app.use('/api', api);
 
+// ==========================================
+// 🖼️ IMAGE SERVING ENDPOINT
+// ==========================================
+// Раздача оптимизированных изображений из uploads/images
+app.use('/api/images', express.static(getImagesDir(), {
+    setHeaders: (res, filePath) => {
+        // Долгий кеш для изображений (они иммутабельные, имена генерируются по хешу)
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', 'image/webp');
+    }
+}));
+
 // Раздача публичных статических файлов (migration UI, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
