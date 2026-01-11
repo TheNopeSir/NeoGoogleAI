@@ -267,7 +267,7 @@ const loadCriticalFeedData = async () => {
         if (hotCache.exhibits.length > 0) {
             console.log("✅ [Sync] Using cached feed data, will refresh in background");
             // Refresh in background without blocking
-            apiCall('/feed?limit=10').then(data => {
+            apiCall('/feed?limit=100').then(data => {
                 if (!Array.isArray(data)) return;
                 hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 notifyListeners();
@@ -281,9 +281,9 @@ const loadCriticalFeedData = async () => {
             return;
         }
 
-        // No cached data - load minimal set (10 items only)
+        // No cached data - load minimal set (100 items)
         console.log("📦 [Sync] Loading critical feed data...");
-        const data = await apiCall('/feed?limit=10');
+        const data = await apiCall('/feed?limit=100');
         if (!Array.isArray(data)) return;
 
         // Update hotCache immediately
@@ -376,7 +376,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     // Fetch all global data in PARALLEL (truly concurrent)
     // Using Promise.allSettled to prevent one failure from blocking others
     Promise.allSettled([
-        fetchAndApply('/feed?limit=30', 'exhibits', undefined, 'exhibits'),
+        fetchAndApply('/feed?limit=100', 'exhibits', undefined, 'exhibits'),
         fetchAndApply('/users', 'users', undefined, 'users'),
         fetchAndApply('/collections', 'collections', undefined, 'collections'),
         fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
