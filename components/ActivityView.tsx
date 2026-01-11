@@ -281,7 +281,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                     const partner = isIncoming ? trade.sender : trade.recipient;
                                     const statusColor =
                                         trade.status === 'ACCEPTED' ? 'text-green-500' :
-                                        trade.status === 'REJECTED' ? 'text-red-500' :
+                                        trade.status === 'DECLINED' ? 'text-red-500' :
                                         trade.status === 'COMPLETED' ? 'text-blue-500' :
                                         'text-yellow-500';
 
