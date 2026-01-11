@@ -15,7 +15,7 @@ interface SearchViewProps {
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
     onUserClick: (username: string) => void;
-    onReact: (id: string, reactionType: ReactionType) => void;
+    onReact: (id: string) => void;
     currentUser: UserProfile | null;
 }
 
@@ -104,7 +104,7 @@ const SearchView: React.FC<SearchViewProps> = ({
                                 theme={theme}
                                 onClick={onExhibitClick}
                                 currentUsername={currentUser?.username || ''}
-                                onReact={(reactionType) => onReact(item.id, reactionType)}
+                                onReact={() => onReact(item.id)}
                                 onAuthorClick={onUserClick}
                             />
                         ))}
