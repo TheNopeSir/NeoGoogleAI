@@ -1,6 +1,6 @@
 
 import { Exhibit, TierType, TradeStatus, WishlistPriority, ReactionType } from './types';
-import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Sparkles, Gem, Heart, ThumbsUp } from 'lucide-react';
+import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Sparkles, Gem, Heart } from 'lucide-react';
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
@@ -65,7 +65,7 @@ export const BADGE_CONFIG = {
 export const BADGES = BADGE_CONFIG;
 
 export const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string; color: string }> = {
-    'LIKE': { emoji: '👍', label: 'Нравится', color: 'text-blue-500' }
+    'LIKE': { emoji: '❤️', label: 'Нравится', color: 'text-red-500' }
 };
 
 export const STATUS_OPTIONS = {

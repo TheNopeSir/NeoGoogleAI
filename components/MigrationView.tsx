@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, AlertCircle, CheckCircle, Loader, Book, ArrowLeft, Zap, ThumbsUp } from 'lucide-react';
+import { Database, AlertCircle, CheckCircle, Loader, Book, ArrowLeft, Zap, Heart } from 'lucide-react';
 
 interface MigrationViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -131,8 +131,8 @@ const MigrationView: React.FC<MigrationViewProps> = ({ theme, onBack, onMigratio
                         }`}
                     >
                         <div className="flex items-start gap-4 mb-4">
-                            <div className={`p-3 rounded-lg ${isDark ? 'bg-blue-500/20' : 'bg-blue-500/10'}`}>
-                                <ThumbsUp size={24} className="text-blue-500" />
+                            <div className={`p-3 rounded-lg ${isDark ? 'bg-red-500/20' : 'bg-red-500/10'}`}>
+                                <Heart size={24} className="text-red-500" />
                             </div>
                             <div className="flex-1">
                                 <h2 className="text-xl font-bold mb-2">Миграция реакций</h2>
