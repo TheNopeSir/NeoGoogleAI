@@ -11,7 +11,13 @@ const __dirname = path.dirname(__filename);
 const IMAGES_DIR = path.join(__dirname, 'uploads', 'images');
 
 // Убедимся что директория существует
-await fs.mkdir(IMAGES_DIR, { recursive: true });
+try {
+    await fs.mkdir(IMAGES_DIR, { recursive: true });
+    console.log('[ImageProcessor] Images directory initialized:', IMAGES_DIR);
+} catch (error) {
+    console.error('[ImageProcessor] Failed to create images directory:', error);
+    throw error;
+}
 
 /**
  * Конфигурация размеров изображений
@@ -67,6 +73,8 @@ function generateImageHash(buffer) {
  */
 export async function processImage(base64DataUri, exhibitId) {
     try {
+        console.log(`[ImageProcessor] Processing image for exhibit ${exhibitId}...`);
+
         // Конвертируем Base64 в Buffer
         const buffer = base64ToBuffer(base64DataUri);
 
@@ -76,6 +84,7 @@ export async function processImage(base64DataUri, exhibitId) {
         // Создаем папку для артефакта
         const exhibitDir = path.join(IMAGES_DIR, exhibitId);
         await fs.mkdir(exhibitDir, { recursive: true });
+        console.log(`[ImageProcessor] Created directory: ${exhibitDir}`);
 
         // Получаем метаданные изображения
         const metadata = await sharp(buffer).metadata();
@@ -96,9 +105,13 @@ export async function processImage(base64DataUri, exhibitId) {
                 .webp({ quality: config.quality })
                 .toFile(filepath);
 
+            console.log(`[ImageProcessor] Saved ${sizeName}: ${filepath}`);
+
             // Сохраняем относительный путь для API
             results[sizeName] = `/api/images/${exhibitId}/${filename}`;
         }
+
+        console.log(`[ImageProcessor] Successfully processed image for exhibit ${exhibitId}`);
 
         return {
             success: true,
