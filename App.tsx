@@ -221,27 +221,27 @@ export default function App() {
     navigateTo('EXHIBIT', { item: updatedItem });
   };
 
-  const handleReaction = async (id: string, reactionType: ReactionType) => {
+  const handleReaction = async (id: string) => {
     if (!user) return;
     const item = exhibits.find(e => e.id === id);
     if (item) {
         // Migrate legacy likes if needed
         const migratedItem = migrateLegacyLikes(item);
 
-        // Get user's previous reaction
-        const previousReaction = migratedItem.reactions?.find(r => r.users.includes(user.username));
+        // Check if user had liked before
+        const hadLiked = migratedItem.reactions?.some(r => r.type === 'LIKE' && r.users.includes(user.username));
 
-        // Toggle reaction
-        const newReactions = toggleReaction(migratedItem.reactions || [], user.username, reactionType);
+        // Toggle like
+        const newReactions = toggleReaction(migratedItem.reactions || [], user.username, 'LIKE');
 
-        // Calculate total reactions for legacy field
-        const totalReactions = newReactions.reduce((sum, r) => sum + r.users.length, 0);
+        // Calculate total likes for legacy field
+        const totalLikes = newReactions.reduce((sum, r) => sum + r.users.length, 0);
         const allUsers = newReactions.flatMap(r => r.users);
 
         const updatedItem = {
             ...migratedItem,
             reactions: newReactions,
-            likes: totalReactions,
+            likes: totalLikes,
             likedBy: allUsers
         };
 
@@ -249,9 +249,9 @@ export default function App() {
         if (selectedExhibit?.id === id) setSelectedExhibit(updatedItem);
         await db.updateExhibit(updatedItem);
 
-        // Send notification if user added/changed reaction (not removed)
-        const hasReactionNow = newReactions.some(r => r.users.includes(user.username));
-        if (hasReactionNow && item.owner !== user.username) {
+        // Send notification if user added like (not removed)
+        const hasLikeNow = newReactions.some(r => r.type === 'LIKE' && r.users.includes(user.username));
+        if (!hadLiked && hasLikeNow && item.owner !== user.username) {
             db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
         }
     }
@@ -444,7 +444,7 @@ export default function App() {
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (
-                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleReaction(id, 'LIKE')} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={db.getFullDatabase().users} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
+                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleReaction(id)} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={db.getFullDatabase().users} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
             )}
 
             {view === 'COLLECTION_DETAIL' && selectedCollection && (

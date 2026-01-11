@@ -15,7 +15,7 @@ interface MyCollectionProps {
     onBack: () => void;
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
-    onReact: (id: string, reactionType: ReactionType) => void;
+    onReact: (id: string) => void;
     onWishlistClick?: (item: WishlistItem) => void;
 }
 
@@ -103,7 +103,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                         theme={theme}
                                         onClick={onExhibitClick}
                                         currentUsername={user.username}
-                                        onReact={(reactionType) => onReact(item.id, reactionType)}
+                                        onReact={() => onReact(item.id)}
                                         onAuthorClick={() => {}}
                                     />
                                 </div>
@@ -132,7 +132,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                     theme={theme}
                                     onClick={onExhibitClick}
                                     currentUsername={user.username}
-                                    onReact={(reactionType) => onReact(item.id, reactionType)}
+                                    onReact={() => onReact(item.id)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}
@@ -186,7 +186,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                     theme={theme}
                                     onClick={onExhibitClick}
                                     currentUsername={user.username}
-                                    onReact={(reactionType) => onReact(item.id, reactionType)}
+                                    onReact={() => onReact(item.id)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}

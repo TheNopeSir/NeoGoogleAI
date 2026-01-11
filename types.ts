@@ -11,11 +11,11 @@ export interface Comment {
 
 export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';
 
-export type ReactionType = 'LIKE' | 'FIRE' | 'HEART' | 'STAR' | 'TROPHY' | 'COOL';
+export type ReactionType = 'LIKE';
 
 export interface Reaction {
   type: ReactionType;
-  users: string[]; // usernames who reacted with this type
+  users: string[]; // usernames who liked
 }
 
 export type TradeStatus = 'NONE' | 'FOR_TRADE' | 'FOR_SALE' | 'GIFT' | 'NOT_FOR_SALE';

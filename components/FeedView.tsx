@@ -31,7 +31,7 @@ interface FeedViewProps {
 
   onNavigate: (view: string, params?: any) => void;
   onExhibitClick: (item: Exhibit) => void;
-  onReact: (id: string, reactionType: ReactionType) => void;
+  onReact: (id: string) => void;
   onUserClick: (username: string) => void;
   onWishlistClick: (item: WishlistItem) => void;
   onCollectionClick: (col: Collection) => void;
@@ -284,7 +284,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             theme={theme}
                                             onClick={onExhibitClick}
                                             currentUsername={user?.username || ''}
-                                            onReact={(reactionType) => onReact(item.id, reactionType)}
+                                            onReact={() => onReact(item.id)}
                                             onAuthorClick={onUserClick}
                                         />
                                     ) : (

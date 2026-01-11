@@ -1,77 +1,49 @@
 import { Reaction, ReactionType, Exhibit } from '../types';
 
 /**
- * Toggle user's reaction on an exhibit
- * If user has the same reaction type - remove it
- * If user has a different reaction type - replace it
- * If user has no reaction - add it
+ * Toggle user's like on an exhibit
+ * If user has liked - remove it
+ * If user hasn't liked - add it
  */
 export const toggleReaction = (
   reactions: Reaction[] = [],
   username: string,
-  reactionType: ReactionType
+  reactionType: ReactionType = 'LIKE'
 ): Reaction[] => {
-  // Find if user already has any reaction
-  const existingReactionIndex = reactions.findIndex(r => r.users.includes(username));
+  // Find the LIKE reaction
+  const likeReactionIndex = reactions.findIndex(r => r.type === 'LIKE');
 
   // Create a copy of reactions array
   let newReactions = [...reactions];
 
-  if (existingReactionIndex !== -1) {
-    const existingReaction = newReactions[existingReactionIndex];
+  if (likeReactionIndex !== -1) {
+    const likeReaction = newReactions[likeReactionIndex];
 
-    // If same reaction type - remove user (toggle off)
-    if (existingReaction.type === reactionType) {
-      newReactions[existingReactionIndex] = {
-        ...existingReaction,
-        users: existingReaction.users.filter(u => u !== username)
+    // Check if user has already liked
+    if (likeReaction.users.includes(username)) {
+      // Remove user's like (toggle off)
+      newReactions[likeReactionIndex] = {
+        ...likeReaction,
+        users: likeReaction.users.filter(u => u !== username)
       };
 
-      // Remove reaction type if no users left
-      if (newReactions[existingReactionIndex].users.length === 0) {
-        newReactions.splice(existingReactionIndex, 1);
+      // Remove reaction if no users left
+      if (newReactions[likeReactionIndex].users.length === 0) {
+        newReactions.splice(likeReactionIndex, 1);
       }
     } else {
-      // Different reaction type - remove from old, add to new
-      // Remove from old
-      newReactions[existingReactionIndex] = {
-        ...existingReaction,
-        users: existingReaction.users.filter(u => u !== username)
+      // Add user's like
+      newReactions[likeReactionIndex] = {
+        ...likeReaction,
+        users: [...likeReaction.users, username]
       };
-
-      // Remove reaction type if no users left
-      if (newReactions[existingReactionIndex].users.length === 0) {
-        newReactions.splice(existingReactionIndex, 1);
-      }
-
-      // Add to new reaction type
-      const newReactionIndex = newReactions.findIndex(r => r.type === reactionType);
-      if (newReactionIndex !== -1) {
-        newReactions[newReactionIndex] = {
-          ...newReactions[newReactionIndex],
-          users: [...newReactions[newReactionIndex].users, username]
-        };
-      } else {
-        newReactions.push({
-          type: reactionType,
-          users: [username]
-        });
-      }
     }
   } else {
-    // User has no reaction - add new one
-    const reactionIndex = newReactions.findIndex(r => r.type === reactionType);
-    if (reactionIndex !== -1) {
-      newReactions[reactionIndex] = {
-        ...newReactions[reactionIndex],
-        users: [...newReactions[reactionIndex].users, username]
-      };
-    } else {
-      newReactions.push({
-        type: reactionType,
-        users: [username]
-      });
-    }
+    // No LIKE reaction yet - create it with this user
+    newReactions.push({
+      type: 'LIKE',
+      users: [username]
+    });
   }
 
   return newReactions;
@@ -85,24 +57,24 @@ export const getTotalReactions = (reactions: Reaction[] = []): number => {
 };
 
 /**
- * Get user's reaction type if any
+ * Check if user has liked
  */
 export const getUserReaction = (
   reactions: Reaction[] = [],
   username: string
 ): ReactionType | null => {
-  const reaction = reactions.find(r => r.users.includes(username));
-  return reaction?.type || null;
+  const likeReaction = reactions.find(r => r.type === 'LIKE' && r.users.includes(username));
+  return likeReaction ? 'LIKE' : null;
 };
 
 /**
- * Check if user has reacted with any type
+ * Check if user has liked
  */
 export const hasUserReacted = (
   reactions: Reaction[] = [],
   username: string
 ): boolean => {
-  return reactions.some(r => r.users.includes(username));
+  return reactions.some(r => r.type === 'LIKE' && r.users.includes(username));
 };
 
 /**
