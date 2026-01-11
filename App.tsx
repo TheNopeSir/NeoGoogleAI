@@ -45,7 +45,7 @@ const ADMIN_EMAILS = ['kennyornope@gmail.com'];
 // Helper function to check if user is admin
 const isUserAdmin = (user: UserProfile | null): boolean => {
     if (!user) return false;
-    return user.isAdmin === true || (user.email && ADMIN_EMAILS.includes(user.email));
+    return user.isAdmin === true || (user.email ? ADMIN_EMAILS.includes(user.email) : false);
 };
 
 export default function App() {
