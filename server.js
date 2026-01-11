@@ -172,6 +172,12 @@ const mapRow = (row) => {
     return { ...rest, ...(data || {}) };
 };
 
+// Helper to extract data fields for saving back to DB
+const extractDataFields = (userObject) => {
+    const { id, username, updated_at, ...dataFields } = userObject;
+    return dataFields;
+};
+
 // ==========================================
 // API ROUTER
 // ==========================================
@@ -321,7 +327,8 @@ api.post('/auth/telegram', async (req, res) => {
             // Auto-update avatar if changed on TG
             if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
                 user.avatarUrl = tgUser.photo_url;
-                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
+                const updatedData = extractDataFields(user);
+                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, user.username]);
             }
         } else {
             user = {
@@ -395,7 +402,8 @@ api.post('/auth/recover', async (req, res) => {
 
         // 3. Update DB only if email sent
         user.password = newPass;
-        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
+        const updatedData = extractDataFields(user);
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, user.username]);
 
         res.json({ success: true });
     } catch (e) {
@@ -634,9 +642,10 @@ api.post('/admin/fix-user-email', async (req, res) => {
         // Update email
         user.email = email.trim();
 
+        const updatedData = extractDataFields(user);
         await query(
             `UPDATE users SET data = $1, updated_at = NOW() WHERE LOWER(username) = LOWER($2)`,
-            [user, username]
+            [updatedData, username]
         );
 
         cache.del('users_global');
@@ -650,6 +659,59 @@ api.post('/admin/fix-user-email', async (req, res) => {
         });
     } catch (e) {
         console.error('[Admin] Fix email error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin endpoint to clean up corrupted user data
+api.post('/admin/cleanup-user-data', async (req, res) => {
+    try {
+        const { adminKey } = req.body;
+
+        const ADMIN_KEY = process.env.ADMIN_KEY || 'change-me-in-production';
+        if (adminKey !== ADMIN_KEY) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Get all users
+        const result = await query('SELECT * FROM users');
+        let fixedCount = 0;
+        let errors = [];
+
+        for (const row of result.rows) {
+            try {
+                const { data } = row;
+
+                // Check if data contains database fields (signs of corruption)
+                if (data && (data.id !== undefined || data.updated_at !== undefined)) {
+                    console.log(`[Cleanup] Fixing corrupted data for user: ${row.username}`);
+
+                    // Extract only data fields
+                    const cleanData = extractDataFields(data);
+
+                    await query(
+                        'UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2',
+                        [cleanData, row.username]
+                    );
+
+                    fixedCount++;
+                }
+            } catch (err) {
+                errors.push({ username: row.username, error: err.message });
+            }
+        }
+
+        cache.del('users_global');
+
+        console.log(`[Cleanup] Fixed ${fixedCount} corrupted user records`);
+        res.json({
+            success: true,
+            totalUsers: result.rows.length,
+            fixedCount,
+            errors: errors.length > 0 ? errors : undefined
+        });
+    } catch (e) {
+        console.error('[Cleanup] Error:', e);
         res.status(500).json({ error: e.message });
     }
 });
