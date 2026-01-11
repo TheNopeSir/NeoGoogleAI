@@ -90,7 +90,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                             theme={theme}
                             onClick={onExhibitClick}
                             currentUsername={currentUser}
-                            onReact={(reactionType) => onLike(item.id)}
+                            onReact={() => onLike(item.id)}
                             onAuthorClick={onAuthorClick}
                         />
                     ))}

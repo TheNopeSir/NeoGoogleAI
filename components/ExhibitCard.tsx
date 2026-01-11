@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Heart, Eye, Image as ImageIcon } from 'lucide-react';
-import { Exhibit, ReactionType } from '../types';
+import { Exhibit, ReactionType, Reaction } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
 import ReactionPicker from './ReactionPicker';
