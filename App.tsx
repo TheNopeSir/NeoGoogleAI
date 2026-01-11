@@ -497,7 +497,36 @@ export default function App() {
 
             {view === 'CREATE_ARTIFACT' && (
                 <div className="p-4 pb-24">
-                    <CreateArtifactView theme={theme} onBack={handleBack} onSave={async (item) => { if (!user) return; const newItem = { ...item, id: item.id || crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; if (item.id) await db.updateExhibit(newItem); else await db.saveExhibit(newItem); handleBack(); }} initialData={selectedExhibit} userArtifacts={exhibits.filter(e => e.owner === user?.username)} />
+                    <CreateArtifactView
+                        theme={theme}
+                        onBack={handleBack}
+                        onSave={async (item) => {
+                            if (!user) return;
+                            const isEditing = !!item.id;
+                            // Admin can change owner via adminOwner field
+                            const finalOwner = isEditing
+                                ? (item.adminOwner || selectedExhibit?.owner || user.username)
+                                : user.username;
+                            const newItem = {
+                                ...item,
+                                id: item.id || crypto.randomUUID(),
+                                owner: finalOwner,
+                                lastEditedBy: isEditing ? user.username : undefined,
+                                timestamp: isEditing ? (selectedExhibit?.timestamp || new Date().toLocaleString()) : new Date().toLocaleString(),
+                                likes: item.likes ?? 0,
+                                views: item.views ?? 0
+                            };
+                            // Remove adminOwner from saved data
+                            delete newItem.adminOwner;
+                            if (isEditing) await db.updateExhibit(newItem);
+                            else await db.saveExhibit(newItem);
+                            handleBack();
+                        }}
+                        initialData={selectedExhibit}
+                        userArtifacts={exhibits.filter(e => e.owner === user?.username)}
+                        currentUser={user}
+                        allUsers={db.getFullDatabase().users}
+                    />
                 </div>
             )}
 

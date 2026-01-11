@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign } from 'lucide-react';
+import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User } from 'lucide-react';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
-import { Exhibit, TradeStatus } from '../types';
+import { Exhibit, TradeStatus, UserProfile } from '../types';
 
 interface CreateArtifactViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -11,9 +11,11 @@ interface CreateArtifactViewProps {
   onSave: (artifact: any) => void;
   initialData?: Exhibit | null;
   userArtifacts?: Exhibit[]; // Needed for linking items
+  currentUser?: UserProfile | null; // Current user info
+  allUsers?: UserProfile[]; // All users for admin owner selection
 }
 
-const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, onSave, initialData, userArtifacts = [] }) => {
+const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, onSave, initialData, userArtifacts = [], currentUser = null, allUsers = [] }) => {
   const [images, setImages] = useState<any[]>(initialData?.imageUrls || []);
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -24,10 +26,13 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const [specs, setSpecs] = useState<Record<string, string>>(initialData?.specs || {});
   const [tradeStatus, setTradeStatus] = useState<TradeStatus>(initialData?.tradeStatus || 'NONE');
   const [relatedIds, setRelatedIds] = useState<string[]>(initialData?.relatedIds || []);
-  
+  const [adminOwner, setAdminOwner] = useState<string>(initialData?.owner || ''); // For admin to change owner
+
   const [price, setPrice] = useState<string>(initialData?.price ? initialData.price.toString() : '');
   const [currency, setCurrency] = useState<'RUB' | 'USD' | 'ETH'>(initialData?.currency || 'RUB');
   const [tradeRequest, setTradeRequest] = useState(initialData?.tradeRequest || '');
+
+  const isAdmin = currentUser?.isAdmin === true;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,7 +71,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
       currency,
       tradeRequest,
       relatedIds,
-      isDraft: asDraft
+      isDraft: asDraft,
+      adminOwner: isAdmin && adminOwner ? adminOwner : undefined // Pass admin-selected owner
     });
   };
 
@@ -171,6 +177,28 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                     </select>
                 </div>
               </div>
+
+              {/* Admin Owner Selection */}
+              {isAdmin && initialData?.id && (
+                <div className="p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-xl">
+                  <label className="text-[10px] font-pixel opacity-70 uppercase tracking-widest mb-2 flex items-center gap-2 text-yellow-500">
+                    <User size={12}/> Владелец артефакта (только для суперадминов)
+                  </label>
+                  <select
+                    value={adminOwner}
+                    onChange={e => setAdminOwner(e.target.value)}
+                    className={`w-full bg-black/30 border border-yellow-500/30 rounded-xl px-4 py-4 font-mono text-sm focus:border-yellow-500 outline-none appearance-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                  >
+                    <option value="">Выберите владельца...</option>
+                    {allUsers.map(u => (
+                      <option key={u.username} value={u.username}>{u.username}</option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] font-mono opacity-40 mt-2">
+                    Изменение владельца позволяет передать артефакт другому пользователю
+                  </p>
+                </div>
+              )}
 
               {/* Trade Status Selection */}
               <div>
