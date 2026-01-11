@@ -26,9 +26,9 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
 
   // Get reaction info (ensure reactions is defined with error handling)
-  let reactions = [];
+  let reactions: Reaction[] = [];
   let totalReactions = 0;
-  let userReaction = null;
+  let userReaction: ReactionType | null = null;
 
   try {
     reactions = item.reactions || [];
