@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, Grid, FolderPlus, Users, ArrowLeft } from 'lucide-react';
-import { Exhibit, Collection, UserProfile } from '../types';
+import { Exhibit, Collection, UserProfile, ReactionType } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import { getUserAvatar } from '../services/storageService';
@@ -15,12 +15,12 @@ interface SearchViewProps {
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
     onUserClick: (username: string) => void;
-    onLike: (id: string, e?: React.MouseEvent) => void;
+    onReact: (id: string, reactionType: ReactionType) => void;
     currentUser: UserProfile | null;
 }
 
-const SearchView: React.FC<SearchViewProps> = ({ 
-    theme, exhibits, collections, users, onBack, onExhibitClick, onCollectionClick, onUserClick, onLike, currentUser 
+const SearchView: React.FC<SearchViewProps> = ({
+    theme, exhibits, collections, users, onBack, onExhibitClick, onCollectionClick, onUserClick, onReact, currentUser
 }) => {
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'ARTIFACTS' | 'COLLECTIONS' | 'USERS'>('ARTIFACTS');
@@ -98,14 +98,14 @@ const SearchView: React.FC<SearchViewProps> = ({
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {filteredArtifacts.length === 0 ? <div className="col-span-full text-center opacity-50 py-10 font-mono text-xs">Ничего не найдено</div> : 
                         filteredArtifacts.map(item => (
-                            <ExhibitCard 
-                                key={item.id} 
-                                item={item} 
-                                theme={theme} 
-                                onClick={onExhibitClick} 
-                                isLiked={item.likedBy?.includes(currentUser?.username || '')} 
-                                onLike={(e) => onLike(item.id, e)} 
-                                onAuthorClick={onUserClick} 
+                            <ExhibitCard
+                                key={item.id}
+                                item={item}
+                                theme={theme}
+                                onClick={onExhibitClick}
+                                currentUsername={currentUser?.username || ''}
+                                onReact={(reactionType) => onReact(item.id, reactionType)}
+                                onAuthorClick={onUserClick}
                             />
                         ))}
                     </div>

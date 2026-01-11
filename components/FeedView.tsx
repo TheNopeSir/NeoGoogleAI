@@ -3,7 +3,7 @@ import {
   LayoutGrid, List as ListIcon, Search, Heart,
   Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon
 } from 'lucide-react';
-import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
+import { UserProfile, Exhibit, WishlistItem, Collection, ReactionType } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
 import { calculateFeedScore, getUserAvatar } from '../services/storageService';
@@ -31,7 +31,7 @@ interface FeedViewProps {
 
   onNavigate: (view: string, params?: any) => void;
   onExhibitClick: (item: Exhibit) => void;
-  onLike: (id: string, e?: React.MouseEvent) => void;
+  onReact: (id: string, reactionType: ReactionType) => void;
   onUserClick: (username: string) => void;
   onWishlistClick: (item: WishlistItem) => void;
   onCollectionClick: (col: Collection) => void;
@@ -58,7 +58,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   setSelectedCategory,
   onNavigate,
   onExhibitClick,
-  onLike,
+  onReact,
   onUserClick,
   onWishlistClick,
   onCollectionClick
@@ -250,13 +250,13 @@ const FeedView: React.FC<FeedViewProps> = ({
                         <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
                             {visibleExhibits.map(item => (
                                 feedViewMode === 'GRID' ? (
-                                    <ExhibitCard 
-                                        key={item.id} 
-                                        item={item} 
+                                    <ExhibitCard
+                                        key={item.id}
+                                        item={item}
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        isLiked={item.likedBy?.includes(user?.username || '') || false}
-                                        onLike={(e) => onLike(item.id, e)}
+                                        currentUsername={user.username}
+                                        onReact={(reactionType) => onReact(item.id, reactionType)}
                                         onAuthorClick={onUserClick}
                                     />
                                 ) : (

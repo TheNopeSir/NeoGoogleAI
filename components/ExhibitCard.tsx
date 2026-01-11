@@ -1,20 +1,22 @@
 
 import React, { useState } from 'react';
 import { Heart, Eye, Image as ImageIcon } from 'lucide-react';
-import { Exhibit } from '../types';
+import { Exhibit, ReactionType } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
+import ReactionPicker from './ReactionPicker';
+import { getTotalReactions, getUserReaction } from '../utils/reactionUtils';
 
 interface ExhibitCardProps {
   item: Exhibit;
   theme: 'dark' | 'light' | 'xp' | 'winamp';
   onClick: (item: Exhibit) => void;
-  isLiked: boolean;
-  onLike: (e: React.MouseEvent) => void;
+  currentUsername: string;
+  onReact: (reactionType: ReactionType) => void;
   onAuthorClick: (author: string) => void;
 }
 
-const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked, onLike, onAuthorClick }) => {
+const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, currentUsername, onReact, onAuthorClick }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
@@ -22,6 +24,10 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
   const isCursed = tier === 'CURSED';
   const isHighTier = config.glow; // UNCOMMON and above get glow effects
   const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
+
+  // Get reaction info
+  const totalReactions = getTotalReactions(item.reactions);
+  const userReaction = getUserReaction(item.reactions || [], currentUsername);
   
   // Trade Status Logic
   const tradeStatus = item.tradeStatus || 'NONE';
@@ -79,11 +85,13 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
                         <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
                         <span className="truncate max-w-[80px]" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); onLike(e); }} className={`hover:text-wa-gold ${isLiked ? 'text-wa-gold' : 'text-wa-green'}`}>
-                            {isLiked ? '★' : '☆'}
-                        </button>
-                        <span>{item.likes}</span>
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <ReactionPicker
+                            reactions={item.reactions}
+                            currentUsername={currentUsername}
+                            onReact={onReact}
+                            theme={theme}
+                        />
                     </div>
                 </div>
             </div>
@@ -162,9 +170,14 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, isLiked
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>
                     <Eye size={12} /> <span>{uniqueViews}</span>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); onLike(e); }} className={`flex items-center gap-1 text-[10px] transition-all hover:scale-110 ${isLiked ? 'text-green-400' : (isXP ? 'text-black/60' : 'opacity-40')}`}>
-                    <Heart size={14} fill={isLiked ? "currentColor" : "none"} /> <span>{item.likes}</span>
-                </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                    <ReactionPicker
+                        reactions={item.reactions}
+                        currentUsername={currentUsername}
+                        onReact={onReact}
+                        theme={theme}
+                    />
+                </div>
             </div>
         </div>
       </div>

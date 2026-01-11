@@ -6,7 +6,7 @@ import {
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key
 } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
+import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, ReactionType } from '../types';
 import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
@@ -27,7 +27,7 @@ interface UserProfileViewProps {
     onFollow: (username: string) => void;
     onChat: (username: string) => void;
     onExhibitClick: (item: Exhibit) => void;
-    onLike: (id: string, e?: React.MouseEvent) => void;
+    onReact: (id: string, reactionType: ReactionType) => void;
     onAuthorClick: (author: string) => void;
     onCollectionClick: (col: Collection) => void;
     onShareCollection: (col: Collection) => void;
@@ -76,9 +76,9 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
 
 // --- MAIN COMPONENT ---
 
-const UserProfileView: React.FC<UserProfileViewProps> = ({ 
-    user, viewedProfileUsername, exhibits, collections, guestbook, theme, 
-    onBack, onLogout, onFollow, onChat, onExhibitClick, onLike, onAuthorClick, 
+const UserProfileView: React.FC<UserProfileViewProps> = ({
+    user, viewedProfileUsername, exhibits, collections, guestbook, theme,
+    onBack, onLogout, onFollow, onChat, onExhibitClick, onReact, onAuthorClick, 
     onCollectionClick, onShareCollection, onViewHallOfFame, onGuestbookPost, 
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
@@ -402,7 +402,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет предметов</div>}
                             {publishedExhibits.map(item => (
-                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={item.likedBy?.includes(user?.username || '') || false} onLike={(e) => onLike(item.id, e)} onAuthorClick={() => {}} />
+                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={() => {}} />
                             ))}
                         </div>
                     )}
@@ -420,7 +420,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {activeSection === 'FAVORITES' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
-                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={true} onLike={(e) => onLike(item.id, e)} onAuthorClick={onAuthorClick} />
+                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={onAuthorClick} />
                     ))}
                     {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 py-8 text-xs uppercase">Пусто</div>}
                 </div>

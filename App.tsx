@@ -31,9 +31,10 @@ import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, ReactionType } from './types';
 import { getArtifactTier } from './constants';
 import useSwipe from './hooks/useSwipe';
+import { toggleReaction, migrateLegacyLikes } from './utils/reactionUtils';
 
 const CACHE_VERSION = 'v5.1_FINAL_FIX';
 
@@ -220,21 +221,37 @@ export default function App() {
     navigateTo('EXHIBIT', { item: updatedItem });
   };
 
-  const handleLike = async (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleReaction = async (id: string, reactionType: ReactionType) => {
     if (!user) return;
     const item = exhibits.find(e => e.id === id);
     if (item) {
-        const isLiked = item.likedBy?.includes(user.username);
+        // Migrate legacy likes if needed
+        const migratedItem = migrateLegacyLikes(item);
+
+        // Get user's previous reaction
+        const previousReaction = migratedItem.reactions?.find(r => r.users.includes(user.username));
+
+        // Toggle reaction
+        const newReactions = toggleReaction(migratedItem.reactions || [], user.username, reactionType);
+
+        // Calculate total reactions for legacy field
+        const totalReactions = newReactions.reduce((sum, r) => sum + r.users.length, 0);
+        const allUsers = newReactions.flatMap(r => r.users);
+
         const updatedItem = {
-            ...item,
-            likes: isLiked ? item.likes - 1 : item.likes + 1,
-            likedBy: isLiked ? item.likedBy.filter(u => u !== user.username) : [...(item.likedBy || []), user.username]
+            ...migratedItem,
+            reactions: newReactions,
+            likes: totalReactions,
+            likedBy: allUsers
         };
+
         setExhibits(prev => prev.map(ex => ex.id === id ? updatedItem : ex));
         if (selectedExhibit?.id === id) setSelectedExhibit(updatedItem);
         await db.updateExhibit(updatedItem);
-        if (!isLiked && item.owner !== user.username) {
+
+        // Send notification if user added/changed reaction (not removed)
+        const hasReactionNow = newReactions.some(r => r.users.includes(user.username));
+        if (hasReactionNow && item.owner !== user.username) {
             db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
         }
     }
@@ -413,7 +430,7 @@ export default function App() {
 
         <div className="md:pt-16">
             {view === 'FEED' && user && (
-                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onLike={handleLike} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
+                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
             )}
 
             {view === 'ACTIVITY' && user && (
@@ -423,11 +440,11 @@ export default function App() {
             )}
             
             {view === 'MY_COLLECTION' && user && (
-                <MyCollection theme={theme} user={user} exhibits={exhibits.filter(e => e.owner === user.username)} allExhibits={exhibits} collections={collections.filter(c => c.owner === user.username)} wishlist={wishlist} onBack={() => navigateTo('FEED')} onExhibitClick={(item) => { if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item }); else handleExhibitClick(item); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} onLike={handleLike} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <MyCollection theme={theme} user={user} exhibits={exhibits.filter(e => e.owner === user.username)} allExhibits={exhibits} collections={collections.filter(c => c.owner === user.username)} wishlist={wishlist} onBack={() => navigateTo('FEED')} onExhibitClick={(item) => { if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item }); else handleExhibitClick(item); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} onReact={handleReaction} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (
-                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleLike(id)} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={db.getFullDatabase().users} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
+                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleReaction(id, 'LIKE')} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={db.getFullDatabase().users} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
             )}
 
             {view === 'COLLECTION_DETAIL' && selectedCollection && (
@@ -450,7 +467,7 @@ export default function App() {
 
             {view === 'SEARCH' && (
                 <div className="p-4 pb-24">
-                    <SearchView theme={theme} exhibits={exhibits} collections={collections} users={db.getFullDatabase().users} onBack={handleBack} onExhibitClick={handleExhibitClick} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onLike={handleLike} currentUser={user} />
+                    <SearchView theme={theme} exhibits={exhibits} collections={collections} users={db.getFullDatabase().users} onBack={handleBack} onExhibitClick={handleExhibitClick} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onReact={handleReaction} currentUser={user} />
                 </div>
             )}
 
@@ -512,7 +529,7 @@ export default function App() {
             )}
             
             {view === 'USER_PROFILE' && user && (
-                <UserProfileView user={user} viewedProfileUsername={viewedProfileUsername} exhibits={exhibits} collections={collections} guestbook={guestbook} theme={theme} onBack={handleBack} onLogout={() => { db.logoutUser(); setView('AUTH'); }} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} onExhibitClick={handleExhibitClick} onLike={handleLike} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onShareCollection={() => {}} onViewHallOfFame={() => setView('HALL_OF_FAME')} onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} refreshData={refreshData} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} editTagline={editTagline} setEditTagline={setEditTagline} editBio={editBio} setEditBio={setEditBio} editStatus={editStatus} setEditStatus={setEditStatus} editTelegram={editTelegram} setEditTelegram={setEditTelegram} editPassword={editPassword} setEditPassword={setEditPassword} onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} guestbookInput={guestbookInput} setGuestbookInput={setGuestbookInput} guestbookInputRef={guestbookInputRef} profileTab={profileTab} setProfileTab={setProfileTab} onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} onThemeChange={(t) => setTheme(t)} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <UserProfileView user={user} viewedProfileUsername={viewedProfileUsername} exhibits={exhibits} collections={collections} guestbook={guestbook} theme={theme} onBack={handleBack} onLogout={() => { db.logoutUser(); setView('AUTH'); }} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} onExhibitClick={handleExhibitClick} onReact={handleReaction} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onShareCollection={() => {}} onViewHallOfFame={() => setView('HALL_OF_FAME')} onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} refreshData={refreshData} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} editTagline={editTagline} setEditTagline={setEditTagline} editBio={editBio} setEditBio={setEditBio} editStatus={editStatus} setEditStatus={setEditStatus} editTelegram={editTelegram} setEditTelegram={setEditTelegram} editPassword={editPassword} setEditPassword={setEditPassword} onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} guestbookInput={guestbookInput} setGuestbookInput={setGuestbookInput} guestbookInputRef={guestbookInputRef} profileTab={profileTab} setProfileTab={setProfileTab} onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} onThemeChange={(t) => setTheme(t)} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
             )}
 
             {view === 'HALL_OF_FAME' && user && (
