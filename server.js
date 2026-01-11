@@ -1219,6 +1219,151 @@ api.get('/cleanup-orphaned-images', async (req, res) => {
     }
 });
 
+// Migration endpoint: Convert all reactions to LIKE
+api.post('/migrate-reactions', async (req, res) => {
+    try {
+        console.log('[Migration] Starting reactions migration...');
+
+        const result = await pool.query('SELECT id, data FROM exhibits');
+        const exhibits = result.rows;
+
+        console.log(`[Migration] Found ${exhibits.length} exhibits to process`);
+
+        let updated = 0;
+        let skipped = 0;
+        const errors = [];
+
+        for (const exhibit of exhibits) {
+            try {
+                const data = exhibit.data;
+                let needsUpdate = false;
+
+                // Handle reactions
+                if (data.reactions && Array.isArray(data.reactions) && data.reactions.length > 0) {
+                    // Collect all users who reacted with any type
+                    const allUsers = new Set();
+
+                    for (const reaction of data.reactions) {
+                        if (reaction.users && Array.isArray(reaction.users)) {
+                            reaction.users.forEach(user => allUsers.add(user));
+                        }
+                    }
+
+                    // Convert to single LIKE reaction
+                    if (allUsers.size > 0) {
+                        data.reactions = [{
+                            type: 'LIKE',
+                            users: Array.from(allUsers)
+                        }];
+                        needsUpdate = true;
+                    }
+                } else if (data.likedBy && Array.isArray(data.likedBy) && data.likedBy.length > 0) {
+                    // Migrate from legacy likedBy
+                    data.reactions = [{
+                        type: 'LIKE',
+                        users: data.likedBy
+                    }];
+                    needsUpdate = true;
+                }
+
+                // Update likes counter
+                if (data.reactions && data.reactions.length > 0) {
+                    const totalLikes = data.reactions.reduce((sum, r) => sum + (r.users?.length || 0), 0);
+                    data.likes = totalLikes;
+                    data.likedBy = data.reactions.flatMap(r => r.users || []);
+                    needsUpdate = true;
+                } else {
+                    // Ensure likes counter is 0 if no reactions
+                    if (data.likes !== 0) {
+                        data.likes = 0;
+                        data.likedBy = [];
+                        needsUpdate = true;
+                    }
+                }
+
+                // Ensure views counter exists and is a number
+                if (typeof data.views !== 'number') {
+                    data.views = data.views ? parseInt(data.views, 10) : 0;
+                    if (isNaN(data.views)) data.views = 0;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    await pool.query(
+                        'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [data, exhibit.id]
+                    );
+                    updated++;
+                } else {
+                    skipped++;
+                }
+            } catch (err) {
+                console.error(`[Migration] Error processing exhibit ${exhibit.id}:`, err);
+                errors.push(`Exhibit ${exhibit.id}: ${err.message}`);
+            }
+        }
+
+        // Clear cache after migration
+        cache.flushPattern('exhibits:');
+        cache.flushPattern('feed:');
+
+        console.log(`[Migration] Complete! Updated: ${updated}, Skipped: ${skipped}`);
+
+        res.json({
+            success: true,
+            updated,
+            skipped,
+            errors: errors.length > 0 ? errors : undefined,
+            message: `Миграция завершена успешно!`
+        });
+    } catch (e) {
+        console.error('[Migration] Fatal error:', e);
+        res.status(500).json({
+            success: false,
+            error: e.message,
+            updated: 0,
+            skipped: 0
+        });
+    }
+});
+
+// Guestbook verification endpoint
+api.get('/verify-guestbook', async (req, res) => {
+    try {
+        console.log('[Guestbook] Verifying guestbook...');
+
+        const result = await pool.query(
+            'SELECT id, data, created_at, updated_at FROM guestbook ORDER BY updated_at DESC LIMIT 50'
+        );
+
+        const entries = result.rows.map(row => ({
+            id: row.id,
+            author: row.data.author || 'Unknown',
+            targetUser: row.data.targetUser || 'Unknown',
+            text: row.data.text || '',
+            timestamp: row.data.timestamp || row.updated_at,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        }));
+
+        console.log(`[Guestbook] Found ${entries.length} entries`);
+
+        res.json({
+            success: true,
+            total: entries.length,
+            entries
+        });
+    } catch (e) {
+        console.error('[Guestbook] Error:', e);
+        res.status(500).json({
+            success: false,
+            error: e.message,
+            total: 0,
+            entries: []
+        });
+    }
+});
+
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });

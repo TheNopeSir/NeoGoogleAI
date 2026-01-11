@@ -29,6 +29,7 @@ import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
+import MigrationView from './components/MigrationView';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, ReactionType } from './types';
@@ -491,6 +492,9 @@ export default function App() {
                         <button onClick={() => navigateTo('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all"><div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><Plus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div><div className="text-xs opacity-50">Добавить предмет в коллекцию</div></div></button>
                         <button onClick={() => navigateTo('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all"><div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><FolderPlus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВАЯ КОЛЛЕКЦИЯ</div><div className="text-xs opacity-50">Объединить предметы в альбом</div></div></button>
                         <button onClick={() => navigateTo('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all"><div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-500"><Search size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">В ПОИСКЕ (WISHLIST)</div><div className="text-xs opacity-50">Объявить розыск предмета</div></div></button>
+                        {user?.isAdmin && (
+                            <button onClick={() => navigateTo('MIGRATION')} className="p-6 border border-orange-500/30 rounded-2xl flex items-center gap-4 hover:bg-orange-500/10 transition-all"><div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-500"><Zap size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">МИГРАЦИЯ ДАННЫХ</div><div className="text-xs opacity-50">Административные инструменты БД</div></div></button>
+                        )}
                     </div>
                 </div>
             )}
@@ -563,6 +567,10 @@ export default function App() {
 
             {view === 'HALL_OF_FAME' && user && (
                  <HallOfFame theme={theme} achievements={user.achievements} onBack={handleBack} />
+            )}
+
+            {view === 'MIGRATION' && user?.isAdmin && (
+                <MigrationView theme={theme} onBack={handleBack} />
             )}
         </div>
     </div>
