@@ -809,10 +809,18 @@ api.get('/images/:exhibitId/:filename', (req, res) => {
         const { exhibitId, filename } = req.params;
         const imagePath = path.join(getImagesDir(), exhibitId, filename);
 
+        console.log(`[Images] Request for: ${imagePath}`);
+
         // Проверяем существование файла
         if (!fs.existsSync(imagePath)) {
-            return res.status(404).json({ error: 'Image not found' });
+            console.warn(`[Images] File not found: ${imagePath}`);
+            console.warn(`[Images] Images dir: ${getImagesDir()}`);
+            console.warn(`[Images] Exhibit ID: ${exhibitId}`);
+            console.warn(`[Images] Filename: ${filename}`);
+            return res.status(404).json({ error: 'Image not found', path: imagePath });
         }
+
+        console.log(`[Images] Serving file: ${imagePath}`);
 
         // Устанавливаем агрессивное кеширование для изображений (1 год)
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
