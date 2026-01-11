@@ -1,4 +1,5 @@
 import React from 'react';
+import { Heart } from 'lucide-react';
 import { Reaction } from '../types';
 
 interface ReactionPickerProps {
@@ -30,12 +31,12 @@ const ReactionPicker: React.FC<ReactionPickerProps> = ({
       }}
       className={`flex items-center gap-1 text-[10px] transition-all hover:scale-110 ${
         userHasLiked
-          ? 'text-blue-500 font-bold'
+          ? 'text-red-500 font-bold'
           : isWinamp ? 'text-wa-green' : 'opacity-40 hover:opacity-100'
       }`}
       title={userHasLiked ? 'Убрать лайк' : 'Поставить лайк'}
     >
-      <span className="text-sm">👍</span>
+      <Heart size={14} fill={userHasLiked ? "currentColor" : "none"} />
       <span>{totalLikes}</span>
     </button>
   );

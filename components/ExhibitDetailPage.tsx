@@ -361,6 +361,19 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
       {isFullscreen && (
           <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
+              <div className="absolute top-4 left-4 z-50 flex gap-4">
+                  <button
+                    onClick={() => onLike(exhibit.id)}
+                    className={`p-3 bg-black/50 rounded-full transition-all ${isLiked ? 'text-red-500 hover:bg-red-500/20' : 'text-white hover:bg-white/20'}`}
+                    title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
+                  >
+                    <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
+                  </button>
+                  <div className="flex items-center gap-2 px-4 py-3 bg-black/50 text-white rounded-full text-sm font-mono">
+                    <Heart size={16} className="text-red-500" />
+                    <span>{exhibit.likes}</span>
+                  </div>
+              </div>
               <div className="absolute top-4 right-4 z-50 flex gap-4">
                   <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomIn size={24}/></button>
                   <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomOut size={24}/></button>
@@ -511,7 +524,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         
                         {/* Compact Stats Toolbar */}
                         <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4">
-                            <button onClick={() => onLike(exhibit.id)} className={`flex items-center gap-1.5 hover:text-green-400 transition-colors ${isLiked ? 'text-green-500' : ''}`}>
+                            <button onClick={() => onLike(exhibit.id)} className={`flex items-center gap-1.5 hover:text-red-400 transition-colors ${isLiked ? 'text-red-500 font-bold' : ''}`}>
                                 <Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {exhibit.likes}
                             </button>
                             <div className="flex items-center gap-1.5">
