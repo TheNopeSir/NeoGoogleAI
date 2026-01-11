@@ -12,7 +12,7 @@ interface ExhibitCardProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
   onClick: (item: Exhibit) => void;
   currentUsername: string;
-  onReact: (reactionType: ReactionType) => void;
+  onReact: () => void;
   onAuthorClick: (author: string) => void;
 }
 
