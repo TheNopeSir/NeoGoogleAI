@@ -554,23 +554,54 @@ export const saveExhibit = async (e: Exhibit) => {
     // 1. Optimistic Update (RAM)
     hotCache.exhibits.unshift(e);
     notifyListeners();
-    
-    // 2. Persist (IndexedDB)
+
+    // 2. Persist (IndexedDB) - temporary with Base64 images
     const db = await getDB();
     await db.put('exhibits', e);
-    
-    // 3. Sync (Server)
-    await apiCall('/exhibits', 'POST', e);
+
+    // 3. Sync (Server) - получаем обработанные изображения
+    const serverResponse = await apiCall('/exhibits', 'POST', e);
+
+    // 4. Update with processed images from server
+    if (serverResponse && serverResponse.imageUrls) {
+        const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
+
+        // Update RAM
+        const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
+        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
+
+        // Update IndexedDB with server paths
+        await db.put('exhibits', updatedExhibit);
+
+        notifyListeners();
+    }
 };
 
 export const updateExhibit = async (e: Exhibit) => {
+    // 1. Optimistic Update (RAM)
     const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
     if (idx !== -1) hotCache.exhibits[idx] = e;
     notifyListeners();
-    
+
+    // 2. Persist (IndexedDB) - temporary with potentially Base64 images
     const db = await getDB();
     await db.put('exhibits', e);
-    await apiCall('/exhibits', 'POST', e);
+
+    // 3. Sync (Server) - получаем обработанные изображения
+    const serverResponse = await apiCall('/exhibits', 'POST', e);
+
+    // 4. Update with processed images from server
+    if (serverResponse && serverResponse.imageUrls) {
+        const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
+
+        // Update RAM
+        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
+
+        // Update IndexedDB with server paths
+        await db.put('exhibits', updatedExhibit);
+
+        notifyListeners();
+    }
 };
 
 export const deleteExhibit = async (id: string) => {
