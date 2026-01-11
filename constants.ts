@@ -65,12 +65,7 @@ export const BADGE_CONFIG = {
 export const BADGES = BADGE_CONFIG;
 
 export const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string; color: string }> = {
-    'LIKE': { emoji: '👍', label: 'Нравится', color: 'text-blue-500' },
-    'FIRE': { emoji: '🔥', label: 'Огонь', color: 'text-orange-500' },
-    'HEART': { emoji: '❤️', label: 'Обожаю', color: 'text-red-500' },
-    'STAR': { emoji: '⭐', label: 'Отлично', color: 'text-yellow-500' },
-    'TROPHY': { emoji: '🏆', label: 'Грааль', color: 'text-yellow-600' },
-    'COOL': { emoji: '😎', label: 'Круто', color: 'text-purple-500' }
+    'LIKE': { emoji: '👍', label: 'Нравится', color: 'text-blue-500' }
 };
 
 export const STATUS_OPTIONS = {

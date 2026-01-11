@@ -27,7 +27,7 @@ interface UserProfileViewProps {
     onFollow: (username: string) => void;
     onChat: (username: string) => void;
     onExhibitClick: (item: Exhibit) => void;
-    onReact: (id: string, reactionType: ReactionType) => void;
+    onReact: (id: string) => void;
     onAuthorClick: (author: string) => void;
     onCollectionClick: (col: Collection) => void;
     onShareCollection: (col: Collection) => void;
@@ -402,7 +402,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет предметов</div>}
                             {publishedExhibits.map(item => (
-                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={() => {}} />
+                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={() => {}} />
                             ))}
                         </div>
                     )}
@@ -420,7 +420,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {activeSection === 'FAVORITES' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
-                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={onAuthorClick} />
+                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={onAuthorClick} />
                     ))}
                     {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 py-8 text-xs uppercase">Пусто</div>}
                 </div>
