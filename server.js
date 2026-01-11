@@ -1390,6 +1390,59 @@ api.get('/notifications', async (req, res) => {
 app.use('/api', api);
 
 // ==========================================
+// 🔧 ADMIN ENDPOINT: RESET ALL IMAGES
+// ==========================================
+// Временный endpoint для обнуления изображений во всех артефактах
+app.post('/admin/reset-images', async (req, res) => {
+    try {
+        console.log('🔄 Начинаем обнуление изображений во всех артефактах...');
+
+        // Получаем все артефакты
+        const result = await query('SELECT id, data FROM exhibits');
+
+        let updated = 0;
+        let skipped = 0;
+
+        for (const row of result.rows) {
+            const data = row.data;
+
+            // Проверяем, есть ли изображения
+            if (!data.imageUrls || data.imageUrls.length === 0) {
+                skipped++;
+                continue;
+            }
+
+            // Обнуляем imageUrls
+            data.imageUrls = [];
+
+            // Обновляем запись в БД
+            await query(
+                'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                [data, row.id]
+            );
+
+            updated++;
+        }
+
+        // Инвалидируем кеш
+        cache.flushPattern('feed:');
+
+        console.log(`✅ Готово! Обновлено: ${updated}, Пропущено: ${skipped}`);
+
+        res.json({
+            success: true,
+            updated,
+            skipped,
+            total: result.rows.length,
+            message: 'Все изображения успешно обнулены. Теперь можно заново загрузить их через интерфейс.'
+        });
+    } catch (e) {
+        console.error('❌ Ошибка обнуления изображений:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ==========================================
 // 🖼️ IMAGE SERVING ENDPOINT
 // ==========================================
 // Раздача оптимизированных изображений из uploads/images
