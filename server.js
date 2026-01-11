@@ -1042,6 +1042,121 @@ api.get('/verify-image-files', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🧹 ENDPOINT ДЛЯ ОЧИСТКИ ПУТЕЙ К НЕСУЩЕСТВУЮЩИМ ИЗОБРАЖЕНИЯМ
+// ==========================================
+
+api.get('/cleanup-orphaned-images', async (req, res) => {
+    try {
+        const mode = req.query.mode || 'analyze';
+
+        console.log(`[Cleanup] Starting cleanup - mode: ${mode}`);
+
+        // Получаем все артефакты
+        const result = await query(`SELECT id, data FROM exhibits ORDER BY updated_at DESC`);
+
+        const stats = {
+            total: result.rows.length,
+            withImages: 0,
+            validImages: 0,
+            orphanedImages: 0,
+            cleaned: 0,
+            errors: 0,
+            orphanedExhibits: []
+        };
+
+        // Функция проверки существования файла
+        function checkImageFileExists(imagePath) {
+            if (!imagePath) return false;
+            const relativePath = imagePath.replace('/api/images/', '');
+            const fullPath = path.join(getImagesDir(), relativePath);
+            return fs.existsSync(fullPath);
+        }
+
+        // Анализируем все артефакты
+        for (const row of result.rows) {
+            const data = row.data;
+            const imageUrls = data.imageUrls;
+
+            if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) continue;
+
+            stats.withImages++;
+            const firstImage = imageUrls[0];
+
+            if (typeof firstImage === 'object' && firstImage.thumbnail) {
+                const fileExists = checkImageFileExists(firstImage.thumbnail);
+
+                if (fileExists) {
+                    stats.validImages++;
+                } else {
+                    stats.orphanedImages++;
+                    stats.orphanedExhibits.push({
+                        id: row.id,
+                        title: data.title,
+                        missingPath: firstImage.thumbnail
+                    });
+                }
+            }
+        }
+
+        // Режим анализа
+        if (mode === 'analyze') {
+            return res.json({
+                success: true,
+                mode: 'analyze',
+                stats: {
+                    total: stats.total,
+                    withImages: stats.withImages,
+                    validImages: stats.validImages,
+                    orphanedImages: stats.orphanedImages
+                },
+                orphanedExhibits: stats.orphanedExhibits.slice(0, 20)
+            });
+        }
+
+        // Режим очистки
+        if (mode === 'cleanup') {
+            for (const item of stats.orphanedExhibits) {
+                try {
+                    const exhibitResult = await query(`SELECT data FROM exhibits WHERE id = $1`, [item.id]);
+                    if (exhibitResult.rows.length === 0) continue;
+
+                    const exhibitData = exhibitResult.rows[0].data;
+                    delete exhibitData.imageUrls;
+
+                    await query(
+                        'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(exhibitData), item.id]
+                    );
+
+                    stats.cleaned++;
+                    console.log(`[Cleanup] ✓ Cleaned ${item.id}`);
+                } catch (error) {
+                    stats.errors++;
+                    console.error(`[Cleanup] ✗ Error ${item.id}:`, error.message);
+                }
+            }
+
+            cache.cache.clear();
+
+            return res.json({
+                success: true,
+                mode: 'cleanup',
+                results: {
+                    orphanedImages: stats.orphanedImages,
+                    cleaned: stats.cleaned,
+                    errors: stats.errors
+                }
+            });
+        }
+
+        res.status(400).json({ error: 'Invalid mode' });
+    } catch (e) {
+        console.error('[Cleanup] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 api.get('/notifications', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
