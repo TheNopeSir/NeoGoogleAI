@@ -48,10 +48,11 @@ export interface Exhibit {
   title: string;
   description: string;
   imageUrls: (string | ProcessedImage)[];
-  videoUrl?: string; 
-  category: string; 
+  videoUrl?: string;
+  category: string;
   subcategory?: string;
   owner: string;
+  lastEditedBy?: string; // Username of the last person who edited this artifact
   timestamp: string;
   likes: number; // Legacy - total reactions count
   likedBy: string[]; // Legacy - for backward compatibility
@@ -63,7 +64,7 @@ export interface Exhibit {
   specs: Record<string, string>;
   comments: Comment[];
   isDraft?: boolean;
-  tradeStatus?: TradeStatus; 
+  tradeStatus?: TradeStatus;
   price?: number;
   currency?: 'RUB' | 'USD' | 'ETH';
   tradeRequest?: string; // What they want in return
