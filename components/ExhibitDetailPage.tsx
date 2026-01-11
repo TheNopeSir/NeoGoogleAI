@@ -564,13 +564,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><Sparkles size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {similarArtifacts.map(sim => (
-                            <ExhibitCard 
-                                key={sim.id} 
-                                item={sim} 
+                            <ExhibitCard
+                                key={sim.id}
+                                item={sim}
                                 theme={theme}
                                 onClick={() => onExhibitClick(sim)}
-                                isLiked={sim.likedBy?.includes(currentUser)}
-                                onLike={() => {}}
+                                currentUsername={currentUser}
+                                onReact={() => {}}
                                 onAuthorClick={onAuthorClick}
                             />
                         ))}
