@@ -25,4 +25,9 @@ yarn-error.log*
 # OS specific
 .DS_Store
 Thumbs.db
-uploads/
+
+# Uploads - ignore all files but keep directory structure
+uploads/*
+!uploads/images/
+uploads/images/*
+!uploads/images/.gitkeep
