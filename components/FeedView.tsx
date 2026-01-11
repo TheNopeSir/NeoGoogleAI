@@ -70,13 +70,13 @@ const FeedView: React.FC<FeedViewProps> = ({
   const [expandedWishlistUsers, setExpandedWishlistUsers] = useState<Set<string>>(new Set());
 
   // Infinite Scroll State
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(100); // Increased from 20 to 100 for better initial load
   const observerRef = useRef<HTMLDivElement>(null);
 
   // Reset subcategory when main category changes
   useEffect(() => {
     setSelectedSubcategory(null);
-    setVisibleCount(20); // Reset scroll on filter change
+    setVisibleCount(100); // Reset scroll on filter change
   }, [selectedCategory, feedType]);
 
   // --- CORE FILTERING & SORTING LOGIC ---
@@ -144,6 +144,16 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleExhibits = processedExhibits.slice(0, visibleCount);
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
+
+  // Debug logging
+  useEffect(() => {
+    if (feedMode === 'ARTIFACTS') {
+      console.log('[FeedView] Total exhibits:', exhibits.length);
+      console.log('[FeedView] Processed exhibits:', processedExhibits.length);
+      console.log('[FeedView] Visible exhibits:', visibleExhibits.length);
+      console.log('[FeedView] User:', user.username);
+    }
+  }, [processedExhibits.length, visibleExhibits.length, feedMode]);
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in">
@@ -255,7 +265,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         item={item}
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        currentUsername={user.username}
+                                        currentUsername={user?.username || ''}
                                         onReact={(reactionType) => onReact(item.id, reactionType)}
                                         onAuthorClick={onUserClick}
                                     />
