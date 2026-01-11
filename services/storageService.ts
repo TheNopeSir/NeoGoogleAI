@@ -44,7 +44,7 @@ const DB_NAME = 'NeoArchive_V3_Turbo';
 const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
-const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V1'; // Changing this clears DB for everyone
+const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V2_RESTORE_DATA'; // Changing this clears DB for everyone
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
 // Mimics Redis on the client side for instant UI updates
