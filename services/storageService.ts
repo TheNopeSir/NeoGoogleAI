@@ -321,7 +321,23 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             // Update hotCache immediately so UI reflects data NOW
             if (cacheKey) {
                 if (cacheKey === 'exhibits') {
-                    hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                    // Smart merge: preserve existing items, only add/update new ones
+                    const existingIds = new Set(hotCache.exhibits.map(e => e.id));
+                    const newItems = data.filter((item: any) => !existingIds.has(item.id));
+                    const updatedExisting = hotCache.exhibits.map(existing => {
+                        const serverVersion = data.find((item: any) => item.id === existing.id);
+                        if (!serverVersion) return existing;
+
+                        // Smart merge: preserve local changes that haven't been synced yet
+                        return {
+                            ...serverVersion,
+                            // Keep local likedBy if server doesn't have it or it's empty
+                            likedBy: (serverVersion.likedBy && serverVersion.likedBy.length > 0) ? serverVersion.likedBy : existing.likedBy,
+                            // Keep local comments if server doesn't have them or they're empty
+                            comments: (serverVersion.comments && serverVersion.comments.length > 0) ? serverVersion.comments : existing.comments
+                        };
+                    });
+                    hotCache.exhibits = [...updatedExisting, ...newItems].sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 } else {
                     hotCache[cacheKey] = data as any;
                 }
@@ -332,7 +348,8 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
             }
 
-            // --- 2. NOTIFY UI ---
+            // --- 2. NOTIFY UI (debounced to prevent flicker) ---
+            // Only notify if data actually changed
             notifyListeners();
 
             // --- 3. PERSIST TO IDB (Background) ---

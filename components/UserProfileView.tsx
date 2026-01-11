@@ -6,7 +6,7 @@ import {
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
     AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key
 } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
+import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, ReactionType } from '../types';
 import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
@@ -27,7 +27,7 @@ interface UserProfileViewProps {
     onFollow: (username: string) => void;
     onChat: (username: string) => void;
     onExhibitClick: (item: Exhibit) => void;
-    onLike: (id: string, e?: React.MouseEvent) => void;
+    onReact: (id: string, reactionType: ReactionType) => void;
     onAuthorClick: (author: string) => void;
     onCollectionClick: (col: Collection) => void;
     onShareCollection: (col: Collection) => void;
@@ -73,25 +73,12 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
     </div>
 );
 
-const RetroCounter: React.FC<{ count: number }> = ({ count }) => {
-    const countStr = Math.max(count, 1).toString().padStart(6, '0');
-    return (
-        <div className="inline-flex gap-0.5 p-1 bg-black border-2 border-gray-600 rounded-sm shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" title="Счетчик посетителей">
-            {countStr.split('').map((digit, i) => (
-                <div key={i} className="w-3 h-5 bg-[#1a1a1a] text-red-600 font-mono flex items-center justify-center text-[10px] font-bold border border-[#333] shadow-[inset_0_0_2px_black] relative overflow-hidden">
-                    <span className="relative z-10 text-red-500 text-shadow-red">{digit}</span>
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-500/10 to-transparent opacity-20 pointer-events-none"></div>
-                </div>
-            ))}
-        </div>
-    );
-};
 
 // --- MAIN COMPONENT ---
 
-const UserProfileView: React.FC<UserProfileViewProps> = ({ 
-    user, viewedProfileUsername, exhibits, collections, guestbook, theme, 
-    onBack, onLogout, onFollow, onChat, onExhibitClick, onLike, onAuthorClick, 
+const UserProfileView: React.FC<UserProfileViewProps> = ({
+    user, viewedProfileUsername, exhibits, collections, guestbook, theme,
+    onBack, onLogout, onFollow, onChat, onExhibitClick, onReact, onAuthorClick, 
     onCollectionClick, onShareCollection, onViewHallOfFame, onGuestbookPost, 
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
@@ -231,7 +218,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             <div className="flex-1 space-y-1">
                                 <div className="text-[14px] text-wa-gold flex justify-between">
                                     <span>{profileUser.username}</span>
-                                    <RetroCounter count={totalViews} />
                                 </div>
                                 <div className="text-[12px] opacity-80">{profileUser.tagline}</div>
                                 <div className="text-[12px] flex gap-2 mt-2">
@@ -252,10 +238,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             {isEditingProfile && isCurrentUser && (
                                 <label className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-xl cursor-pointer hover:bg-black/70 border border-white/20 flex items-center gap-2 backdrop-blur-sm"><Camera size={16} /> <span className="text-[10px] font-pixel">ОБЛОЖКА</span><input type="file" accept="image/*" className="hidden" onChange={onProfileCoverUpload} /></label>
                             )}
-                            <div className="absolute bottom-2 right-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10">
-                                <span className="text-[9px] font-pixel text-white opacity-70 hidden md:inline">VISITORS:</span>
-                                <RetroCounter count={totalViews} />
-                            </div>
                         </div>
 
                         {/* Avatar & Info Container */}
@@ -420,7 +402,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет предметов</div>}
                             {publishedExhibits.map(item => (
-                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={item.likedBy?.includes(user?.username || '') || false} onLike={(e) => onLike(item.id, e)} onAuthorClick={() => {}} />
+                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={() => {}} />
                             ))}
                         </div>
                     )}
@@ -438,7 +420,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {activeSection === 'FAVORITES' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
-                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={true} onLike={(e) => onLike(item.id, e)} onAuthorClick={onAuthorClick} />
+                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={(reactionType) => onReact(item.id, reactionType)} onAuthorClick={onAuthorClick} />
                     ))}
                     {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 py-8 text-xs uppercase">Пусто</div>}
                 </div>
