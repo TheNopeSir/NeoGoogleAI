@@ -19,11 +19,11 @@ const ReactionPicker: React.FC<ReactionPickerProps> = ({
   const pickerRef = useRef<HTMLDivElement>(null);
   const isWinamp = theme === 'winamp';
 
-  // Get user's current reaction
-  const userReaction = reactions.find(r => r.users.includes(currentUsername));
+  // Get user's current reaction (with safety check)
+  const userReaction = reactions?.find(r => r.users?.includes(currentUsername));
 
-  // Calculate total reactions
-  const totalReactions = reactions.reduce((sum, r) => sum + r.users.length, 0);
+  // Calculate total reactions (with safety check)
+  const totalReactions = reactions?.reduce((sum, r) => sum + (r.users?.length || 0), 0) || 0;
 
   // Close picker when clicking outside
   useEffect(() => {
