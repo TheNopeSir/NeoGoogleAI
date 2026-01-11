@@ -834,7 +834,12 @@ api.post('/exhibits', async (req, res) => {
         // Инвалидируем кеш фида
         cache.flushPattern('feed:');
 
-        res.json({ success: true, processedImages: processedData.imageUrls?.length || 0 });
+        // Возвращаем обработанные данные с imageUrls для клиента
+        res.json({
+            success: true,
+            imageUrls: processedData.imageUrls,
+            processedImages: processedData.imageUrls?.length || 0
+        });
     } catch (e) {
         console.error('[Exhibits] Save error:', e);
         res.status(500).json({ success: false, error: e.message });
