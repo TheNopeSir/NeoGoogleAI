@@ -1435,6 +1435,72 @@ api.get('/notifications', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ==========================================
+// 🔧 SPECIAL ENDPOINT: GRANT ADMIN RIGHTS
+// ==========================================
+// This endpoint allows auto-upgrading users from ADMIN_USERNAMES/ADMIN_EMAILS list
+// Call this endpoint to grant admin rights without logging in
+api.post('/grant-admin', async (req, res) => {
+    try {
+        console.log('[GrantAdmin] Starting admin rights upgrade for configured users...');
+
+        let upgraded = 0;
+        let skipped = 0;
+        const results = [];
+
+        // Process usernames from ADMIN_USERNAMES list
+        for (const adminUsername of ADMIN_USERNAMES) {
+            try {
+                const result = await query(
+                    'SELECT * FROM users WHERE LOWER(username) = LOWER($1)',
+                    [adminUsername]
+                );
+
+                if (result.rows.length === 0) {
+                    results.push({ username: adminUsername, status: 'not_found' });
+                    skipped++;
+                    continue;
+                }
+
+                const user = mapRow(result.rows[0]);
+
+                if (user.isAdmin) {
+                    results.push({ username: adminUsername, status: 'already_admin' });
+                    skipped++;
+                    continue;
+                }
+
+                // Grant admin rights
+                user.isAdmin = true;
+                const updatedData = extractDataFields(user);
+                await query(
+                    'UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2',
+                    [updatedData, user.username]
+                );
+
+                console.log(`[GrantAdmin] ✓ Granted admin rights to: ${adminUsername}`);
+                results.push({ username: adminUsername, status: 'upgraded', email: user.email });
+                upgraded++;
+            } catch (err) {
+                console.error(`[GrantAdmin] Error processing ${adminUsername}:`, err);
+                results.push({ username: adminUsername, status: 'error', error: err.message });
+            }
+        }
+
+        console.log(`[GrantAdmin] Complete! Upgraded: ${upgraded}, Skipped: ${skipped}`);
+
+        res.json({
+            success: true,
+            upgraded,
+            skipped,
+            results
+        });
+    } catch (e) {
+        console.error('[GrantAdmin] Error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 app.use('/api', api);
 
 // ==========================================
