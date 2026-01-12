@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
+import {
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
   ListMusic, Radio, Zap, Activity, Disc,
-  LayoutTemplate, FilePlus2, Flag, UserCheck
+  LayoutTemplate, FilePlus2, Flag, UserCheck, Database
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -30,6 +30,7 @@ import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import MigrationView from './components/MigrationView';
+import AdminTools from './components/AdminTools';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, ReactionType } from './types';
@@ -80,6 +81,7 @@ export default function App() {
   // Social/Edit State
   const [socialListType, setSocialListType] = useState<'followers' | 'following'>('followers');
   const [isAddingToCollection, setIsAddingToCollection] = useState<string | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Profile states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -421,6 +423,17 @@ export default function App() {
                     {/* Right Actions */}
                     <div className="flex items-center gap-6">
                         <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><Search size={20}/></button>
+                        {isUserAdmin(user) && (
+                            <>
+                                <button
+                                    onClick={() => setShowAdminPanel(true)}
+                                    className="opacity-60 hover:opacity-100 transition-opacity flex items-center gap-2 text-xs font-pixel text-green-400"
+                                    title="Админ-панель"
+                                >
+                                    <Database size={20}/> ADMIN
+                                </button>
+                            </>
+                        )}
                         <div className="h-6 w-[1px] bg-white/10"></div>
                         <div onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className="flex items-center gap-3 cursor-pointer group">
                             <div className="text-right hidden lg:block">
@@ -587,6 +600,11 @@ export default function App() {
 
             {view === 'MIGRATION' && isUserAdmin(user) && (
                 <MigrationView theme={theme} onBack={handleBack} onMigrationComplete={refreshData} />
+            )}
+
+            {/* Admin Panel */}
+            {showAdminPanel && isUserAdmin(user) && (
+                <AdminTools onClose={() => setShowAdminPanel(false)} />
             )}
         </div>
     </div>
