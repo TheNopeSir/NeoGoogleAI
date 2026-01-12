@@ -26,6 +26,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ==========================================
+// 🔐 ADMIN CONFIGURATION
+// ==========================================
+const ADMIN_EMAILS = ['kennyornope@gmail.com'];
+const ADMIN_USERNAMES = ['Truester'];
+
+// Helper function to check if user should be admin
+const shouldBeAdmin = (username, email) => {
+    return ADMIN_USERNAMES.includes(username) ||
+           (email && ADMIN_EMAILS.includes(email));
+};
+
+// ==========================================
 // 🚀 SERVER-SIDE CACHING (REDIS-LIKE)
 // ==========================================
 class ServerCache {
@@ -232,8 +244,8 @@ api.post('/auth/register', async (req, res) => {
 
         const newUser = {
             username: cleanUsername,
-            email: cleanEmail, 
-            password: cleanPassword, 
+            email: cleanEmail,
+            password: cleanPassword,
             tagline: tagline || "Новый пользователь",
             avatarUrl: `https://ui-avatars.com/api/?name=${cleanUsername}&background=random&color=fff`,
             joinedDate: new Date().toLocaleDateString(),
@@ -241,8 +253,12 @@ api.post('/auth/register', async (req, res) => {
             followers: [],
             achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
             settings: { theme: 'dark' },
-            isAdmin: false
+            isAdmin: shouldBeAdmin(cleanUsername, cleanEmail)
         };
+
+        if (newUser.isAdmin) {
+            console.log(`[Auth] Registering new admin user: ${cleanUsername}`);
+        }
 
         await query(
             `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
@@ -301,11 +317,23 @@ api.post('/auth/login', async (req, res) => {
         }
 
         if (!passIsValid) {
-            console.warn(`[Auth] 401 Invalid password for: ${user.username}`); 
+            console.warn(`[Auth] 401 Invalid password for: ${user.username}`);
             return res.status(401).json({ error: "Неверный пароль" });
         }
-        
-        console.log(`[Auth] Success: ${user.username}`);
+
+        // Auto-upgrade to admin if user is in admin list
+        const shouldUpgrade = shouldBeAdmin(user.username, user.email) && !user.isAdmin;
+        if (shouldUpgrade) {
+            console.log(`[Auth] Auto-upgrading ${user.username} to admin`);
+            user.isAdmin = true;
+            const updatedData = extractDataFields(user);
+            await query(
+                `UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
+                [updatedData, user.username]
+            );
+        }
+
+        console.log(`[Auth] Success: ${user.username} (isAdmin: ${user.isAdmin})`);
         res.json(user);
     } catch (e) {
         console.error("[Auth] Login Error:", e);
@@ -325,17 +353,32 @@ api.post('/auth/telegram', async (req, res) => {
         let user;
         if (check.rows.length > 0) {
             user = mapRow(check.rows[0]);
+
+            let needsUpdate = false;
+
             // Auto-update avatar if changed on TG
             if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
                 user.avatarUrl = tgUser.photo_url;
+                needsUpdate = true;
+            }
+
+            // Auto-upgrade to admin if needed
+            if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
+                console.log(`[Telegram Auth] Auto-upgrading ${user.username} to admin`);
+                user.isAdmin = true;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
                 const updatedData = extractDataFields(user);
                 await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, user.username]);
             }
         } else {
+            const tgEmail = `tg_${tgUser.id}@neoarchive.placeholder`;
             user = {
                 username,
                 // PLACEHOLDER EMAIL - Real issue for login by email
-                email: `tg_${tgUser.id}@neoarchive.placeholder`,
+                email: tgEmail,
                 password: crypto.randomBytes(16).toString('hex'),
                 tagline: `Странник из Telegram`,
                 avatarUrl: tgUser.photo_url || `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
@@ -344,9 +387,13 @@ api.post('/auth/telegram', async (req, res) => {
                 followers: [],
                 achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
                 settings: { theme: 'dark' },
-                isAdmin: false,
+                isAdmin: shouldBeAdmin(username, tgEmail),
                 telegramId: tgUser.id
             };
+
+            if (user.isAdmin) {
+                console.log(`[Telegram Auth] Registering new admin user: ${username}`);
+            }
             
             await query(
                 `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
