@@ -46,10 +46,29 @@ const ADMIN_USERNAMES = ['Truester'];
 
 // Helper function to check if user is admin
 const isUserAdmin = (user: UserProfile | null): boolean => {
-    if (!user) return false;
-    return user.isAdmin === true ||
-           (user.email ? ADMIN_EMAILS.includes(user.email) : false) ||
-           ADMIN_USERNAMES.includes(user.username);
+    if (!user) {
+        console.log('[Admin Check] No user');
+        return false;
+    }
+    // Case-insensitive email check
+    const userEmailLower = user.email?.toLowerCase();
+    const isAdminByEmail = userEmailLower ? ADMIN_EMAILS.some(e => e.toLowerCase() === userEmailLower) : false;
+    const isAdminByUsername = ADMIN_USERNAMES.includes(user.username);
+    const isAdminFlag = user.isAdmin === true;
+
+    console.log('[Admin Check]', {
+        username: user.username,
+        email: user.email,
+        userEmailLower,
+        isAdminFlag,
+        isAdminByEmail,
+        isAdminByUsername,
+        adminEmails: ADMIN_EMAILS,
+        adminUsernames: ADMIN_USERNAMES,
+        result: isAdminFlag || isAdminByEmail || isAdminByUsername
+    });
+
+    return isAdminFlag || isAdminByEmail || isAdminByUsername;
 };
 
 export default function App() {
@@ -114,7 +133,13 @@ export default function App() {
       const segments = path.split('/').filter(Boolean);
       const root = segments[0];
 
-      if (!root) { setView('FEED'); return; }
+      console.log('[syncFromUrl] path:', path, 'root:', root);
+
+      if (!root) {
+          console.log('[syncFromUrl] No root, setting view to FEED');
+          setView('FEED');
+          return;
+      }
 
       if (root === 'community') setView('COMMUNITY_HUB');
       else if (root === 'activity') setView('ACTIVITY');
@@ -208,13 +233,32 @@ export default function App() {
     const init = async () => {
       try {
           const activeUser = await db.initializeDatabase();
-          refreshData(); 
-          if (activeUser) { 
+          refreshData();
+          if (activeUser) {
+              console.log('[Init] User found:', { username: activeUser.username, email: activeUser.email });
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
-          } else { setView('AUTH'); }
-      } catch (e) { setView('AUTH'); } 
+          } else {
+              // Save current path for redirect after login
+              const currentPath = window.location.pathname;
+              console.log('[Init] No user, saving path:', currentPath);
+              if (currentPath && currentPath !== '/') {
+                  sessionStorage.setItem('neo_intended_path', currentPath);
+                  console.log('[Init] Saved intended path to storage');
+              }
+              setView('AUTH');
+          }
+      } catch (e) {
+          // Save current path for redirect after login
+          const currentPath = window.location.pathname;
+          console.log('[Init] Error, saving path:', currentPath, e);
+          if (currentPath && currentPath !== '/') {
+              sessionStorage.setItem('neo_intended_path', currentPath);
+              console.log('[Init] Saved intended path to storage');
+          }
+          setView('AUTH');
+      }
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
     };
     init();
@@ -286,9 +330,22 @@ export default function App() {
 
   // IMPORTANT: All hooks must be defined before any conditional returns
   const handleLogin = useCallback(async (u: UserProfile, remember: boolean) => {
+     console.log('[handleLogin] User logged in:', { username: u.username, email: u.email });
      setUser(u);
      if (u.settings?.theme) setTheme(u.settings.theme);
      if (!remember) localStorage.removeItem('neo_active_user');
+
+     // Restore intended path if it was saved
+     const intendedPath = sessionStorage.getItem('neo_intended_path');
+     console.log('[handleLogin] Intended path from storage:', intendedPath);
+     console.log('[handleLogin] Current location:', window.location.pathname);
+
+     if (intendedPath) {
+         sessionStorage.removeItem('neo_intended_path');
+         window.history.pushState({}, '', intendedPath);
+         console.log('[handleLogin] Restored intended path:', intendedPath);
+     }
+
      await syncFromUrl();
   }, [syncFromUrl]);
 
