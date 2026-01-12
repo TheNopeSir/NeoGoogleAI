@@ -81,7 +81,6 @@ export default function App() {
   // Social/Edit State
   const [socialListType, setSocialListType] = useState<'followers' | 'following'>('followers');
   const [isAddingToCollection, setIsAddingToCollection] = useState<string | null>(null);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Profile states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -119,6 +118,7 @@ export default function App() {
       else if (root === 'search') setView('SEARCH');
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
+      else if (root === 'admin') setView('ADMIN');
       else if (root === 'u' || root === 'profile') {
           const username = segments[1];
           if (username) {
@@ -130,8 +130,8 @@ export default function App() {
           const id = segments[1];
           let item = db.getFullDatabase().exhibits.find(e => e.id === id);
           if (!item) try { item = await db.fetchExhibitById(id); } catch(e){}
-          if (item) { setSelectedExhibit(item); setView('EXHIBIT'); } 
-          else setView('FEED'); 
+          if (item) { setSelectedExhibit(item); setView('EXHIBIT'); }
+          else setView('FEED');
       } else if (root === 'collection') {
           const id = segments[1];
           let col = db.getFullDatabase().collections.find(c => c.id === id);
@@ -151,7 +151,7 @@ export default function App() {
       if (params?.item) { setSelectedExhibit(params.item); setHighlightCommentId(params.highlightCommentId); }
       if (params?.collection) setSelectedCollection(params.collection);
       if (params?.wishlistItem) setSelectedWishlistItem(params.wishlistItem);
-      
+
       setView(newView);
 
       let path = '/';
@@ -164,7 +164,8 @@ export default function App() {
       else if (newView === 'SEARCH') path = '/search';
       else if (newView === 'CREATE_HUB') path = '/create';
       else if (newView === 'MY_COLLECTION') path = '/my-collection';
-      
+      else if (newView === 'ADMIN') path = '/admin';
+
       window.history.pushState({ view: newView, params }, '', path);
       window.scrollTo(0, 0);
   };
@@ -426,7 +427,7 @@ export default function App() {
                         {isUserAdmin(user) && (
                             <>
                                 <button
-                                    onClick={() => setShowAdminPanel(true)}
+                                    onClick={() => navigateTo('ADMIN')}
                                     className="opacity-60 hover:opacity-100 transition-opacity flex items-center gap-2 text-xs font-pixel text-green-400"
                                     title="Админ-панель"
                                 >
@@ -603,8 +604,8 @@ export default function App() {
             )}
 
             {/* Admin Panel */}
-            {showAdminPanel && isUserAdmin(user) && (
-                <AdminTools onClose={() => setShowAdminPanel(false)} />
+            {view === 'ADMIN' && isUserAdmin(user) && (
+                <AdminTools onClose={handleBack} />
             )}
         </div>
     </div>
