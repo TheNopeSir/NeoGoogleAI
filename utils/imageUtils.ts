@@ -2,16 +2,9 @@
  * Утилиты для работы с оптимизированными изображениями
  */
 
-export type ImageSize = 'thumbnail' | 'medium' | 'large';
+import { ProcessedImage } from '../types';
 
-export interface ProcessedImage {
-    thumbnail: string;
-    medium: string;
-    large: string;
-    originalFormat?: string;
-    originalWidth?: number;
-    originalHeight?: number;
-}
+export type ImageSize = 'thumbnail' | 'medium' | 'large' | 'placeholder';
 
 /**
  * Получает URL изображения нужного размера

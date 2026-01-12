@@ -19,7 +19,7 @@ import { isBase64DataUri } from './imageProcessor.js';
 // ==========================================
 // 🔧 КОНФИГУРАЦИЯ
 // ==========================================
-const API_BASE = process.env.API_URL || 'http://localhost:3000/api';
+const API_BASE = process.env.API_URL || 'http://localhost:3002/api';
 const AUTH_TOKEN = process.env.AUTH_TOKEN || null;
 
 // ==========================================

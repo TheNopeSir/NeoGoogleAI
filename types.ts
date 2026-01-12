@@ -37,6 +37,7 @@ export interface ProcessedImage {
   thumbnail: string;
   medium: string;
   large: string;
+  placeholder?: string; // Tiny blurred image for progressive loading
   originalFormat?: string;
   originalWidth?: number;
   originalHeight?: number;
