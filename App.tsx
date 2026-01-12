@@ -147,7 +147,8 @@ export default function App() {
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
       else if (root === 'admin') {
-          console.log('[syncFromUrl] Setting view to ADMIN');
+          // Admin panel requires authentication
+          // User state will be checked when rendering the component
           setView('ADMIN');
       }
       else if (root === 'u' || root === 'profile') {
@@ -667,35 +668,42 @@ export default function App() {
             )}
 
             {/* Admin Panel */}
-            {(() => {
-                const shouldShowAdmin = view === 'ADMIN' && isUserAdmin(user);
-                console.log('[Render] Admin Panel check:', { view, user: user?.username, isAdmin: isUserAdmin(user), shouldShowAdmin });
-                return shouldShowAdmin && <AdminTools onClose={handleBack} />;
-            })()}
-
-            {/* Admin Access Denied */}
-            {(() => {
-                const shouldShowDenied = view === 'ADMIN' && user && !isUserAdmin(user);
-                console.log('[Render] Admin Denied check:', { view, user: user?.username, isAdmin: isUserAdmin(user), shouldShowDenied });
-                return shouldShowDenied && (
-                    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                        <div className="max-w-md w-full bg-red-500/10 border border-red-500 rounded-lg p-6 text-center">
-                            <h2 className="text-2xl font-pixel text-red-500 mb-4">ДОСТУП ЗАПРЕЩЁН</h2>
-                            <p className="text-gray-400 mb-6">
-                                У вас нет прав доступа к админ-панели.<br/>
-                                Email: {user.email || 'не указан'}<br/>
-                                Username: {user.username}
-                            </p>
-                            <button
-                                onClick={() => navigateTo('FEED')}
-                            className="px-4 py-2 bg-green-500 text-black font-pixel rounded hover:bg-green-400 transition-colors"
-                        >
-                            ВЕРНУТЬСЯ В ЛЕНТУ
-                        </button>
-                    </div>
-                </div>
-                );
-            })()}
+            {view === 'ADMIN' && (
+                <>
+                    {!user ? (
+                        <div className="min-h-screen flex items-center justify-center p-4">
+                            <div className="bg-dark-surface border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
+                                <AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+                                <h2 className="text-xl font-bold text-red-400 mb-2">Требуется авторизация</h2>
+                                <p className="text-white/70 mb-6">Для доступа к админ панели необходимо войти в систему</p>
+                                <button
+                                    onClick={() => setView('AUTH')}
+                                    className="px-6 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-lg text-green-400 transition-colors"
+                                >
+                                    Войти
+                                </button>
+                            </div>
+                        </div>
+                    ) : !isUserAdmin(user) ? (
+                        <div className="min-h-screen flex items-center justify-center p-4">
+                            <div className="bg-dark-surface border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
+                                <AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+                                <h2 className="text-xl font-bold text-red-400 mb-2">Доступ запрещён</h2>
+                                <p className="text-white/70 mb-2">Только для администраторов</p>
+                                <p className="text-white/40 text-sm mb-6">Текущий пользователь: @{user.username}</p>
+                                <button
+                                    onClick={() => navigateTo('FEED')}
+                                    className="px-6 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-lg text-green-400 transition-colors"
+                                >
+                                    Вернуться в ленту
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <AdminTools onClose={handleBack} />
+                    )}
+                </>
+            )}
         </div>
     </div>
   );
