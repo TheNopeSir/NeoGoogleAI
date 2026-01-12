@@ -42,11 +42,14 @@ const CACHE_VERSION = 'v5.1_FINAL_FIX';
 
 // Admin users
 const ADMIN_EMAILS = ['kennyornope@gmail.com'];
+const ADMIN_USERNAMES = ['Truester'];
 
 // Helper function to check if user is admin
 const isUserAdmin = (user: UserProfile | null): boolean => {
     if (!user) return false;
-    return user.isAdmin === true || (user.email ? ADMIN_EMAILS.includes(user.email) : false);
+    return user.isAdmin === true ||
+           (user.email ? ADMIN_EMAILS.includes(user.email) : false) ||
+           ADMIN_USERNAMES.includes(user.username);
 };
 
 export default function App() {
