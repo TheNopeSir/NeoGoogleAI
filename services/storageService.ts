@@ -734,21 +734,29 @@ export const getUserAvatar = (username: string): string => {
 };
 
 export const fetchExhibitById = async (id: string) => {
-    // Try Hot Cache
+    // Check Hot Cache first
     const mem = hotCache.exhibits.find(e => e.id === id);
-    if (mem) return mem;
-    
+    // If cached item is a "lite" version from feed, always fetch full from server
+    if (mem && !(mem as any)._isLite) return mem;
+
     // Try IndexedDB
     const db = await getDB();
     const local = await db.get('exhibits', id);
-    if (local) return local;
+    // If local item is a "lite" version, always fetch full from server
+    if (local && !(local as any)._isLite) return local;
 
-    // Try Server
+    // Fetch full data from server (includes comments, specs, reactions, etc.)
     try {
         const item = await apiCall(`/exhibits/${id}`);
         if(item) {
+            // Update cache with full version
             await db.put('exhibits', item);
-            hotCache.exhibits.push(item);
+            const idx = hotCache.exhibits.findIndex(e => e.id === id);
+            if (idx !== -1) {
+                hotCache.exhibits[idx] = item;
+            } else {
+                hotCache.exhibits.push(item);
+            }
         }
         return item;
     } catch { return null; }
