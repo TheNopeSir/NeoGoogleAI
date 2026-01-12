@@ -5,6 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
+// Fix for "self-signed certificate in certificate chain" error
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,9 +16,22 @@ const __dirname = path.dirname(__filename);
 const IMAGES_DIR = path.join(__dirname, 'uploads', 'images');
 
 // Database connection
+const dbUser = process.env.DB_USER || 'gen_user';
+const dbHost = process.env.DB_HOST || '185.152.92.64';
+const dbName = process.env.DB_NAME || 'default_db';
+const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
+const dbPort = 5432;
+
 const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    user: dbUser,
+    password: dbPass,
+    host: dbHost,
+    port: dbPort,
+    database: dbName,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    max: 10
 });
 
 // Helper: Check if string is base64 data URI

@@ -23,9 +23,22 @@ const { Pool } = pg;
 // ==========================================
 // 🗄️ DATABASE CONNECTION
 // ==========================================
+const dbUser = process.env.DB_USER || 'gen_user';
+const dbHost = process.env.DB_HOST || '185.152.92.64';
+const dbName = process.env.DB_NAME || 'default_db';
+const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
+const dbPort = 5432;
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    user: dbUser,
+    password: dbPass,
+    host: dbHost,
+    port: dbPort,
+    database: dbName,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    max: 10
 });
 
 const query = (text, params) => pool.query(text, params);
