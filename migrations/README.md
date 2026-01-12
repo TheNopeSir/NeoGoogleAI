@@ -1,5 +1,65 @@
 # Database Migrations
 
+## 🔄 Database Restore from Backup
+
+### Проблема: Ошибка при импорте дампа
+
+Если при импорте дампа вы видите ошибку:
+```
+ERROR: cannot drop function update_updated_at_column() because other objects depend on it
+DETAIL: trigger update_users_updated_at on table users depends on function update_updated_at_column()
+HINT: Use DROP ... CASCADE to drop the dependent objects too.
+```
+
+### Решение: 3 шага
+
+#### Шаг 1: Подготовка БД (перед импортом)
+
+Выполните скрипт `prepare_db_for_restore.sql`:
+
+```bash
+psql -h YOUR_DB_HOST -U YOUR_DB_USER -d YOUR_DB_NAME -f migrations/prepare_db_for_restore.sql
+```
+
+**Или через Adminer/pgAdmin:**
+1. Откройте файл `migrations/prepare_db_for_restore.sql`
+2. Скопируйте содержимое
+3. Вставьте в SQL редактор и выполните
+
+#### Шаг 2: Импорт дампа
+
+Теперь импортируйте ваш дамп:
+
+```bash
+psql -h YOUR_DB_HOST -U YOUR_DB_USER -d YOUR_DB_NAME -f your_backup.sql
+```
+
+**Или через Adminer:**
+1. Перейдите в раздел "Импорт"
+2. Выберите ваш SQL файл
+3. **Установите галочку "Остановить при ошибке"** (необязательно)
+4. Нажмите "Выполнить"
+
+#### Шаг 3: Восстановление структуры (после импорта)
+
+Выполните скрипт `restore_db_structure.sql`:
+
+```bash
+psql -h YOUR_DB_HOST -U YOUR_DB_USER -d YOUR_DB_NAME -f migrations/restore_db_structure.sql
+```
+
+**Или через Adminer/pgAdmin:**
+1. Откройте файл `migrations/restore_db_structure.sql`
+2. Скопируйте содержимое
+3. Вставьте в SQL редактор и выполните
+
+### Что делают эти скрипты?
+
+- **prepare_db_for_restore.sql** - удаляет все триггеры и функции, которые могут конфликтовать с импортом
+- **restore_db_structure.sql** - восстанавливает функцию `update_updated_at_column()` и все триггеры для автоматического обновления timestamp
+
+---
+
 ## Performance Optimization Migration
 
 ### File: `add_performance_indexes.sql`
