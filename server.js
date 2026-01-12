@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
 import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri, migrateOldImages, processImage } from './imageProcessor.js';
+import { setupAdminAPI } from './adminAPI.js';
 
 // ==========================================
 // 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
@@ -1388,6 +1389,11 @@ api.get('/notifications', async (req, res) => {
 });
 
 app.use('/api', api);
+
+// ==========================================
+// 🔐 ADMIN API ENDPOINTS
+// ==========================================
+setupAdminAPI(app, query, cache);
 
 // ==========================================
 // 🔧 ADMIN ENDPOINT: RESET ALL IMAGES
