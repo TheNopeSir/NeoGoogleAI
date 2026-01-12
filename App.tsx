@@ -46,14 +46,29 @@ const ADMIN_USERNAMES = ['Truester'];
 
 // Helper function to check if user is admin
 const isUserAdmin = (user: UserProfile | null): boolean => {
-    if (!user) return false;
+    if (!user) {
+        console.log('[Admin Check] No user');
+        return false;
+    }
     // Case-insensitive email check
     const userEmailLower = user.email?.toLowerCase();
     const isAdminByEmail = userEmailLower ? ADMIN_EMAILS.some(e => e.toLowerCase() === userEmailLower) : false;
+    const isAdminByUsername = ADMIN_USERNAMES.includes(user.username);
+    const isAdminFlag = user.isAdmin === true;
 
-    return user.isAdmin === true ||
-           isAdminByEmail ||
-           ADMIN_USERNAMES.includes(user.username);
+    console.log('[Admin Check]', {
+        username: user.username,
+        email: user.email,
+        userEmailLower,
+        isAdminFlag,
+        isAdminByEmail,
+        isAdminByUsername,
+        adminEmails: ADMIN_EMAILS,
+        adminUsernames: ADMIN_USERNAMES,
+        result: isAdminFlag || isAdminByEmail || isAdminByUsername
+    });
+
+    return isAdminFlag || isAdminByEmail || isAdminByUsername;
 };
 
 export default function App() {
@@ -118,14 +133,23 @@ export default function App() {
       const segments = path.split('/').filter(Boolean);
       const root = segments[0];
 
-      if (!root) { setView('FEED'); return; }
+      console.log('[syncFromUrl] path:', path, 'root:', root);
+
+      if (!root) {
+          console.log('[syncFromUrl] No root, setting view to FEED');
+          setView('FEED');
+          return;
+      }
 
       if (root === 'community') setView('COMMUNITY_HUB');
       else if (root === 'activity') setView('ACTIVITY');
       else if (root === 'search') setView('SEARCH');
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
-      else if (root === 'admin') setView('ADMIN');
+      else if (root === 'admin') {
+          console.log('[syncFromUrl] Setting view to ADMIN');
+          setView('ADMIN');
+      }
       else if (root === 'u' || root === 'profile') {
           const username = segments[1];
           if (username) {
@@ -210,22 +234,27 @@ export default function App() {
           const activeUser = await db.initializeDatabase();
           refreshData();
           if (activeUser) {
+              console.log('[Init] User found:', { username: activeUser.username, email: activeUser.email });
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
           } else {
               // Save current path for redirect after login
               const currentPath = window.location.pathname;
+              console.log('[Init] No user, saving path:', currentPath);
               if (currentPath && currentPath !== '/') {
                   sessionStorage.setItem('neo_intended_path', currentPath);
+                  console.log('[Init] Saved intended path to storage');
               }
               setView('AUTH');
           }
       } catch (e) {
           // Save current path for redirect after login
           const currentPath = window.location.pathname;
+          console.log('[Init] Error, saving path:', currentPath, e);
           if (currentPath && currentPath !== '/') {
               sessionStorage.setItem('neo_intended_path', currentPath);
+              console.log('[Init] Saved intended path to storage');
           }
           setView('AUTH');
       }
@@ -300,15 +329,20 @@ export default function App() {
 
   // IMPORTANT: All hooks must be defined before any conditional returns
   const handleLogin = useCallback(async (u: UserProfile, remember: boolean) => {
+     console.log('[handleLogin] User logged in:', { username: u.username, email: u.email });
      setUser(u);
      if (u.settings?.theme) setTheme(u.settings.theme);
      if (!remember) localStorage.removeItem('neo_active_user');
 
      // Restore intended path if it was saved
      const intendedPath = sessionStorage.getItem('neo_intended_path');
+     console.log('[handleLogin] Intended path from storage:', intendedPath);
+     console.log('[handleLogin] Current location:', window.location.pathname);
+
      if (intendedPath) {
          sessionStorage.removeItem('neo_intended_path');
          window.history.pushState({}, '', intendedPath);
+         console.log('[handleLogin] Restored intended path:', intendedPath);
      }
 
      await syncFromUrl();
@@ -633,29 +667,35 @@ export default function App() {
             )}
 
             {/* Admin Panel */}
-            {view === 'ADMIN' && isUserAdmin(user) && (
-                <AdminTools onClose={handleBack} />
-            )}
+            {(() => {
+                const shouldShowAdmin = view === 'ADMIN' && isUserAdmin(user);
+                console.log('[Render] Admin Panel check:', { view, user: user?.username, isAdmin: isUserAdmin(user), shouldShowAdmin });
+                return shouldShowAdmin && <AdminTools onClose={handleBack} />;
+            })()}
 
             {/* Admin Access Denied */}
-            {view === 'ADMIN' && user && !isUserAdmin(user) && (
-                <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                    <div className="max-w-md w-full bg-red-500/10 border border-red-500 rounded-lg p-6 text-center">
-                        <h2 className="text-2xl font-pixel text-red-500 mb-4">ДОСТУП ЗАПРЕЩЁН</h2>
-                        <p className="text-gray-400 mb-6">
-                            У вас нет прав доступа к админ-панели.<br/>
-                            Email: {user.email || 'не указан'}<br/>
-                            Username: {user.username}
-                        </p>
-                        <button
-                            onClick={() => navigateTo('FEED')}
+            {(() => {
+                const shouldShowDenied = view === 'ADMIN' && user && !isUserAdmin(user);
+                console.log('[Render] Admin Denied check:', { view, user: user?.username, isAdmin: isUserAdmin(user), shouldShowDenied });
+                return shouldShowDenied && (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                        <div className="max-w-md w-full bg-red-500/10 border border-red-500 rounded-lg p-6 text-center">
+                            <h2 className="text-2xl font-pixel text-red-500 mb-4">ДОСТУП ЗАПРЕЩЁН</h2>
+                            <p className="text-gray-400 mb-6">
+                                У вас нет прав доступа к админ-панели.<br/>
+                                Email: {user.email || 'не указан'}<br/>
+                                Username: {user.username}
+                            </p>
+                            <button
+                                onClick={() => navigateTo('FEED')}
                             className="px-4 py-2 bg-green-500 text-black font-pixel rounded hover:bg-green-400 transition-colors"
                         >
                             ВЕРНУТЬСЯ В ЛЕНТУ
                         </button>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     </div>
   );
