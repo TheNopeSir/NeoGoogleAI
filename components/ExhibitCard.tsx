@@ -6,6 +6,7 @@ import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants'
 import { getUserAvatar } from '../services/storageService';
 import ReactionPicker from './ReactionPicker';
 import { getTotalReactions, getUserReaction } from '../utils/reactionUtils';
+import ProgressiveImage from './ProgressiveImage';
 
 interface ExhibitCardProps {
   item: Exhibit;
@@ -17,7 +18,6 @@ interface ExhibitCardProps {
 }
 
 const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, currentUsername, onReact, onAuthorClick }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
   const Icon = config.icon;
@@ -47,21 +47,8 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
 
-  // Получаем оптимизированное изображение (thumbnail для превью)
-  const getImageUrl = (): string => {
-    const firstImage = item.imageUrls?.[0];
-    if (!firstImage) return 'https://placehold.co/600x400?text=NO+IMAGE';
-
-    // Новый формат (объект с путями к разным размерам)
-    if (typeof firstImage === 'object' && firstImage.thumbnail) {
-      return firstImage.thumbnail;
-    }
-
-    // Старый формат (Base64 Data URI или обычный URL)
-    return typeof firstImage === 'string' ? firstImage : 'https://placehold.co/600x400?text=NO+IMAGE';
-  };
-
-  const imageUrl = getImageUrl();
+  // Получаем первое изображение для отображения
+  const firstImage = item.imageUrls?.[0];
 
   if (isWinamp) {
       return (
@@ -78,14 +65,12 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
             {/* Content Area */}
             <div className="p-2 flex flex-col h-full">
                 {/* Image 'Screen' */}
-                <div className="relative aspect-square mb-2 bg-black border-2 border-t-[#101010] border-l-[#101010] border-r-[#505050] border-b-[#505050] flex items-center justify-center overflow-hidden">
-                    {!isLoaded && <div className="text-wa-green font-winamp text-xs animate-pulse">LOADING...</div>}
-                    <img 
-                        src={imageUrl} 
-                        alt={item.title} 
-                        loading="lazy"
-                        onLoad={() => setIsLoaded(true)}
-                        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                <div className="relative aspect-square mb-2 bg-black border-2 border-t-[#101010] border-l-[#101010] border-r-[#505050] border-b-[#505050] overflow-hidden">
+                    <ProgressiveImage
+                        imageData={firstImage}
+                        alt={item.title}
+                        size="thumbnail"
+                        className="w-full h-full"
                     />
                     <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
                 </div>
@@ -136,20 +121,13 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       )}
 
       <div className={`relative aspect-square overflow-hidden bg-black/20 ${!isXP ? 'rounded-t-2xl' : ''}`}>
-        {!isLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 animate-pulse">
-                <ImageIcon size={24} className="text-white/20" />
-            </div>
-        )}
-        
-        <img 
-            src={imageUrl} 
-            alt={item.title} 
-            loading="lazy"
-            onLoad={() => setIsLoaded(true)}
-            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+        <ProgressiveImage
+            imageData={firstImage}
+            alt={item.title}
+            size="thumbnail"
+            className="w-full h-full transition-all duration-500 group-hover:scale-110"
         />
-        
+
         {!isXP && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
         
         <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
