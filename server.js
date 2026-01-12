@@ -1435,19 +1435,12 @@ api.get('/notifications', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.use('/api', api);
-
-// ==========================================
-// 🔐 ADMIN API ENDPOINTS
-// ==========================================
-setupAdminAPI(app, query, cache);
-
 // ==========================================
 // 🔧 SPECIAL ENDPOINT: GRANT ADMIN RIGHTS
 // ==========================================
 // This endpoint allows auto-upgrading users from ADMIN_USERNAMES/ADMIN_EMAILS list
 // Call this endpoint to grant admin rights without logging in
-app.post('/api/grant-admin', async (req, res) => {
+api.post('/grant-admin', async (req, res) => {
     try {
         console.log('[GrantAdmin] Starting admin rights upgrade for configured users...');
 
@@ -1507,6 +1500,13 @@ app.post('/api/grant-admin', async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 });
+
+app.use('/api', api);
+
+// ==========================================
+// 🔐 ADMIN API ENDPOINTS
+// ==========================================
+setupAdminAPI(app, query, cache);
 
 // ==========================================
 // 🔧 ADMIN ENDPOINT: RESET ALL IMAGES
