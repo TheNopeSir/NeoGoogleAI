@@ -103,6 +103,12 @@ async function analyzeDatabase() {
 
         const firstImage = imageUrls[0];
 
+        // ПРОПУСКАЕМ Base64 изображения - они хранятся в БД, не в файлах
+        if (typeof firstImage === 'string' && firstImage.startsWith('data:image/')) {
+            stats.validImages++; // Base64 всегда валидны
+            continue;
+        }
+
         // Проверяем только оптимизированный формат
         if (typeof firstImage === 'object' && firstImage.thumbnail) {
             const fileExists = checkImageFileExists(firstImage.thumbnail);
@@ -171,6 +177,12 @@ async function cleanupOrphanedPaths(dryRun = true) {
         }
 
         const firstImage = imageUrls[0];
+
+        // ПРОПУСКАЕМ Base64 изображения - они хранятся в БД, не требуют файлов
+        if (typeof firstImage === 'string' && firstImage.startsWith('data:image/')) {
+            console.log(`⏭️  Пропускаем ${row.id}: Base64 изображение (хранится в БД)`);
+            continue;
+        }
 
         // Проверяем только оптимизированный формат
         if (typeof firstImage === 'object' && firstImage.thumbnail) {
