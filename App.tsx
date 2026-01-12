@@ -211,17 +211,24 @@ export default function App() {
   }, []);
 
   const handleExhibitClick = async (item: Exhibit) => {
+    // Load full artifact data from DB (includes comments, specs, reactions, etc.)
+    const fullItem = await db.fetchExhibitById(item.id);
+    if (!fullItem) {
+        console.error('Failed to load full artifact data');
+        return;
+    }
+
     const sessionKey = `neo_viewed_${item.id}`;
     const hasViewed = sessionStorage.getItem(sessionKey);
-    let updatedItem = item;
+    let updatedItem = fullItem;
     if (!hasViewed && user) {
         // Track unique viewers
-        const viewedBy = item.viewedBy || [];
+        const viewedBy = fullItem.viewedBy || [];
         const alreadyViewed = viewedBy.includes(user.username);
 
         updatedItem = {
-            ...item,
-            views: (item.views || 0) + 1,
+            ...fullItem,
+            views: (fullItem.views || 0) + 1,
             viewedBy: alreadyViewed ? viewedBy : [...viewedBy, user.username]
         };
         setExhibits(prev => prev.map(e => e.id === item.id ? updatedItem : e));
