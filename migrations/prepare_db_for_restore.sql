@@ -17,6 +17,25 @@ DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications CASCADE;
 DROP TRIGGER IF EXISTS update_messages_updated_at ON messages CASCADE;
 DROP TRIGGER IF EXISTS update_guestbook_updated_at ON guestbook CASCADE;
 
+-- Удаляем все индексы (они будут пересозданы после импорта)
+-- Индексы на updated_at
+DROP INDEX IF EXISTS idx_exhibits_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_users_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_wishlist_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_collections_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_notifications_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_messages_updated_at CASCADE;
+DROP INDEX IF EXISTS idx_guestbook_updated_at CASCADE;
+
+-- Индексы на JSONB поля (могут вызывать проблемы при импорте)
+DROP INDEX IF EXISTS idx_exhibits_category CASCADE;
+DROP INDEX IF EXISTS idx_exhibits_owner CASCADE;
+DROP INDEX IF EXISTS idx_collections_owner CASCADE;
+DROP INDEX IF EXISTS idx_collections_timestamp CASCADE;
+DROP INDEX IF EXISTS idx_notifications_recipient CASCADE;
+DROP INDEX IF EXISTS idx_notifications_timestamp CASCADE;
+DROP INDEX IF EXISTS idx_notifications_recipient_timestamp CASCADE;
+
 -- Очищаем все таблицы (если нужен полный сброс)
 -- ВНИМАНИЕ: Раскомментируйте следующие строки только если хотите удалить ВСЕ данные!
 -- TRUNCATE TABLE users CASCADE;
