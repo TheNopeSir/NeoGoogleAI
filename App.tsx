@@ -121,7 +121,11 @@ export default function App() {
       else if (root === 'search') setView('SEARCH');
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
-      else if (root === 'admin') setView('ADMIN');
+      else if (root === 'admin') {
+          // Admin panel requires authentication
+          // User state will be checked when rendering the component
+          setView('ADMIN');
+      }
       else if (root === 'u' || root === 'profile') {
           const username = segments[1];
           if (username) {
@@ -607,8 +611,41 @@ export default function App() {
             )}
 
             {/* Admin Panel */}
-            {view === 'ADMIN' && isUserAdmin(user) && (
-                <AdminTools onClose={handleBack} />
+            {view === 'ADMIN' && (
+                <>
+                    {!user ? (
+                        <div className="min-h-screen flex items-center justify-center p-4">
+                            <div className="bg-dark-surface border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
+                                <AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+                                <h2 className="text-xl font-bold text-red-400 mb-2">Требуется авторизация</h2>
+                                <p className="text-white/70 mb-6">Для доступа к админ панели необходимо войти в систему</p>
+                                <button
+                                    onClick={() => setView('AUTH')}
+                                    className="px-6 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-lg text-green-400 transition-colors"
+                                >
+                                    Войти
+                                </button>
+                            </div>
+                        </div>
+                    ) : !isUserAdmin(user) ? (
+                        <div className="min-h-screen flex items-center justify-center p-4">
+                            <div className="bg-dark-surface border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
+                                <AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+                                <h2 className="text-xl font-bold text-red-400 mb-2">Доступ запрещён</h2>
+                                <p className="text-white/70 mb-2">Только для администраторов</p>
+                                <p className="text-white/40 text-sm mb-6">Текущий пользователь: @{user.username}</p>
+                                <button
+                                    onClick={() => navigateTo('FEED')}
+                                    className="px-6 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-lg text-green-400 transition-colors"
+                                >
+                                    Вернуться в ленту
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <AdminTools onClose={handleBack} />
+                    )}
+                </>
             )}
         </div>
     </div>
