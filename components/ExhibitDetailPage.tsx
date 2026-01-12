@@ -127,7 +127,12 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const specs = exhibit.specs || {};
   const comments = exhibit.comments || [];
-  
+
+  // DEBUG: Check specs data
+  console.log('[ExhibitDetailPage] exhibit.specs:', exhibit.specs);
+  console.log('[ExhibitDetailPage] specs:', specs);
+  console.log('[ExhibitDetailPage] exhibit keys:', Object.keys(exhibit));
+
   const tierKey = getArtifactTier(exhibit);
   const tier = TIER_CONFIG[tierKey];
   const TierIcon = tier.icon;
