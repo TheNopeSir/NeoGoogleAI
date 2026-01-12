@@ -24,22 +24,35 @@ try {
  */
 const IMAGE_SIZES = {
     thumbnail: {
-        width: 300,
-        height: 300,
-        quality: 60, // Супер сжатие для превью
-        fit: 'cover'
+        width: 240,
+        height: 240,
+        quality: 45, // Агрессивное сжатие для превью в ленте
+        fit: 'cover',
+        effort: 6, // Максимальная оптимизация WebP (медленнее, но меньше размер)
+        smartSubsample: true // Лучшее сжатие цветности
     },
     medium: {
         width: 800,
         height: 800,
-        quality: 75, // Среднее сжатие для детального просмотра
-        fit: 'inside'
+        quality: 70, // Сбалансированное качество для просмотра
+        fit: 'inside',
+        effort: 4,
+        smartSubsample: true
     },
     large: {
         width: 1200,
         height: 1200,
-        quality: 85, // Хорошее качество для полного просмотра
-        fit: 'inside'
+        quality: 80, // Хорошее качество для зума
+        fit: 'inside',
+        effort: 4,
+        smartSubsample: true
+    },
+    placeholder: {
+        width: 20,
+        height: 20,
+        quality: 20, // Минимальное размытое превью
+        fit: 'cover',
+        blur: 10 // Сильное размытие
     }
 };
 
@@ -97,15 +110,27 @@ export async function processImage(base64DataUri, exhibitId) {
             const filepath = path.join(exhibitDir, filename);
 
             // Создаем оптимизированную версию
-            await sharp(buffer)
+            let pipeline = sharp(buffer)
                 .resize(config.width, config.height, {
                     fit: config.fit,
                     withoutEnlargement: true // Не увеличивать маленькие изображения
-                })
-                .webp({ quality: config.quality })
-                .toFile(filepath);
+                });
 
-            console.log(`[ImageProcessor] Saved ${sizeName}: ${filepath}`);
+            // Применяем размытие для placeholder
+            if (config.blur) {
+                pipeline = pipeline.blur(config.blur);
+            }
+
+            // Применяем WebP с оптимизациями
+            pipeline = pipeline.webp({
+                quality: config.quality,
+                effort: config.effort || 4,
+                smartSubsample: config.smartSubsample || false
+            });
+
+            await pipeline.toFile(filepath);
+
+            console.log(`[ImageProcessor] Saved ${sizeName}: ${filepath} (${config.width}x${config.height} q${config.quality})`);
 
             // Сохраняем относительный путь для API
             results[sizeName] = `/api/images/${exhibitId}/${filename}`;
