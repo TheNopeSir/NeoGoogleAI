@@ -47,8 +47,12 @@ const ADMIN_USERNAMES = ['Truester'];
 // Helper function to check if user is admin
 const isUserAdmin = (user: UserProfile | null): boolean => {
     if (!user) return false;
+    // Case-insensitive email check
+    const userEmailLower = user.email?.toLowerCase();
+    const isAdminByEmail = userEmailLower ? ADMIN_EMAILS.some(e => e.toLowerCase() === userEmailLower) : false;
+
     return user.isAdmin === true ||
-           (user.email ? ADMIN_EMAILS.includes(user.email) : false) ||
+           isAdminByEmail ||
            ADMIN_USERNAMES.includes(user.username);
 };
 
@@ -204,13 +208,27 @@ export default function App() {
     const init = async () => {
       try {
           const activeUser = await db.initializeDatabase();
-          refreshData(); 
-          if (activeUser) { 
+          refreshData();
+          if (activeUser) {
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
-          } else { setView('AUTH'); }
-      } catch (e) { setView('AUTH'); } 
+          } else {
+              // Save current path for redirect after login
+              const currentPath = window.location.pathname;
+              if (currentPath && currentPath !== '/') {
+                  sessionStorage.setItem('neo_intended_path', currentPath);
+              }
+              setView('AUTH');
+          }
+      } catch (e) {
+          // Save current path for redirect after login
+          const currentPath = window.location.pathname;
+          if (currentPath && currentPath !== '/') {
+              sessionStorage.setItem('neo_intended_path', currentPath);
+          }
+          setView('AUTH');
+      }
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
     };
     init();
@@ -285,6 +303,14 @@ export default function App() {
      setUser(u);
      if (u.settings?.theme) setTheme(u.settings.theme);
      if (!remember) localStorage.removeItem('neo_active_user');
+
+     // Restore intended path if it was saved
+     const intendedPath = sessionStorage.getItem('neo_intended_path');
+     if (intendedPath) {
+         sessionStorage.removeItem('neo_intended_path');
+         window.history.pushState({}, '', intendedPath);
+     }
+
      await syncFromUrl();
   }, [syncFromUrl]);
 
@@ -609,6 +635,26 @@ export default function App() {
             {/* Admin Panel */}
             {view === 'ADMIN' && isUserAdmin(user) && (
                 <AdminTools onClose={handleBack} />
+            )}
+
+            {/* Admin Access Denied */}
+            {view === 'ADMIN' && user && !isUserAdmin(user) && (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                    <div className="max-w-md w-full bg-red-500/10 border border-red-500 rounded-lg p-6 text-center">
+                        <h2 className="text-2xl font-pixel text-red-500 mb-4">ДОСТУП ЗАПРЕЩЁН</h2>
+                        <p className="text-gray-400 mb-6">
+                            У вас нет прав доступа к админ-панели.<br/>
+                            Email: {user.email || 'не указан'}<br/>
+                            Username: {user.username}
+                        </p>
+                        <button
+                            onClick={() => navigateTo('FEED')}
+                            className="px-4 py-2 bg-green-500 text-black font-pixel rounded hover:bg-green-400 transition-colors"
+                        >
+                            ВЕРНУТЬСЯ В ЛЕНТУ
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     </div>
