@@ -45,7 +45,8 @@ const DB_NAME = 'NeoArchive_V3_Turbo';
 const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
-const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V2_RESTORE_DATA'; 
+// UPDATED TOKEN TO FORCE CLIENT RESET
+const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL'; 
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
 // Mimics Redis on the client side for instant UI updates
@@ -268,11 +269,6 @@ const loadCriticalFeedData = async () => {
         if (!Array.isArray(data)) return;
 
         // Smart Merge: Only update if changed or new
-        // Ideally we overwrite hotCache with server data for the feed
-        // But we want to keep older items from IDB if we scrolled down? 
-        // For startup, just replacing/merging top 30 is fine.
-        
-        // Simple merge for now:
         const serverIds = new Set(data.map((e: any) => e.id));
         const oldItemsToKeep = hotCache.exhibits.filter(e => !serverIds.has(e.id));
         const merged = [...data, ...oldItemsToKeep].sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
