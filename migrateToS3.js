@@ -74,7 +74,7 @@ async function migrateToS3() {
 
                 // --- CASE 1: Raw Base64 string ---
                 if (isBase64DataUri(img)) {
-                    console.log(`   🔄 Image ${i + 1}: Found Base64, converting...`);
+                    console.log(`   🔄 Image ${i + 1}: Found Base64 string, converting...`);
                     bufferToProcess = img; // processImage handles base64 string
                 } 
                 // --- CASE 2: Legacy local file path (Relative or Absolute) ---
@@ -117,9 +117,15 @@ async function migrateToS3() {
                          continue;
                     }
                 }
-                // --- CASE 3: Legacy Object with local paths ---
+                // --- CASE 3: Object with nested Base64 strings (NEW FIX) ---
+                else if (typeof img === 'object' && (isBase64DataUri(img.large) || isBase64DataUri(img.medium) || isBase64DataUri(img.thumbnail))) {
+                     console.log(`   🔄 Image ${i + 1}: Found Object with Base64 data, extracting...`);
+                     // Prefer large, then medium, then thumbnail
+                     bufferToProcess = img.large || img.medium || img.thumbnail;
+                }
+                // --- CASE 4: Legacy Object with local paths ---
                 else if (typeof img === 'object' && img.medium && (img.medium.includes('/api/images/') || img.medium.includes('uploads/'))) {
-                     console.log(`   🔄 Image ${i + 1}: Found legacy object, re-processing...`);
+                     console.log(`   🔄 Image ${i + 1}: Found legacy object path, re-processing...`);
                      const pathStr = img.medium;
                      let relPath = pathStr.includes('/api/images/') ? pathStr.split('/api/images/')[1] : pathStr;
                      
@@ -141,12 +147,12 @@ async function migrateToS3() {
                          }
                      }
                 }
-                // --- CASE 4: Already S3 ---
+                // --- CASE 5: Already S3 ---
                 else if ((typeof img === 'string' && img.startsWith('http')) || (typeof img === 'object' && img.medium && img.medium.startsWith('http'))) {
                      newImageUrls.push(img);
                      continue;
                 }
-                 // --- CASE 5: Just a filename? ---
+                 // --- CASE 6: Just a filename? ---
                 else if (typeof img === 'string' && !img.includes('/') && img.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
                      console.log(`   🔄 Image ${i + 1}: Found filename, checking uploads...`);
                      const fullPath = path.join(getImagesDir(), img);
