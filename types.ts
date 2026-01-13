@@ -9,14 +9,7 @@ export interface Comment {
   likedBy: string[];
 }
 
-export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';
-
-export type ReactionType = 'LIKE';
-
-export interface Reaction {
-  type: ReactionType;
-  users: string[]; // usernames who liked
-}
+export type TierType = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'CURSED';
 
 export type TradeStatus = 'NONE' | 'FOR_TRADE' | 'FOR_SALE' | 'GIFT' | 'NOT_FOR_SALE';
 
@@ -33,39 +26,26 @@ export interface WishlistItem {
     timestamp: string;
 }
 
-export interface ProcessedImage {
-  thumbnail: string;
-  medium: string;
-  large: string;
-  placeholder?: string; // Tiny blurred image for progressive loading
-  originalFormat?: string;
-  originalWidth?: number;
-  originalHeight?: number;
-}
-
 export interface Exhibit {
   id: string;
   slug?: string;
   title: string;
   description: string;
-  imageUrls: (string | ProcessedImage)[];
-  videoUrl?: string;
-  category: string;
+  imageUrls: string[];
+  videoUrl?: string; 
+  category: string; 
   subcategory?: string;
   owner: string;
-  lastEditedBy?: string; // Username of the last person who edited this artifact
   timestamp: string;
-  likes: number; // Legacy - total reactions count
-  likedBy: string[]; // Legacy - for backward compatibility
-  reactions?: Reaction[]; // New reaction system
+  likes: number;
+  likedBy: string[]; 
   views: number;
-  viewedBy?: string[]; // Unique viewers tracking
   condition?: string;
   quality: string;
   specs: Record<string, string>;
   comments: Comment[];
   isDraft?: boolean;
-  tradeStatus?: TradeStatus;
+  tradeStatus?: TradeStatus; 
   price?: number;
   currency?: 'RUB' | 'USD' | 'ETH';
   tradeRequest?: string; // What they want in return
@@ -215,4 +195,4 @@ export interface TradeRequest {
     };
 }
 
-export type ViewState = 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'MIGRATION';
+export type ViewState = 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL';

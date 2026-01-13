@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, WishlistItem, ReactionType } from '../types';
+import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import WishlistCard from './WishlistCard';
@@ -15,7 +15,7 @@ interface MyCollectionProps {
     onBack: () => void;
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
-    onReact: (id: string) => void;
+    onLike: (id: string, e?: React.MouseEvent) => void;
     onWishlistClick?: (item: WishlistItem) => void;
 }
 
@@ -26,10 +26,10 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     allExhibits = [], // Default to empty if not provided 
     collections,
     wishlist = [],
-    onBack,
-    onExhibitClick,
-    onCollectionClick,
-    onReact,
+    onBack, 
+    onExhibitClick, 
+    onCollectionClick, 
+    onLike,
     onWishlistClick
 }) => {
     const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES' | 'WISHLIST'>('MY_ITEMS');
@@ -98,12 +98,12 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                             {drafts.map(item => (
                                 <div key={item.id} className="relative group opacity-80 hover:opacity-100">
                                     <div className="absolute top-2 right-2 z-10 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded font-pixel">DRAFT</div>
-                                    <ExhibitCard
-                                        item={item}
+                                    <ExhibitCard 
+                                        item={item} 
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        currentUsername={user.username}
-                                        onReact={() => onReact(item.id)}
+                                        isLiked={false}
+                                        onLike={(e) => onLike(item.id, e)}
                                         onAuthorClick={() => {}}
                                     />
                                 </div>
@@ -126,13 +126,13 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                             {published.map(item => (
-                                <ExhibitCard
-                                    key={item.id}
-                                    item={item}
+                                <ExhibitCard 
+                                    key={item.id} 
+                                    item={item} 
                                     theme={theme}
                                     onClick={onExhibitClick}
-                                    currentUsername={user.username}
-                                    onReact={() => onReact(item.id)}
+                                    isLiked={item.likedBy?.includes(user.username) || false}
+                                    onLike={(e) => onLike(item.id, e)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}
@@ -180,13 +180,13 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                             {favorites.map(item => (
-                                <ExhibitCard
-                                    key={item.id}
-                                    item={item}
+                                <ExhibitCard 
+                                    key={item.id} 
+                                    item={item} 
                                     theme={theme}
                                     onClick={onExhibitClick}
-                                    currentUsername={user.username}
-                                    onReact={() => onReact(item.id)}
+                                    isLiked={true}
+                                    onLike={(e) => onLike(item.id, e)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}

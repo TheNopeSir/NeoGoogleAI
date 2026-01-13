@@ -1,3 +1,4 @@
+
 {
   "name": "neoarchive",
   "private": true,
@@ -8,15 +9,12 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit --skipLibCheck || vite build",
-    "build:fast": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview --host",
     "start": "node server.js",
     "deploy": "npm install && npm run build && pm2 start ecosystem.config.cjs --env production"
   },
   "dependencies": {
-    "@google/genai": "^0.4.0",
-    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
@@ -25,7 +23,7 @@
     "pg": "^8.11.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "sharp": "^0.34.5"
+    "@google/genai": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.5.1",

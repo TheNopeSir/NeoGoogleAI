@@ -44,7 +44,7 @@ const DB_NAME = 'NeoArchive_V3_Turbo';
 const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
 const API_BASE = '/api';
-const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V2_RESTORE_DATA'; // Changing this clears DB for everyone
+const FORCE_RESET_TOKEN = 'NEO_RESET_2025_V1'; // Changing this clears DB for everyone
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
 // Mimics Redis on the client side for instant UI updates
@@ -129,72 +129,46 @@ export const subscribeToToasts = (listener: ToastListener) => {
 const notifyListeners = () => listeners.forEach(l => l());
 
 // --- API HELPER WITH TIMEOUT ---
-// Request deduplication cache - prevents duplicate concurrent requests
-const pendingRequests = new Map<string, Promise<any>>();
-
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
-    // Deduplication key (only for GET requests without body)
-    const cacheKey = method === 'GET' ? `${method}:${endpoint}` : null;
-
-    // Return existing pending request if available (deduplication)
-    if (cacheKey && pendingRequests.has(cacheKey)) {
-        console.log(`[API] Deduplicating request: ${endpoint}`);
-        return pendingRequests.get(cacheKey)!;
-    }
-
     const controller = new AbortController();
     // Increased to 15 seconds for mobile networks
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const requestPromise = (async () => {
-        try {
-            const headers: any = { 'Content-Type': 'application/json' };
-            const options: RequestInit = {
-                method,
-                headers,
-                signal: controller.signal
-            };
-            if (body) options.body = JSON.stringify(body);
-
-            let fullPath = `${API_BASE}${endpoint}`;
-
-            // Anti-Caching strategy for mobile browsers
-            if (method === 'GET') {
-                const separator = fullPath.includes('?') ? '&' : '?';
-                fullPath += `${separator}_t=${Date.now()}`;
-            }
-
-            const res = await fetch(fullPath, options);
-
-            clearTimeout(timeoutId);
-
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
-            }
-            return await res.json();
-        } catch (e: any) {
-            clearTimeout(timeoutId);
-            if (e.name === 'AbortError') {
-                console.warn(`[API] Timeout on ${endpoint} - switching to offline mode logic`);
-                throw new Error('Network timeout');
-            }
-            console.error(`❌ API Call Failed [${endpoint}]:`, e.message);
-            throw e;
-        } finally {
-            // Clean up pending request cache
-            if (cacheKey) {
-                pendingRequests.delete(cacheKey);
-            }
+    try {
+        const headers: any = { 'Content-Type': 'application/json' };
+        const options: RequestInit = { 
+            method, 
+            headers,
+            signal: controller.signal 
+        };
+        if (body) options.body = JSON.stringify(body);
+        
+        let fullPath = `${API_BASE}${endpoint}`;
+        
+        // Anti-Caching strategy for mobile browsers
+        if (method === 'GET') {
+            const separator = fullPath.includes('?') ? '&' : '?';
+            fullPath += `${separator}_t=${Date.now()}`;
         }
-    })();
 
-    // Store pending request for deduplication
-    if (cacheKey) {
-        pendingRequests.set(cacheKey, requestPromise);
+        const res = await fetch(fullPath, options);
+        
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
+        }
+        return await res.json();
+    } catch (e: any) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            console.warn(`[API] Timeout on ${endpoint} - switching to offline mode logic`);
+            throw new Error('Network timeout');
+        }
+        console.error(`❌ API Call Failed [${endpoint}]:`, e.message);
+        throw e;
     }
-
-    return requestPromise;
 };
 
 export const isOffline = () => !navigator.onLine;
@@ -260,55 +234,12 @@ const deleteGeneric = async (id: string) => {
     await db.delete('generic', id);
 };
 
-// CRITICAL FEED LOADER - Loads minimal feed data for fast startup
-const loadCriticalFeedData = async () => {
-    try {
-        // If we already have data from IDB, skip network request and update in background
-        if (hotCache.exhibits.length > 0) {
-            console.log("✅ [Sync] Using cached feed data, will refresh in background");
-            // Refresh in background without blocking
-            apiCall('/feed?limit=100').then(data => {
-                if (!Array.isArray(data)) return;
-                hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-                notifyListeners();
-                // Persist to IDB
-                getDB().then(db => {
-                    const tx = db.transaction('exhibits', 'readwrite');
-                    data.forEach(item => tx.store.put(item));
-                    return tx.done;
-                });
-            }).catch(e => console.warn("[Sync] Background feed refresh failed:", e));
-            return;
-        }
-
-        // No cached data - load minimal set (100 items)
-        console.log("📦 [Sync] Loading critical feed data...");
-        const data = await apiCall('/feed?limit=100');
-        if (!Array.isArray(data)) return;
-
-        // Update hotCache immediately
-        hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        notifyListeners();
-
-        // Persist to IDB in background (don't await)
-        getDB().then(db => {
-            const tx = db.transaction('exhibits', 'readwrite');
-            data.forEach(item => tx.store.put(item));
-            return tx.done;
-        }).then(() => console.log("✅ [Sync] Feed persisted"));
-
-        console.log(`✅ [Sync] Feed loaded: ${data.length} items`);
-    } catch (e) {
-        console.warn("[Sync] Critical feed load failed:", e);
-    }
-};
-
 // BACKGROUND SYNC LOGIC (Progressive - Instant Updates)
 const performBackgroundSync = async (activeUserUsername?: string) => {
     // Relaxed online check for mobile consistency
-    // if (!navigator.onLine) return;
-
-    console.log("🔄 [Sync] Starting background sync...");
+    // if (!navigator.onLine) return; 
+    
+    console.log("🔄 [Sync] Starting Progressive Sync...");
     const db = await getDB();
 
     // Helper to process specific fetch and update UI immediately
@@ -321,23 +252,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             // Update hotCache immediately so UI reflects data NOW
             if (cacheKey) {
                 if (cacheKey === 'exhibits') {
-                    // Smart merge: preserve existing items, only add/update new ones
-                    const existingIds = new Set(hotCache.exhibits.map(e => e.id));
-                    const newItems = data.filter((item: any) => !existingIds.has(item.id));
-                    const updatedExisting = hotCache.exhibits.map(existing => {
-                        const serverVersion = data.find((item: any) => item.id === existing.id);
-                        if (!serverVersion) return existing;
-
-                        // Smart merge: preserve local changes that haven't been synced yet
-                        return {
-                            ...serverVersion,
-                            // Keep local likedBy if server doesn't have it or it's empty
-                            likedBy: (serverVersion.likedBy && serverVersion.likedBy.length > 0) ? serverVersion.likedBy : existing.likedBy,
-                            // Keep local comments if server doesn't have them or they're empty
-                            comments: (serverVersion.comments && serverVersion.comments.length > 0) ? serverVersion.comments : existing.comments
-                        };
-                    });
-                    hotCache.exhibits = [...updatedExisting, ...newItems].sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                    hotCache.exhibits = data.sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 } else {
                     hotCache[cacheKey] = data as any;
                 }
@@ -347,25 +262,24 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                  if (genericTable === 'wishlist') hotCache.wishlist = data;
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
             }
-
-            // --- 2. NOTIFY UI (debounced to prevent flicker) ---
-            // Only notify if data actually changed
-            notifyListeners();
+            
+            // --- 2. NOTIFY UI ---
+            notifyListeners(); 
 
             // --- 3. PERSIST TO IDB (Background) ---
             const tx = db.transaction(table as any, 'readwrite');
             const store = tx.objectStore(table as any);
 
-            // Clear old data for feed to prevent stale accumulation?
-            // No, we overwrite by ID. But maybe we should clear for feed?
+            // Clear old data for feed to prevent stale accumulation? 
+            // No, we overwrite by ID. But maybe we should clear for feed? 
             // For now, put is safe.
-
+            
             if (table === 'generic' && genericTable) {
                 data.forEach(item => store.put({ id: item.id, table: genericTable, data: item }));
             } else {
                 data.forEach(item => store.put(item));
             }
-
+            
             await tx.done;
             console.log(`✅ [Sync] ${endpoint} persisted`);
         } catch (e) {
@@ -373,20 +287,14 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         }
     };
 
-    // Fetch all global data in PARALLEL (truly concurrent)
-    // Using Promise.allSettled to prevent one failure from blocking others
-    Promise.allSettled([
-        fetchAndApply('/feed?limit=100', 'exhibits', undefined, 'exhibits'),
-        fetchAndApply('/users', 'users', undefined, 'users'),
-        fetchAndApply('/collections', 'collections', undefined, 'collections'),
-        fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
-        fetchAndApply('/guestbook', 'generic', 'guestbook', 'guestbook')
-    ]).then(results => {
-        const failures = results.filter(r => r.status === 'rejected');
-        if (failures.length > 0) {
-            console.warn(`[Sync] ${failures.length} requests failed`);
-        }
-    });
+    // 1. FETCH FEED FIRST (Most important for "Instant" feel)
+    fetchAndApply('/feed', 'exhibits', undefined, 'exhibits');
+
+    // 2. Fetch others in parallel (don't await feed)
+    fetchAndApply('/users', 'users', undefined, 'users');
+    fetchAndApply('/collections', 'collections', undefined, 'collections');
+    fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist');
+    fetchAndApply('/guestbook', 'generic', 'guestbook', 'guestbook');
 
     // 3. User Specific Sync
     if (activeUserUsername) {
@@ -459,9 +367,9 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
 
     // 1. Load Critical Data (Users/Session)
     await hydrateCritical();
-
-    // 2. Start Heavy Load (Exhibits from IDB) - AWAIT to ensure data loads
-    await hydrateContent();
+    
+    // 2. Start Heavy Load (Exhibits from IDB)
+    hydrateContent();
 
     let activeUserUsername: string | undefined;
     try {
@@ -472,19 +380,14 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         console.warn("Could not read session from DB");
     }
 
-    // 3. Load CRITICAL feed data ONLY if user is logged in
-    // This ensures artifacts appear in feed after cache reset
+    // 3. Trigger Progressive Background Sync IMMEDIATELY
+    // Do not await this. Let it populate the UI as data arrives.
+    performBackgroundSync(activeUserUsername);
+
+    // 4. Return user immediately from local cache if present
     if (activeUserUsername) {
-        await loadCriticalFeedData();
-
-        // 4. Trigger background sync for other data (non-blocking)
-        performBackgroundSync(activeUserUsername);
-
-        // 5. Return user from local cache
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
-
-    // User not logged in - return null to show AUTH screen
     return null;
 };
 
@@ -492,21 +395,18 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
 
 export const loginUser = async (identifier: string, password: string): Promise<UserProfile> => {
     const user = await apiCall('/auth/login', 'POST', { identifier, password });
-
+    
     const db = await getDB();
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
-
+    
     // Update Hot Cache
     const idx = hotCache.users.findIndex(u => u.username === user.username);
     if (idx !== -1) hotCache.users[idx] = user; else hotCache.users.push(user);
-
+    
     notifyListeners();
-
-    // Load critical feed data first, then trigger background sync
-    await loadCriticalFeedData();
+    // Trigger sync after login to get fresh data
     performBackgroundSync(user.username);
-
     return user;
 };
 
@@ -517,11 +417,7 @@ export const registerUser = async (username: string, password: string, tagline: 
     await db.put('users', user);
     hotCache.users.push(user);
     notifyListeners();
-
-    // Load critical feed data first, then trigger background sync
-    await loadCriticalFeedData();
     performBackgroundSync(user.username);
-
     return user;
 };
 
@@ -554,54 +450,23 @@ export const saveExhibit = async (e: Exhibit) => {
     // 1. Optimistic Update (RAM)
     hotCache.exhibits.unshift(e);
     notifyListeners();
-
-    // 2. Persist (IndexedDB) - temporary with Base64 images
+    
+    // 2. Persist (IndexedDB)
     const db = await getDB();
     await db.put('exhibits', e);
-
-    // 3. Sync (Server) - получаем обработанные изображения
-    const serverResponse = await apiCall('/exhibits', 'POST', e);
-
-    // 4. Update with processed images from server
-    if (serverResponse && serverResponse.imageUrls) {
-        const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
-
-        // Update RAM
-        const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
-        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
-
-        // Update IndexedDB with server paths
-        await db.put('exhibits', updatedExhibit);
-
-        notifyListeners();
-    }
+    
+    // 3. Sync (Server)
+    await apiCall('/exhibits', 'POST', e);
 };
 
 export const updateExhibit = async (e: Exhibit) => {
-    // 1. Optimistic Update (RAM)
     const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
     if (idx !== -1) hotCache.exhibits[idx] = e;
     notifyListeners();
-
-    // 2. Persist (IndexedDB) - temporary with potentially Base64 images
+    
     const db = await getDB();
     await db.put('exhibits', e);
-
-    // 3. Sync (Server) - получаем обработанные изображения
-    const serverResponse = await apiCall('/exhibits', 'POST', e);
-
-    // 4. Update with processed images from server
-    if (serverResponse && serverResponse.imageUrls) {
-        const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
-
-        // Update RAM
-        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
-
-        // Update IndexedDB with server paths
-        await db.put('exhibits', updatedExhibit);
-
-        notifyListeners();
-    }
+    await apiCall('/exhibits', 'POST', e);
 };
 
 export const deleteExhibit = async (id: string) => {
@@ -734,29 +599,21 @@ export const getUserAvatar = (username: string): string => {
 };
 
 export const fetchExhibitById = async (id: string) => {
-    // Check Hot Cache first
+    // Try Hot Cache
     const mem = hotCache.exhibits.find(e => e.id === id);
-    // If cached item is a "lite" version from feed, always fetch full from server
-    if (mem && !(mem as any)._isLite) return mem;
-
+    if (mem) return mem;
+    
     // Try IndexedDB
     const db = await getDB();
     const local = await db.get('exhibits', id);
-    // If local item is a "lite" version, always fetch full from server
-    if (local && !(local as any)._isLite) return local;
+    if (local) return local;
 
-    // Fetch full data from server (includes comments, specs, reactions, etc.)
+    // Try Server
     try {
         const item = await apiCall(`/exhibits/${id}`);
         if(item) {
-            // Update cache with full version
             await db.put('exhibits', item);
-            const idx = hotCache.exhibits.findIndex(e => e.id === id);
-            if (idx !== -1) {
-                hotCache.exhibits[idx] = item;
-            } else {
-                hotCache.exhibits.push(item);
-            }
+            hotCache.exhibits.push(item);
         }
         return item;
     } catch { return null; }

@@ -1,6 +1,6 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority, ReactionType } from './types';
-import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Sparkles, Gem, Heart } from 'lucide-react';
+import { Exhibit, TierType, TradeStatus, WishlistPriority } from './types';
+import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target } from 'lucide-react';
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
@@ -64,10 +64,6 @@ export const BADGE_CONFIG = {
 
 export const BADGES = BADGE_CONFIG;
 
-export const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string; color: string }> = {
-    'LIKE': { emoji: '❤️', label: 'Нравится', color: 'text-red-500' }
-};
-
 export const STATUS_OPTIONS = {
     'ONLINE': { label: 'В сети', color: 'text-green-500', icon: Circle },
     'AWAY': { label: 'Отошел', color: 'text-yellow-500', icon: Moon },
@@ -88,126 +84,22 @@ export const CATEGORY_CONDITIONS: Record<string, string[]> = {
   [DefaultCategory.MISC]: ['ИДЕАЛ', 'ХОРОШЕЕ', 'ПОТЕРТОЕ', 'СЛОМАНО']
 };
 
-// Category base tier (multiplier for tier calculation)
-export const CATEGORY_TIER_MULTIPLIER: Record<string, number> = {
-  [DefaultCategory.PHONES]: 1.2,      // Телефоны - более ценные, выше шанс на редкий тир
-  [DefaultCategory.GAMES]: 1.5,       // Игры - коллекционные, высокий спрос
-  [DefaultCategory.MAGAZINES]: 1.0,   // Журналы - стандартная ценность
-  [DefaultCategory.MUSIC]: 1.3,       // Музыка - винил и редкие издания
-  [DefaultCategory.VIDEO]: 1.1,       // Видео - VHS и редкие диски
-  [DefaultCategory.TOYS]: 1.4,        // Игрушки - коллекционные, винтажные
-  [DefaultCategory.COMPUTERS]: 1.6,   // Компьютеры - ретро-техника, очень ценная
-  [DefaultCategory.CAMERAS]: 1.7,     // Камеры - раритетная техника, высокая ценность
-  [DefaultCategory.MISC]: 0.9         // Прочее - базовая ценность
-};
-
 export const getArtifactTier = (item: Exhibit): TierType => {
-    // Special case: CURSED items (manually marked or specific conditions)
-    if (item.title.toUpperCase().includes('CURSED') || (item.title === 'вфуфвф' && (item.owner === 'Truester' || item.owner === '@Truester'))) {
-        return 'CURSED';
-    }
-
-    // Calculate engagement score with weighted factors
-    const uniqueViewers = item.viewedBy?.length || Math.floor(item.views * 0.3); // Estimate if viewedBy not available
-    const engagementScore = (item.likes * 30) + ((item.comments?.length || 0) * 15) + (uniqueViewers * 2);
-
-    // Age multiplier: newer items get slight boost (within first 7 days)
-    const ageInDays = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60 * 24);
-    const ageMultiplier = ageInDays < 7 ? 1.2 : 1.0;
-
-    // Category multiplier: some categories are inherently more valuable
-    const categoryMultiplier = CATEGORY_TIER_MULTIPLIER[item.category] || 1.0;
-
-    const finalScore = engagementScore * ageMultiplier * categoryMultiplier;
-
-    // Progressive tier thresholds
-    if (finalScore >= 15000) return 'MYTHIC';      // Ultra rare, godlike
-    if (finalScore >= 8000) return 'LEGENDARY';    // Very rare
-    if (finalScore >= 3000) return 'EPIC';         // Rare
-    if (finalScore >= 800) return 'RARE';          // Uncommon-rare
-    if (finalScore >= 200) return 'UNCOMMON';      // Better than common
-    return 'COMMON';                                // Standard
+    if (item.title.toUpperCase().includes('CURSED') || (item.title === 'вфуфвф' && (item.owner === 'Truester' || item.owner === '@Truester'))) return 'CURSED';
+    
+    const score = (item.likes * 25) + ((item.comments?.length || 0) * 10) + item.views;
+    if (score >= 10000) return 'LEGENDARY';
+    if (score >= 2000) return 'EPIC';
+    if (score >= 500) return 'RARE';
+    return 'COMMON';
 };
 
 export const TIER_CONFIG: Record<TierType, any> = {
-    COMMON: {
-        name: 'COMMON',
-        color: 'text-gray-500',
-        bgColor: 'bg-gray-500/10',
-        borderDark: 'border-dark-dim',
-        badge: 'bg-gray-500 text-white',
-        icon: User,
-        shadow: '',
-        glow: false
-    },
-    UNCOMMON: {
-        name: 'UNCOMMON',
-        color: 'text-green-500',
-        bgColor: 'bg-green-500/15',
-        borderDark: 'border-green-600 shadow-[0_0_8px_rgba(34,197,94,0.25)]',
-        badge: 'bg-green-600 text-white',
-        icon: Sparkles,
-        shadow: 'shadow-[0_0_8px_rgba(34,197,94,0.15)]',
-        glow: true,
-        glowColor: 'rgba(34,197,94,0.2)'
-    },
-    RARE: {
-        name: 'RARE',
-        color: 'text-cyan-500',
-        bgColor: 'bg-cyan-500/20',
-        borderDark: 'border-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.35)]',
-        badge: 'bg-cyan-600 text-white',
-        icon: Award,
-        shadow: 'shadow-[0_0_12px_rgba(6,182,212,0.25)]',
-        glow: true,
-        glowColor: 'rgba(6,182,212,0.3)'
-    },
-    EPIC: {
-        name: 'EPIC',
-        color: 'text-purple-500',
-        bgColor: 'bg-purple-500/20',
-        borderDark: 'border-purple-500 shadow-[0_0_18px_rgba(168,85,247,0.45)]',
-        badge: 'bg-purple-600 text-white',
-        icon: Flame,
-        shadow: 'shadow-[0_0_18px_rgba(168,85,247,0.35)]',
-        glow: true,
-        glowColor: 'rgba(168,85,247,0.4)'
-    },
-    LEGENDARY: {
-        name: 'LEGENDARY',
-        color: 'text-yellow-500',
-        bgColor: 'bg-yellow-500/25',
-        borderDark: 'border-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.55)]',
-        badge: 'bg-gradient-to-r from-yellow-600 to-orange-600 text-white',
-        icon: Zap,
-        shadow: 'shadow-[0_0_25px_rgba(234,179,8,0.45)]',
-        glow: true,
-        glowColor: 'rgba(234,179,8,0.5)'
-    },
-    MYTHIC: {
-        name: 'MYTHIC',
-        color: 'text-pink-400',
-        bgColor: 'bg-gradient-to-br from-pink-500/30 to-blue-500/30',
-        borderDark: 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.7)] animate-pulse-slow',
-        badge: 'bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 text-white font-bold',
-        icon: Gem,
-        shadow: 'shadow-[0_0_35px_rgba(236,72,153,0.6)] animate-pulse',
-        glow: true,
-        glowColor: 'rgba(236,72,153,0.6)',
-        animated: true
-    },
-    CURSED: {
-        name: 'CURSED',
-        color: 'text-red-500',
-        bgColor: 'bg-red-500/20',
-        borderDark: 'border-red-600 shadow-[0_0_30px_rgba(239,68,68,0.7)] animate-pulse-slow',
-        badge: 'bg-red-600 text-white font-black italic',
-        icon: Ghost,
-        shadow: 'shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-pulse',
-        glow: true,
-        glowColor: 'rgba(239,68,68,0.7)',
-        animated: true
-    }
+    COMMON: { name: 'COMMON', color: 'text-gray-500', bgColor: 'bg-gray-500/20', borderDark: 'border-dark-dim', badge: 'bg-gray-500 text-white', icon: User, shadow: '' },
+    RARE: { name: 'RARE', color: 'text-cyan-500', bgColor: 'bg-cyan-500/20', borderDark: 'border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]', badge: 'bg-cyan-600 text-white', icon: Award, shadow: 'shadow-[0_0_10px_rgba(6,182,212,0.2)]' },
+    EPIC: { name: 'EPIC', color: 'text-purple-500', bgColor: 'bg-purple-500/20', borderDark: 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]', badge: 'bg-purple-600 text-white', icon: Flame, shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]' },
+    LEGENDARY: { name: 'LEGENDARY', color: 'text-yellow-500', bgColor: 'bg-yellow-500/20', borderDark: 'border-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.5)]', badge: 'bg-gradient-to-r from-yellow-600 to-red-600 text-white', icon: Zap, shadow: 'shadow-[0_0_30px_rgba(234,179,8,0.4)]' },
+    CURSED: { name: 'CURSED', color: 'text-red-500', bgColor: 'bg-red-500/20', borderDark: 'border-red-600 shadow-[0_0_30px_rgba(239,68,68,0.7)] animate-pulse-slow', badge: 'bg-red-600 text-white font-black italic', icon: Ghost, shadow: 'shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-pulse' }
 };
 
 export const calculateArtifactScore = (item: Exhibit, userPreferences?: Record<string, number>): number => {

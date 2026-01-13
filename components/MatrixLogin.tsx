@@ -42,14 +42,8 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
       if (step === 'TELEGRAM' && telegramWrapperRef.current) {
           window.onTelegramAuth = async (user: TelegramUser) => {
               setIsLoading(true);
-              try {
-                  const userProfile = await db.loginViaTelegram(user);
-                  await onLogin(userProfile, true);
-              }
-              catch (err: any) {
-                  setError("LOGIN FAILED: " + (err.message || "Server Error"));
-                  setIsLoading(false);
-              }
+              try { const userProfile = await db.loginViaTelegram(user); onLogin(userProfile, true); } 
+              catch (err: any) { setError("LOGIN FAILED: " + (err.message || "Server Error")); setIsLoading(false); }
           };
           telegramWrapperRef.current.innerHTML = '';
           const script = document.createElement('script');
@@ -62,7 +56,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
           script.setAttribute('data-request-access', 'write');
           telegramWrapperRef.current.appendChild(script);
       }
-  }, [step, onLogin]);
+  }, [step]);
 
   const resetForm = () => { setError(''); setInfoMessage(''); setShowRecoverOption(false); setPassword(''); setUsername(''); setShowPassword(false); };
   const generateSecurePassword = () => {
@@ -74,17 +68,17 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin }) => {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault(); setIsLoading(true); setError(''); setInfoMessage('');
-
+      
       const cleanEmail = email.trim();
       const cleanPassword = password.trim();
 
-      try {
-          const user = await db.loginUser(cleanEmail, cleanPassword);
-          await onLogin(user, rememberMe);
-      }
-      catch (err: any) {
-          setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ');
-          setIsLoading(false);
+      try { 
+          const user = await db.loginUser(cleanEmail, cleanPassword); 
+          onLogin(user, rememberMe); 
+      } 
+      catch (err: any) { 
+          setError(err.message || 'ОШИБКА АВТОРИЗАЦИИ'); 
+          setIsLoading(false); 
       }
   };
 

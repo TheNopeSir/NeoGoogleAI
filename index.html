@@ -40,16 +40,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=16&bold=true" />
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=192&bold=true" />
 
-    <!-- Preconnect to critical domains (DNS prefetch + connection setup) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://ui-avatars.com">
-    <link rel="dns-prefetch" href="https://mc.yandex.ru">
-
     <!-- Font Stack: Orbitron (Headers), Exo 2 (Body), VT323 (Winamp) -->
-    <!-- font-display=swap prevents font blocking, text shows immediately with fallback -->
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Orbitron:wght@400..900&family=VT323&display=swap" rel="stylesheet">
-
+    
     <script type="importmap">
     {
       "imports": {
@@ -79,34 +74,22 @@
       }
     }
     </script>
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=106078846', 'ym');
+
+        ym(106078846, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+    </script>
+    <!-- /Yandex.Metrika counter -->
 </head>
   <body>
     <noscript><div><img src="https://mc.yandex.ru/watch/106078846" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-
-    <!-- Yandex.Metrika counter - Loaded AFTER app renders -->
-    <script type="text/javascript">
-        // Delay Yandex Metrika until page is interactive
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                (function(m,e,t,r,i,k,a){
-                    m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-                    m[i].l=1*new Date();
-                    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-                    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-                })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=106078846', 'ym');
-
-                ym(106078846, 'init', {
-                    defer: true,
-                    clickmap: true,
-                    trackLinks: true,
-                    accurateTrackBounce: true,
-                    webvisor: false  // Disable heavy webvisor for performance
-                });
-            }, 1000); // Load 1 second after page load
-        });
-    </script>
-    <!-- /Yandex.Metrika counter -->
   </body>
 </html>

@@ -37,7 +37,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
         return 'TRENDS';
     };
 
-    const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab());
+    const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab);
     
     const isWinamp = theme === 'winamp';
 
@@ -135,13 +135,13 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                             <h3 className={`text-xs mb-4 flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-wa-gold font-winamp' : 'text-red-400 font-pixel'}`}><Flame size={14}/> СЕЙЧАС ПОПУЛЯРНО</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {trendingExhibits.map(item => (
-                                    <ExhibitCard
+                                    <ExhibitCard 
                                         key={item.id}
                                         item={item}
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        currentUsername={currentUser?.username || ''}
-                                        onReact={() => {}}
+                                        isLiked={false}
+                                        onLike={() => {}}
                                         onAuthorClick={onUserClick}
                                     />
                                 ))}
@@ -165,12 +165,12 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                             ) : (
                                 tradeExhibits.map(item => (
                                     <div key={item.id} className="relative">
-                                        <ExhibitCard
+                                        <ExhibitCard 
                                             item={item}
                                             theme={theme}
                                             onClick={onExhibitClick}
-                                            currentUsername={currentUser?.username || ''}
-                                            onReact={() => {}}
+                                            isLiked={false}
+                                            onLike={() => {}}
                                             onAuthorClick={onUserClick}
                                         />
                                         <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-bold rounded shadow-lg ${isWinamp ? 'bg-black text-[#00ff00] border border-[#00ff00]' : 'bg-black/80 text-white backdrop-blur-md'}`}>
