@@ -78,23 +78,37 @@ async function migrateToS3() {
                     bufferToProcess = img; // processImage handles base64 string
                 } 
                 // --- CASE 2: Legacy local file path (Relative or Absolute) ---
-                else if (typeof img === 'string' && img.includes('/api/images/')) {
+                else if (typeof img === 'string' && (img.includes('/api/images/') || img.includes('uploads/'))) {
                     console.log(`   🔄 Image ${i + 1}: Found legacy path, reading file...`);
-                    // Extract relative path after /api/images/
-                    // Handles both "/api/images/..." and "http://.../api/images/..."
-                    const parts = img.split('/api/images/');
-                    const relPath = parts[1]; // e.g., "123/hash.webp"
+                    // Extract relative path
+                    let relPath = img;
+                    if (img.includes('/api/images/')) {
+                        relPath = img.split('/api/images/')[1];
+                    } else if (img.includes('uploads/')) {
+                        relPath = img.split('uploads/')[1];
+                    }
                     
                     if (relPath) {
-                        const fullPath = path.join(getImagesDir(), relPath);
-                        if (fs.existsSync(fullPath)) {
-                            try {
-                                bufferToProcess = fs.readFileSync(fullPath);
-                            } catch (e) {
-                                console.error(`   ❌ Failed to read local file: ${fullPath}`);
+                        // Try typical locations
+                        const possiblePaths = [
+                            path.join(getImagesDir(), relPath),
+                            path.join(__dirname, 'uploads', relPath),
+                            path.join(__dirname, relPath)
+                        ];
+
+                        for (const p of possiblePaths) {
+                            if (fs.existsSync(p)) {
+                                try {
+                                    bufferToProcess = fs.readFileSync(p);
+                                    break;
+                                } catch (e) {
+                                    console.error(`   ❌ Error reading ${p}:`, e.message);
+                                }
                             }
-                        } else {
-                            console.warn(`   ⚠️ File missing on disk: ${fullPath}`);
+                        }
+
+                        if (!bufferToProcess) {
+                            console.warn(`   ⚠️ File missing on disk (checked multiple paths for ${relPath})`);
                             newImageUrls.push(img); // Keep broken link
                             continue;
                         }
@@ -104,41 +118,51 @@ async function migrateToS3() {
                     }
                 }
                 // --- CASE 3: Legacy Object with local paths ---
-                else if (typeof img === 'object' && img.medium && img.medium.includes('/api/images/')) {
+                else if (typeof img === 'object' && img.medium && (img.medium.includes('/api/images/') || img.medium.includes('uploads/'))) {
                      console.log(`   🔄 Image ${i + 1}: Found legacy object, re-processing...`);
-                     // Try to find the medium file
-                     const parts = img.medium.split('/api/images/');
-                     const relPath = parts[1];
+                     const pathStr = img.medium;
+                     let relPath = pathStr.includes('/api/images/') ? pathStr.split('/api/images/')[1] : pathStr;
                      
-                     if (relPath) {
-                         const fullPath = path.join(getImagesDir(), relPath);
-                         if (fs.existsSync(fullPath)) {
-                             bufferToProcess = fs.readFileSync(fullPath);
+                     const fullPath = path.join(getImagesDir(), relPath);
+                     if (fs.existsSync(fullPath)) {
+                         bufferToProcess = fs.readFileSync(fullPath);
+                     } else {
+                         // Try large?
+                         const pathStrL = img.large || '';
+                         const relPathL = pathStrL.includes('/api/images/') ? pathStrL.split('/api/images/')[1] : pathStrL;
+                         const fullPathL = relPathL ? path.join(getImagesDir(), relPathL) : null;
+                         
+                         if (fullPathL && fs.existsSync(fullPathL)) {
+                             bufferToProcess = fs.readFileSync(fullPathL);
                          } else {
-                             // Try large?
-                             const partsL = img.large?.split('/api/images/');
-                             const relPathL = partsL?.[1];
-                             const fullPathL = relPathL ? path.join(getImagesDir(), relPathL) : null;
-                             
-                             if (fullPathL && fs.existsSync(fullPathL)) {
-                                 bufferToProcess = fs.readFileSync(fullPathL);
-                             } else {
-                                 console.warn(`   ⚠️ Source files missing for object, skipping.`);
-                                 newImageUrls.push(img);
-                                 continue;
-                             }
+                             console.warn(`   ⚠️ Source files missing for object, skipping.`);
+                             newImageUrls.push(img);
+                             continue;
                          }
                      }
                 }
                 // --- CASE 4: Already S3 ---
                 else if ((typeof img === 'string' && img.startsWith('http')) || (typeof img === 'object' && img.medium && img.medium.startsWith('http'))) {
-                     // console.log(`   ⏭️  Image ${i + 1}: Already on Cloud.`);
                      newImageUrls.push(img);
                      continue;
                 }
+                 // --- CASE 5: Just a filename? ---
+                else if (typeof img === 'string' && !img.includes('/') && img.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+                     console.log(`   🔄 Image ${i + 1}: Found filename, checking uploads...`);
+                     const fullPath = path.join(getImagesDir(), img);
+                     if (fs.existsSync(fullPath)) {
+                         bufferToProcess = fs.readFileSync(fullPath);
+                     } else {
+                         console.log(`   ❓ Image ${i + 1}: File ${img} not found locally.`);
+                         newImageUrls.push(img);
+                         continue;
+                     }
+                }
                 // --- DEFAULT ---
                 else {
-                    console.log(`   ❓ Image ${i + 1}: Unknown format, keeping as is.`);
+                    console.log(`   ❓ Image ${i + 1}: Unknown format (${typeof img}), keeping as is.`);
+                    if (typeof img === 'string') console.log(`      Value: ${img.substring(0, 50)}...`);
+                    else console.log(`      Value: ${JSON.stringify(img).substring(0, 50)}...`);
                     newImageUrls.push(img);
                     continue;
                 }
