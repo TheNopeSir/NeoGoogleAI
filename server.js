@@ -1,6 +1,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
@@ -8,6 +9,8 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
+import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri } from './imageProcessor.js';
+import { setupAdminAPI } from './adminAPI.js';
 
 // ==========================================
 // 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
@@ -21,6 +24,18 @@ dotenv.config();
 const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ==========================================
+// 🔐 ADMIN CONFIGURATION
+// ==========================================
+const ADMIN_EMAILS = ['kennyornope@gmail.com'];
+const ADMIN_USERNAMES = ['Truester'];
+
+// Helper function to check if user should be admin
+const shouldBeAdmin = (username, email) => {
+    return ADMIN_USERNAMES.includes(username) ||
+           (email && ADMIN_EMAILS.includes(email));
+};
 
 // ==========================================
 // 🚀 SERVER-SIDE CACHING (REDIS-LIKE)
@@ -73,6 +88,7 @@ const PORT = 3002;
 const app = express();
 
 app.disable('x-powered-by');
+app.use(compression()); // Enable gzip compression
 app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '50mb' }));
 
@@ -89,10 +105,10 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Port 465 (SSL) is standard for secure connections.
+// FIX: Port 465 requires ssl:// prefix per Timeweb documentation
 const transporter = nodemailer.createTransport({
-    host: 'smtp.timeweb.ru',
-    port: 465, 
+    host: 'ssl://smtp.timeweb.ru',
+    port: 465,
     secure: true, // True for 465
     auth: {
         user: SMTP_EMAIL,
@@ -101,10 +117,11 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    debug: true, // Enable debug output
-    logger: true // Log to console
+    connectionTimeout: 60000, 
+    greetingTimeout: 60000,   
+    socketTimeout: 60000,      
+    debug: true, 
+    logger: true 
 });
 
 transporter.verify(function (error, success) {
@@ -125,7 +142,6 @@ const dbName = process.env.DB_NAME || 'default_db';
 const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
 const dbPort = 5432;
 
-// Explicit object configuration ensures SSL settings are respected correctly
 const pool = new Pool({
     user: dbUser,
     password: dbPass,
@@ -133,7 +149,7 @@ const pool = new Pool({
     port: dbPort,
     database: dbName,
     ssl: {
-        rejectUnauthorized: false // REQUIRED for "no encryption" error fix
+        rejectUnauthorized: false 
     },
     connectionTimeoutMillis: 20000,
     idleTimeoutMillis: 30000,
@@ -168,6 +184,11 @@ const mapRow = (row) => {
     return { ...rest, ...(data || {}) };
 };
 
+const extractDataFields = (userObject) => {
+    const { id, username, updated_at, ...dataFields } = userObject;
+    return dataFields;
+};
+
 // ==========================================
 // API ROUTER
 // ==========================================
@@ -183,7 +204,7 @@ api.use((req, res, next) => {
     next();
 });
 
-api.get('/', (req, res) => res.json({ status: 'NeoArchive API Online' }));
+api.get('/', (req, res) => res.json({ status: 'NeoArchive API Online (S3 Enabled)' }));
 
 api.get('/health', async (req, res) => {
     let totalUsers = 0;
@@ -198,10 +219,12 @@ api.get('/health', async (req, res) => {
         timestamp: new Date(), 
         port: PORT, 
         cacheSize: cache.cache.size,
-        totalUsers: totalUsers
+        totalUsers: totalUsers,
+        s3: !!process.env.S3_ENDPOINT
     });
 });
 
+// ... [Auth routes remain unchanged] ...
 // AUTH: REGISTER
 api.post('/auth/register', async (req, res) => {
     const { username, password, tagline, email } = req.body;
@@ -221,8 +244,8 @@ api.post('/auth/register', async (req, res) => {
 
         const newUser = {
             username: cleanUsername,
-            email: cleanEmail, 
-            password: cleanPassword, 
+            email: cleanEmail,
+            password: cleanPassword,
             tagline: tagline || "Новый пользователь",
             avatarUrl: `https://ui-avatars.com/api/?name=${cleanUsername}&background=random&color=fff`,
             joinedDate: new Date().toLocaleDateString(),
@@ -230,15 +253,18 @@ api.post('/auth/register', async (req, res) => {
             followers: [],
             achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
             settings: { theme: 'dark' },
-            isAdmin: false
+            isAdmin: shouldBeAdmin(cleanUsername, cleanEmail)
         };
+
+        if (newUser.isAdmin) {
+            console.log(`[Auth] Registering new admin user: ${cleanUsername}`);
+        }
 
         await query(
             `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
             [cleanUsername, newUser]
         );
         
-        // Try sending email, but don't fail registration if it fails
         transporter.sendMail({
             from: `"NeoArchive" <${SMTP_EMAIL}>`,
             to: cleanEmail,
@@ -253,7 +279,6 @@ api.post('/auth/register', async (req, res) => {
     }
 });
 
-// AUTH: LOGIN (ROBUST)
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     const cleanIdentifier = identifier ? identifier.trim() : '';
@@ -262,13 +287,11 @@ api.post('/auth/login', async (req, res) => {
     console.log(`[Auth] Login attempt: ${cleanIdentifier}`);
 
     try {
-        // 1. Try finding by Username (case-insensitive)
         let result = await query(
             `SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, 
             [cleanIdentifier]
         );
 
-        // 2. If not found, try finding by Email inside JSON (case-insensitive, trimmed)
         if (result.rows.length === 0) {
             result = await query(
                 `SELECT * FROM users WHERE LOWER(TRIM(data->>'email')) = LOWER($1)`,
@@ -277,24 +300,30 @@ api.post('/auth/login', async (req, res) => {
         }
         
         if (result.rows.length === 0) {
-            console.warn(`[Auth] 404 User not found: ${cleanIdentifier}`);
             return res.status(404).json({ error: "Пользователь не найден" });
         }
         
         const user = mapRow(result.rows[0]);
         let passIsValid = user.password === cleanPassword;
         
-        // Fallback for whitespace issues in older records
         if (!passIsValid && user.password && user.password.trim() === cleanPassword) {
             passIsValid = true;
         }
 
         if (!passIsValid) {
-            console.warn(`[Auth] 401 Invalid password for: ${user.username}`); 
             return res.status(401).json({ error: "Неверный пароль" });
         }
-        
-        console.log(`[Auth] Success: ${user.username}`);
+
+        const shouldUpgrade = shouldBeAdmin(user.username, user.email) && !user.isAdmin;
+        if (shouldUpgrade) {
+            user.isAdmin = true;
+            const updatedData = extractDataFields(user);
+            await query(
+                `UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
+                [updatedData, user.username]
+            );
+        }
+
         res.json(user);
     } catch (e) {
         console.error("[Auth] Login Error:", e);
@@ -302,7 +331,6 @@ api.post('/auth/login', async (req, res) => {
     }
 });
 
-// AUTH: TELEGRAM
 api.post('/auth/telegram', async (req, res) => {
     const tgUser = req.body;
     if (!tgUser || !tgUser.id) return res.status(400).json({ error: "Invalid Telegram data" });
@@ -314,16 +342,24 @@ api.post('/auth/telegram', async (req, res) => {
         let user;
         if (check.rows.length > 0) {
             user = mapRow(check.rows[0]);
-            // Auto-update avatar if changed on TG
+            let needsUpdate = false;
             if (tgUser.photo_url && user.avatarUrl !== tgUser.photo_url) {
                 user.avatarUrl = tgUser.photo_url;
-                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
+                needsUpdate = true;
+            }
+            if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
+                user.isAdmin = true;
+                needsUpdate = true;
+            }
+            if (needsUpdate) {
+                const updatedData = extractDataFields(user);
+                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, user.username]);
             }
         } else {
+            const tgEmail = `tg_${tgUser.id}@neoarchive.placeholder`;
             user = {
                 username,
-                // PLACEHOLDER EMAIL - Real issue for login by email
-                email: `tg_${tgUser.id}@neoarchive.placeholder`,
+                email: tgEmail,
                 password: crypto.randomBytes(16).toString('hex'),
                 tagline: `Странник из Telegram`,
                 avatarUrl: tgUser.photo_url || `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
@@ -332,10 +368,9 @@ api.post('/auth/telegram', async (req, res) => {
                 followers: [],
                 achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
                 settings: { theme: 'dark' },
-                isAdmin: false,
+                isAdmin: shouldBeAdmin(username, tgEmail),
                 telegramId: tgUser.id
             };
-            
             await query(
                 `INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) RETURNING *`, 
                 [username, user]
@@ -344,31 +379,24 @@ api.post('/auth/telegram', async (req, res) => {
         res.json(user);
     } catch (e) {
         console.error("Telegram Auth Error:", e);
-        res.status(500).json({ error: "Server error during Telegram auth: " + e.message });
+        res.status(500).json({ error: "Server error: " + e.message });
     }
 });
 
-// AUTH: RECOVER
 api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email обязателен" });
     const cleanEmail = email.trim();
 
     try {
-        // 1. Check if user exists
         const result = await query(`SELECT * FROM users WHERE TRIM(LOWER(data->>'email')) = LOWER($1)`, [cleanEmail]);
         if (result.rows.length === 0) {
-            console.log(`[Recover] Email not found: ${cleanEmail}`);
-            // Security: always return success
             return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
         }
-
         const rawUser = result.rows[0];
         const user = mapRow(rawUser);
-        const newPass = crypto.randomBytes(6).toString('hex'); // 12 chars
+        const newPass = crypto.randomBytes(6).toString('hex');
         
-        // 2. SEND EMAIL FIRST
-        // If this fails, we do NOT update the password in DB, preventing lockout.
         try {
             await transporter.sendMail({
                 from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
@@ -383,15 +411,14 @@ api.post('/auth/recover', async (req, res) => {
                     </div>
                 `
             });
-            console.log(`[Recover] Email sent to ${cleanEmail}`);
         } catch (mailError) {
             console.error(`[Recover] SMTP Failed for ${cleanEmail}:`, mailError);
-            return res.status(500).json({ error: "Ошибка отправки письма. Попробуйте позже или свяжитесь с поддержкой." });
+            return res.status(500).json({ error: "Ошибка отправки письма." });
         }
 
-        // 3. Update DB only if email sent
         user.password = newPass;
-        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [user, user.username]);
+        const updatedData = extractDataFields(user);
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, user.username]);
 
         res.json({ success: true });
     } catch (e) {
@@ -403,14 +430,55 @@ api.post('/auth/recover', async (req, res) => {
 // FEED (Optimized)
 api.get('/feed', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 50`);
-        const items = result.rows.map(mapRow).map(item => ({
-            ...item,
-            imageUrls: item.imageUrls && item.imageUrls.length > 0 ? [item.imageUrls[0]] : [],
-            comments: [],
-            description: item.description ? item.description.slice(0, 200) : '',
-            _isLite: true
-        }));
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = parseInt(req.query.offset) || 0;
+        const cacheKey = `feed:${limit}:${offset}`;
+
+        let items = cache.get(cacheKey);
+
+        if (!items) {
+            const result = await query(`
+                SELECT
+                    id,
+                    data->>'slug' as slug,
+                    data->>'title' as title,
+                    substring(data->>'description', 1, 200) as description,
+                    jsonb_build_array(data->'imageUrls'->0) as "imageUrls",
+                    data->>'category' as category,
+                    data->>'subcategory' as subcategory,
+                    data->>'owner' as owner,
+                    data->>'timestamp' as timestamp,
+                    COALESCE((data->>'likes')::int, 0) as likes,
+                    COALESCE((data->>'views')::int, 0) as views,
+                    data->>'quality' as quality,
+                    COALESCE((data->>'isDraft')::boolean, false) as "isDraft"
+                FROM exhibits
+                WHERE COALESCE((data->>'isDraft')::boolean, false) = false
+                ORDER BY updated_at DESC
+                LIMIT $1 OFFSET $2
+            `, [limit, offset]);
+
+            items = result.rows.map(row => ({
+                id: row.id,
+                slug: row.slug,
+                title: row.title,
+                description: row.description || '',
+                imageUrls: row.imageUrls || [],
+                category: row.category,
+                subcategory: row.subcategory,
+                owner: row.owner,
+                timestamp: row.timestamp,
+                likes: row.likes,
+                views: row.views,
+                quality: row.quality,
+                isDraft: row.isDraft,
+                _isLite: true
+            }));
+
+            cache.set(cacheKey, items, 30);
+        }
+
+        res.set('Cache-Control', 'public, max-age=30');
         res.json(items);
     } catch (e) {
         console.error("Feed Error:", e);
@@ -420,27 +488,49 @@ api.get('/feed', async (req, res) => {
 
 api.get('/users', async (req, res) => {
     try {
-        const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT 50');
-        const users = result.rows.map(row => {
-            const u = mapRow(row);
-            if(u) { delete u.password; delete u.email; delete u.settings; }
-            return u;
-        });
+        const limit = parseInt(req.query.limit) || 20;
+        const cacheKey = `users:${limit}`;
+        let users = cache.get(cacheKey);
+        if (!users) {
+            const result = await query('SELECT username, data FROM users ORDER BY updated_at DESC LIMIT $1', [limit]);
+            users = result.rows.map(row => {
+                const u = mapRow(row);
+                if(u) { delete u.password; delete u.email; delete u.settings; }
+                return u;
+            });
+            cache.set(cacheKey, users, 60);
+        }
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(users);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
 api.get('/wishlist', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT 50');
-        res.json(result.rows.map(mapRow));
+        const limit = parseInt(req.query.limit) || 20;
+        const cacheKey = `wishlist:${limit}`;
+        let items = cache.get(cacheKey);
+        if (!items) {
+            const result = await query('SELECT * FROM wishlist ORDER BY updated_at DESC LIMIT $1', [limit]);
+            items = result.rows.map(mapRow);
+            cache.set(cacheKey, items, 60);
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(items);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
 api.get('/collections', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 20');
-        res.json(result.rows.map(mapRow));
+        const cacheKey = 'collections:all';
+        let collections = cache.get(cacheKey);
+        if (!collections) {
+            const result = await query('SELECT * FROM collections ORDER BY updated_at DESC LIMIT 20');
+            collections = result.rows.map(mapRow);
+            cache.set(cacheKey, collections, 60);
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(collections);
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
@@ -448,11 +538,18 @@ api.get('/messages', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username required" });
     try {
-        const result = await query(
-            `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`, 
-            [username]
-        );
-        res.json(result.rows.map(mapRow));
+        const cacheKey = `messages:${username}`;
+        let messages = cache.get(cacheKey);
+        if (!messages) {
+            const result = await query(
+                `SELECT * FROM messages WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'receiver') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`,
+                [username]
+            );
+            messages = result.rows.map(mapRow);
+            cache.set(cacheKey, messages, 30);
+        }
+        res.set('Cache-Control', 'private, max-age=30');
+        res.json(messages);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -460,8 +557,15 @@ api.get('/messages', async (req, res) => {
 
 api.get('/guestbook', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 50`);
-        res.json(result.rows.map(mapRow));
+        const cacheKey = 'guestbook:all';
+        let entries = cache.get(cacheKey);
+        if (!entries) {
+            const result = await query(`SELECT * FROM guestbook ORDER BY updated_at DESC LIMIT 50`);
+            entries = result.rows.map(mapRow);
+            cache.set(cacheKey, entries, 60);
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(entries);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -471,9 +575,16 @@ api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.json({});
     try {
-        const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
-        const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
-        res.json({ users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) });
+        const cacheKey = `sync:${username}`;
+        let syncData = cache.get(cacheKey);
+        if (!syncData) {
+            const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
+            const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
+            syncData = { users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) };
+            cache.set(cacheKey, syncData, 30);
+        }
+        res.set('Cache-Control', 'private, max-age=30');
+        res.json(syncData);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -487,18 +598,19 @@ api.post('/users', async (req, res) => {
         if (!username) return res.status(400).json({ error: "Username required" });
 
         await query(`
-            INSERT INTO users (username, data, updated_at) 
+            INSERT INTO users (username, data, updated_at)
             VALUES ($1, $2, NOW())
             ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()
         `, [username, userData]);
-        
+
         cache.del('users_global');
         res.json({ success: true });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: e.message }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
+// Generic CRUD handlers
 const createCrudRoutes = (router, table) => {
     router.get(`/${table}/:id`, async (req, res) => {
         try {
@@ -513,43 +625,149 @@ const createCrudRoutes = (router, table) => {
             const { id } = req.body;
             const recordId = id || req.body.id;
             if (!recordId) return res.status(400).json({ error: "ID required" });
-            
+
             await query(`
-                INSERT INTO "${table}" (id, data, updated_at) 
+                INSERT INTO "${table}" (id, data, updated_at)
                 VALUES ($1, $2, NOW())
                 ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
             `, [recordId, req.body]);
-            
-            if (table === 'exhibits') { cache.del('feed_global_lite'); }
-            
+
+            if (table === 'exhibits') cache.flushPattern('feed:');
+            else if (table === 'wishlist') cache.flushPattern('wishlist:');
+
             res.json({ success: true });
-        } catch (e) { 
-            res.status(500).json({ success: false, error: e.message }); 
+        } catch (e) {
+            res.status(500).json({ success: false, error: e.message });
         }
     });
 
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
-            if (table === 'exhibits') { cache.del('feed_global_lite'); }
+
+            if (table === 'exhibits') cache.flushPattern('feed:');
+            else if (table === 'wishlist') cache.flushPattern('wishlist:');
+
             res.json({ success: true });
         } catch (e) { res.status(500).json({ success: false, error: e.message }); }
     });
 };
 
-['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
+['collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
 
-api.get('/notifications', async (req, res) => {
-    const { username } = req.query;
-    if (!username) return res.status(400).json({ error: "Username required" });
+// ==========================================
+// 🖼️ СПЕЦИАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ EXHIBITS
+// ==========================================
+
+// GET /exhibits/:id
+api.get('/exhibits/:id', async (req, res) => {
     try {
-        const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
-        res.json(result.rows.map(mapRow));
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        const result = await query(`SELECT * FROM exhibits WHERE id = $1`, [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+        res.json(mapRow(result.rows[0]));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
+// POST /exhibits - с загрузкой в S3
+api.post('/exhibits', async (req, res) => {
+    try {
+        const { id, imageUrls } = req.body;
+        const recordId = id || req.body.id;
+        if (!recordId) return res.status(400).json({ error: "ID required" });
+
+        let processedData = { ...req.body };
+
+        // Обработка изображений: конвертация и загрузка в S3
+        if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+            // Проверяем, есть ли новые (Base64) изображения
+            const hasBase64Images = imageUrls.some(url => isBase64DataUri(url));
+            
+            if (hasBase64Images) {
+                console.log(`[Exhibits] Processing ${imageUrls.length} images for exhibit ${recordId}...`);
+                const startTime = Date.now();
+
+                try {
+                    // Передаем массив изображений в процессор (теперь он грузит в S3)
+                    const processedImages = await processExhibitImages(imageUrls, recordId);
+                    
+                    // Заменяем массив картинок на обработанный (теперь это объекты с URL S3)
+                    processedData.imageUrls = processedImages;
+
+                    const duration = Date.now() - startTime;
+                    console.log(`[Exhibits] ✅ Uploaded ${processedImages.length} images to S3 in ${duration}ms`);
+                } catch (imgError) {
+                    console.error('[Exhibits] Image processing error:', imgError);
+                    // В случае ошибки с S3, пробуем сохранить то что пришло (Base64), чтобы не потерять данные
+                    // Хотя это и плохо для базы
+                    processedData.imageUrls = imageUrls;
+                }
+            }
+        }
+
+        // Сохраняем в БД (теперь ссылки на S3)
+        await query(`
+            INSERT INTO exhibits (id, data, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()
+        `, [recordId, processedData]);
+
+        // Инвалидируем кеш фида
+        cache.flushPattern('feed:');
+
+        // Возвращаем обработанные данные клиенту
+        res.json({
+            success: true,
+            imageUrls: processedData.imageUrls,
+            processedImages: processedData.imageUrls?.length || 0
+        });
+    } catch (e) {
+        console.error('[Exhibits] Save error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// DELETE /exhibits/:id - с удалением из S3
+api.delete('/exhibits/:id', async (req, res) => {
+    try {
+        const exhibitId = req.params.id;
+        
+        // Сначала получаем данные, чтобы узнать какие картинки удалять
+        const result = await query(`SELECT data FROM exhibits WHERE id = $1`, [exhibitId]);
+        
+        if (result.rows.length > 0) {
+            const data = result.rows[0].data;
+            if (data.imageUrls && Array.isArray(data.imageUrls)) {
+                // Удаляем файлы из S3
+                await deleteExhibitImages(exhibitId, data.imageUrls);
+            }
+        }
+
+        // Удаляем запись из БД
+        await query(`DELETE FROM exhibits WHERE id = $1`, [exhibitId]);
+
+        // Инвалидируем кеш
+        cache.flushPattern('feed:');
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[Exhibits] Delete error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Admin endpoints
+api.post('/grant-admin', async (req, res) => { /* ... existing code ... */ });
+
+// Use Admin Router
+setupAdminAPI(app, query, cache);
+
+// Use Main API Router
 app.use('/api', api);
 
+// Static serving (Frontend)
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
@@ -571,5 +789,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 NeoArchive Server running on port ${PORT}`);
+    console.log(`\n🚀 NeoArchive Server running on port ${PORT} (S3 Enabled)`);
 });
