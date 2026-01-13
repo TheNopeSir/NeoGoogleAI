@@ -3,7 +3,7 @@
  * Специальные endpoints для админ-панели
  */
 
-import { deleteExhibitImages } from './imageProcessor.js';
+import { deleteExhibitImages, processImage, isBase64DataUri } from './imageProcessor.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -115,6 +115,174 @@ export function setupAdminAPI(app, query, cache) {
             });
         } catch (error) {
             console.error('[AdminAPI] SQL import error:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // ==========================================
+    // 🔄 Regenerate Images from Base64
+    // ==========================================
+    app.post('/api/admin/regenerate-images', async (req, res) => {
+        try {
+            console.log('[AdminAPI] Starting image regeneration...');
+
+            const results = {
+                processed: 0,
+                skipped: 0,
+                errors: 0,
+                details: []
+            };
+
+            // Process exhibits
+            const exhibitsResult = await query('SELECT id, data FROM exhibits');
+            console.log(`[AdminAPI] Found ${exhibitsResult.rows.length} exhibits`);
+
+            for (const row of exhibitsResult.rows) {
+                const exhibitId = row.id;
+                const data = row.data;
+
+                try {
+                    // Check if this exhibit has base64 images
+                    if (!data.imageUrls || !Array.isArray(data.imageUrls)) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    // Check if images are already processed
+                    const hasBase64 = data.imageUrls.some(url => isBase64DataUri(url));
+                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
+
+                    if (!hasBase64 && hasProcessedImages) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    if (!hasBase64) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    // Process each base64 image
+                    const processedImages = [];
+
+                    for (let i = 0; i < data.imageUrls.length; i++) {
+                        const imageUrl = data.imageUrls[i];
+
+                        if (isBase64DataUri(imageUrl)) {
+                            const result = await processImage(imageUrl, exhibitId);
+                            processedImages.push(result);
+                        }
+                    }
+
+                    // Update the database with processed images
+                    data.processedImages = processedImages;
+
+                    await query(
+                        'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(data), exhibitId]
+                    );
+
+                    results.processed++;
+                    results.details.push({
+                        id: exhibitId,
+                        title: data.title,
+                        images: processedImages.length,
+                        status: 'success'
+                    });
+
+                    console.log(`[AdminAPI] Processed exhibit: ${data.title || exhibitId} (${processedImages.length} images)`);
+
+                } catch (error) {
+                    results.errors++;
+                    results.details.push({
+                        id: exhibitId,
+                        title: data.title,
+                        status: 'error',
+                        error: error.message
+                    });
+                    console.error(`[AdminAPI] Error processing exhibit ${exhibitId}:`, error);
+                }
+            }
+
+            // Process collections
+            const collectionsResult = await query('SELECT id, data FROM collections');
+            console.log(`[AdminAPI] Found ${collectionsResult.rows.length} collections`);
+
+            for (const row of collectionsResult.rows) {
+                const collectionId = row.id;
+                const data = row.data;
+
+                try {
+                    // Check if this collection has base64 images
+                    if (!data.imageUrls || !Array.isArray(data.imageUrls)) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    const hasBase64 = data.imageUrls.some(url => isBase64DataUri(url));
+                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
+
+                    if (!hasBase64 && hasProcessedImages) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    if (!hasBase64) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    // Process each base64 image
+                    const processedImages = [];
+
+                    for (let i = 0; i < data.imageUrls.length; i++) {
+                        const imageUrl = data.imageUrls[i];
+
+                        if (isBase64DataUri(imageUrl)) {
+                            const result = await processImage(imageUrl, collectionId);
+                            processedImages.push(result);
+                        }
+                    }
+
+                    // Update the database with processed images
+                    data.processedImages = processedImages;
+
+                    await query(
+                        'UPDATE collections SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(data), collectionId]
+                    );
+
+                    results.processed++;
+                    results.details.push({
+                        id: collectionId,
+                        title: data.title,
+                        images: processedImages.length,
+                        status: 'success'
+                    });
+
+                    console.log(`[AdminAPI] Processed collection: ${data.title || collectionId} (${processedImages.length} images)`);
+
+                } catch (error) {
+                    results.errors++;
+                    results.details.push({
+                        id: collectionId,
+                        title: data.title,
+                        status: 'error',
+                        error: error.message
+                    });
+                    console.error(`[AdminAPI] Error processing collection ${collectionId}:`, error);
+                }
+            }
+
+            console.log(`[AdminAPI] Image regeneration complete. Processed: ${results.processed}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
+
+            res.json({
+                success: true,
+                ...results
+            });
+
+        } catch (error) {
+            console.error('[AdminAPI] Regenerate images error:', error);
             res.status(500).json({ success: false, error: error.message });
         }
     });
