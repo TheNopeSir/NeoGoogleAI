@@ -3,15 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const S3_ENDPOINT = process.env.S3_ENDPOINT;
+const S3_ENDPOINT = process.env.S3_ENDPOINT || 'https://s3.twcstorage.ru';
 const S3_REGION = process.env.S3_REGION || 'ru-1';
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY;
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 // Construct the public URL base. 
-// If S3_PUBLIC_URL is defined, use it. Otherwise try to construct from endpoint and bucket.
-// Timeweb example: https://<bucket>.s3.twcstorage.ru
+// If S3_PUBLIC_URL is defined in env, use it. Otherwise try to construct from endpoint and bucket.
 const S3_PUBLIC_URL = process.env.S3_PUBLIC_URL || `${S3_ENDPOINT}`.replace('://', `://${S3_BUCKET_NAME}.`);
 
 let s3Client = null;
@@ -28,16 +27,17 @@ if (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY) {
             accessKeyId: S3_ACCESS_KEY,
             secretAccessKey: S3_SECRET_KEY
         },
-        forcePathStyle: true // Timeweb and some others need this sometimes, but virtual host style is preferred if DNS works
+        // Timeweb specific: sometimes path style is needed if DNS isn't ready, but usually virtual host is fine.
+        forcePathStyle: true 
     });
 } else {
-    console.warn('[S3] Missing configuration. S3 uploads will be disabled.');
+    console.warn('[S3] Missing configuration. S3 uploads will be disabled. Check .env file.');
 }
 
 /**
  * Upload a file buffer to S3
  * @param {Buffer} buffer - File content
- * @param {string} key - File path/name in bucket (e.g. "images/123/thumb.webp")
+ * @param {string} key - File path/name in bucket (e.g. "exhibits/123/thumb.webp")
  * @param {string} contentType - MIME type
  * @returns {Promise<string>} - Public URL of the uploaded file
  */
@@ -51,7 +51,7 @@ export async function uploadToS3(buffer, key, contentType = 'image/webp') {
         Key: key,
         Body: buffer,
         ContentType: contentType,
-        // ACL: 'public-read' // Timeweb buckets are often public by policy, but uncomment if needed
+        // ACL: 'public-read' // Uncomment if bucket isn't public by default
     });
 
     try {
@@ -66,25 +66,32 @@ export async function uploadToS3(buffer, key, contentType = 'image/webp') {
 
 /**
  * Delete a file from S3
- * @param {string} key - File path in bucket
+ * @param {string} key - File path in bucket or full URL
  */
 export async function deleteFromS3(key) {
     if (!s3Client) return;
 
     // If a full URL is passed, try to extract key
+    // Example: https://bucket.s3.ru/exhibits/1.webp -> exhibits/1.webp
+    let objectKey = key;
     if (key.startsWith('http')) {
-        const urlObj = new URL(key);
-        // Remove leading slash
-        key = urlObj.pathname.substring(1); 
+        try {
+            const urlObj = new URL(key);
+            // Remove leading slash from pathname
+            objectKey = urlObj.pathname.substring(1); 
+        } catch (e) {
+            console.warn('[S3] Could not parse URL for deletion:', key);
+            return;
+        }
     }
 
     try {
         await s3Client.send(new DeleteObjectCommand({
             Bucket: S3_BUCKET_NAME,
-            Key: key
+            Key: objectKey
         }));
-        console.log(`[S3] Deleted: ${key}`);
+        console.log(`[S3] Deleted: ${objectKey}`);
     } catch (error) {
-        console.error(`[S3] Delete error for ${key}:`, error);
+        console.error(`[S3] Delete error for ${objectKey}:`, error);
     }
 }
