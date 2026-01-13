@@ -39,6 +39,7 @@ if (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY) {
     console.log('[S3] Initializing S3 Client...');
     console.log(`[S3] Endpoint: ${S3_ENDPOINT}`);
     console.log(`[S3] Bucket: ${S3_BUCKET_NAME}`);
+    console.log(`[S3] Key ID: ${S3_ACCESS_KEY.substring(0, 5)}...`); // Log partial key for debug
     console.log(`[S3] Public URL Base: ${S3_PUBLIC_URL}`);
     
     s3Client = new S3Client({
@@ -51,7 +52,7 @@ if (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY) {
         forcePathStyle: true // Важно для Timeweb/MinIO
     });
 } else {
-    console.warn('[S3] ⚠️ Missing configuration. S3 uploads will be disabled. Check .env file.');
+    console.warn('[S3] ⚠️ Missing configuration (Keys). S3 uploads will be disabled. Check .env file.');
 }
 
 /**

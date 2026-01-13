@@ -7,6 +7,7 @@ import { getUserAvatar } from '../services/storageService';
 import ReactionPicker from './ReactionPicker';
 import { getTotalReactions, getUserReaction } from '../utils/reactionUtils';
 import ProgressiveImage from './ProgressiveImage';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ExhibitCardProps {
   item: Exhibit;
@@ -47,8 +48,8 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
 
-  // Получаем первое изображение для отображения
-  const firstImage = item.imageUrls?.[0];
+  // Получаем первое изображение для отображения с помощью утилиты
+  const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
   if (isWinamp) {
       return (

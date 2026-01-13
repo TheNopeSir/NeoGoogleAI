@@ -5,6 +5,7 @@ import { Exhibit, Collection, UserProfile, ReactionType } from '../types';
 import ExhibitCard from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import { getUserAvatar } from '../services/storageService';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface SearchViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
