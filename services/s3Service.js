@@ -4,14 +4,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Настройки S3 (Timeweb, MinIO, AWS)
+// Добавьте эти переменные в ваш .env файл
 const S3_ENDPOINT = process.env.S3_ENDPOINT || 'https://s3.twcstorage.ru';
 const S3_REGION = process.env.S3_REGION || 'ru-1';
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY;
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'neoarchive';
 
-// Construct the public URL base. 
-// If S3_PUBLIC_URL is defined in env, use it. Otherwise try to construct from endpoint and bucket.
+// Формируем публичный URL. 
+// Если задан S3_PUBLIC_URL (CDN), используем его. Иначе пытаемся собрать из эндпоинта.
 const S3_PUBLIC_URL = process.env.S3_PUBLIC_URL || `${S3_ENDPOINT}`.replace('://', `://${S3_BUCKET_NAME}.`);
 
 let s3Client = null;
@@ -28,19 +30,19 @@ if (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY) {
             accessKeyId: S3_ACCESS_KEY,
             secretAccessKey: S3_SECRET_KEY
         },
-        // Timeweb specific: sometimes path style is needed if DNS isn't ready, but usually virtual host is fine.
+        // Для Timeweb/MinIO часто нужно forcePathStyle: true, если DNS не настроен на бакеты
         forcePathStyle: true 
     });
 } else {
-    console.warn('[S3] Missing configuration. S3 uploads will be disabled. Check .env file.');
+    console.warn('[S3] ⚠️ Missing configuration. S3 uploads will be disabled. Check .env file.');
 }
 
 /**
- * Upload a file buffer to S3
- * @param {Buffer} buffer - File content
- * @param {string} key - File path/name in bucket (e.g. "exhibits/123/thumb.webp")
- * @param {string} contentType - MIME type
- * @returns {Promise<string>} - Public URL of the uploaded file
+ * Загрузка буфера в S3
+ * @param {Buffer} buffer - Содержимое файла
+ * @param {string} key - Путь в бакете (например "exhibits/123/thumb.webp")
+ * @param {string} contentType - MIME тип
+ * @returns {Promise<string>} - Публичная ссылка на файл
  */
 export async function uploadToS3(buffer, key, contentType = 'image/webp') {
     if (!s3Client) {
@@ -52,12 +54,12 @@ export async function uploadToS3(buffer, key, contentType = 'image/webp') {
         Key: key,
         Body: buffer,
         ContentType: contentType,
-        // ACL: 'public-read' // Uncomment if bucket isn't public by default
+        // ACL: 'public-read' // Раскомментировать, если бакет закрыт по умолчанию
     });
 
     try {
         await s3Client.send(command);
-        // Return absolute URL
+        // Возвращаем абсолютный URL
         return `${S3_PUBLIC_URL}/${key}`;
     } catch (error) {
         console.error(`[S3] Upload error for ${key}:`, error);
@@ -66,19 +68,18 @@ export async function uploadToS3(buffer, key, contentType = 'image/webp') {
 }
 
 /**
- * Delete a file from S3
- * @param {string} key - File path in bucket or full URL
+ * Удаление файла из S3
+ * @param {string} key - Путь в бакете или полный URL
  */
 export async function deleteFromS3(key) {
     if (!s3Client) return;
 
-    // If a full URL is passed, try to extract key
-    // Example: https://bucket.s3.ru/exhibits/1.webp -> exhibits/1.webp
+    // Если передан полный URL, пытаемся извлечь ключ
     let objectKey = key;
     if (key.startsWith('http')) {
         try {
             const urlObj = new URL(key);
-            // Remove leading slash from pathname
+            // Удаляем начальный слэш из pathname
             objectKey = urlObj.pathname.substring(1); 
         } catch (e) {
             console.warn('[S3] Could not parse URL for deletion:', key);
