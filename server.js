@@ -9,7 +9,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
-import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage } from './imageProcessor.js';
+import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 
 // ==========================================
@@ -914,7 +914,22 @@ api.post('/exhibits', async (req, res) => {
                     const processedImages = await processExhibitImages(base64Images, recordId);
 
                     // Объединяем уже обработанные и новые изображения
-                    processedData.imageUrls = [...alreadyProcessed, ...processedImages];
+                    // Итерируемся по исходному массиву, чтобы сохранить порядок
+                    const finalImages = [];
+                    let processedIndex = 0;
+                    
+                    for (let i = 0; i < imageUrls.length; i++) {
+                         if (isBase64DataUri(imageUrls[i])) {
+                             if (processedImages[processedIndex]) {
+                                 finalImages.push(processedImages[processedIndex]);
+                                 processedIndex++;
+                             }
+                         } else {
+                             finalImages.push(imageUrls[i]);
+                         }
+                    }
+                    
+                    processedData.imageUrls = finalImages;
 
                     const duration = Date.now() - startTime;
                     console.log(`[Exhibits] ✅ Processed ${processedImages.length} images in ${duration}ms`);
@@ -924,7 +939,7 @@ api.post('/exhibits', async (req, res) => {
                     processedData.imageUrls = imageUrls;
                 }
             } else {
-                // Изображения уже обработаны (объекты с путями)
+                // Изображения уже обработаны (объекты с путями) или это просто URL
                 processedData.imageUrls = imageUrls;
             }
         }
@@ -956,8 +971,15 @@ api.delete('/exhibits/:id', async (req, res) => {
     try {
         const exhibitId = req.params.id;
 
-        // Удаляем изображения из файловой системы
-        await deleteExhibitImages(exhibitId);
+        // Удаляем изображения из S3 (если есть информация в БД)
+        // Сначала получаем данные чтобы знать пути
+        const result = await query(`SELECT data FROM exhibits WHERE id = $1`, [exhibitId]);
+        if (result.rows.length > 0) {
+            const data = result.rows[0].data;
+            if (data.imageUrls) {
+                await deleteExhibitImages(exhibitId, data.imageUrls);
+            }
+        }
 
         // Удаляем запись из БД
         await query(`DELETE FROM exhibits WHERE id = $1`, [exhibitId]);
@@ -973,409 +995,10 @@ api.delete('/exhibits/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🖼️ ENDPOINT ДЛЯ РАЗДАЧИ ИЗОБРАЖЕНИЙ
+// 🖼️ IMAGE SERVING ENDPOINT (Legacy)
 // ==========================================
-
-api.get('/images/:exhibitId/:filename', (req, res) => {
-    try {
-        const { exhibitId, filename } = req.params;
-        const imagePath = path.join(getImagesDir(), exhibitId, filename);
-
-        console.log(`[Images] Request for: ${imagePath}`);
-
-        // Проверяем существование файла
-        if (!fs.existsSync(imagePath)) {
-            console.warn(`[Images] File not found: ${imagePath}`);
-            console.warn(`[Images] Images dir: ${getImagesDir()}`);
-            console.warn(`[Images] Exhibit ID: ${exhibitId}`);
-            console.warn(`[Images] Filename: ${filename}`);
-            return res.status(404).json({ error: 'Image not found', path: imagePath });
-        }
-
-        console.log(`[Images] Serving file: ${imagePath}`);
-
-        // Устанавливаем агрессивное кеширование для изображений (1 год)
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        res.setHeader('Content-Type', 'image/webp');
-
-        // Отправляем файл
-        res.sendFile(imagePath);
-    } catch (e) {
-        console.error('[Images] Error serving image:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-
-// ==========================================
-// 🔍 ENDPOINT ДЛЯ ПРОВЕРКИ ФАЙЛОВ ИЗОБРАЖЕНИЙ
-// ==========================================
-
-api.get('/verify-image-files', async (req, res) => {
-    try {
-        console.log(`[VerifyFiles] Checking physical image files...`);
-
-        // Получаем все артефакты с изображениями
-        const result = await query(`
-            SELECT id, data
-            FROM exhibits
-            ORDER BY updated_at DESC
-            LIMIT 100
-        `);
-
-        const stats = {
-            checked: 0,
-            filesExist: 0,
-            filesMissing: 0,
-            missingFiles: []
-        };
-
-        // Проверяем каждый артефакт
-        for (const row of result.rows) {
-            const data = row.data;
-            const imageUrls = data.imageUrls;
-
-            if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-                continue;
-            }
-
-            stats.checked++;
-
-            const firstImage = imageUrls[0];
-
-            // Проверяем только оптимизированный формат
-            if (typeof firstImage === 'object' && firstImage.thumbnail) {
-                const thumbnailPath = firstImage.thumbnail.replace('/api/images/', '');
-                const fullPath = path.join(getImagesDir(), thumbnailPath);
-
-                if (fs.existsSync(fullPath)) {
-                    stats.filesExist++;
-                } else {
-                    stats.filesMissing++;
-                    stats.missingFiles.push({
-                        id: row.id,
-                        title: data.title,
-                        expectedPath: thumbnailPath,
-                        fullPath: fullPath,
-                        imageData: firstImage
-                    });
-                }
-            }
-        }
-
-        res.json({
-            success: true,
-            stats,
-            imagesDir: getImagesDir(),
-            missingFiles: stats.missingFiles.slice(0, 10)
-        });
-
-    } catch (e) {
-        console.error('[VerifyFiles] Error:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// ==========================================
-// 🧹 ENDPOINT ДЛЯ ОЧИСТКИ ПУТЕЙ К НЕСУЩЕСТВУЮЩИМ ИЗОБРАЖЕНИЯМ
-// ==========================================
-
-api.get('/cleanup-orphaned-images', async (req, res) => {
-    try {
-        const mode = req.query.mode || 'analyze';
-
-        console.log(`[Cleanup] Starting cleanup - mode: ${mode}`);
-
-        // Получаем все артефакты
-        const result = await query(`SELECT id, data FROM exhibits ORDER BY updated_at DESC`);
-
-        const stats = {
-            total: result.rows.length,
-            withImages: 0,
-            validImages: 0,
-            orphanedImages: 0,
-            cleaned: 0,
-            errors: 0,
-            orphanedExhibits: []
-        };
-
-        // Функция проверки существования файла
-        function checkImageFileExists(imagePath) {
-            if (!imagePath) return false;
-            const relativePath = imagePath.replace('/api/images/', '');
-            const fullPath = path.join(getImagesDir(), relativePath);
-            return fs.existsSync(fullPath);
-        }
-
-        // Анализируем все артефакты
-        for (const row of result.rows) {
-            const data = row.data;
-            const imageUrls = data.imageUrls;
-
-            if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) continue;
-
-            stats.withImages++;
-            const firstImage = imageUrls[0];
-
-            if (typeof firstImage === 'object' && firstImage.thumbnail) {
-                const fileExists = checkImageFileExists(firstImage.thumbnail);
-
-                if (fileExists) {
-                    stats.validImages++;
-                } else {
-                    stats.orphanedImages++;
-                    stats.orphanedExhibits.push({
-                        id: row.id,
-                        title: data.title,
-                        missingPath: firstImage.thumbnail
-                    });
-                }
-            }
-        }
-
-        // Режим анализа
-        if (mode === 'analyze') {
-            return res.json({
-                success: true,
-                mode: 'analyze',
-                stats: {
-                    total: stats.total,
-                    withImages: stats.withImages,
-                    validImages: stats.validImages,
-                    orphanedImages: stats.orphanedImages
-                },
-                orphanedExhibits: stats.orphanedExhibits.slice(0, 20)
-            });
-        }
-
-        // Режим очистки
-        if (mode === 'cleanup') {
-            for (const item of stats.orphanedExhibits) {
-                try {
-                    const exhibitResult = await query(`SELECT data FROM exhibits WHERE id = $1`, [item.id]);
-                    if (exhibitResult.rows.length === 0) continue;
-
-                    const exhibitData = exhibitResult.rows[0].data;
-                    delete exhibitData.imageUrls;
-
-                    await query(
-                        'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
-                        [JSON.stringify(exhibitData), item.id]
-                    );
-
-                    stats.cleaned++;
-                    console.log(`[Cleanup] ✓ Cleaned ${item.id}`);
-                } catch (error) {
-                    stats.errors++;
-                    console.error(`[Cleanup] ✗ Error ${item.id}:`, error.message);
-                }
-            }
-
-            cache.cache.clear();
-
-            return res.json({
-                success: true,
-                mode: 'cleanup',
-                results: {
-                    orphanedImages: stats.orphanedImages,
-                    cleaned: stats.cleaned,
-                    errors: stats.errors
-                }
-            });
-        }
-
-        res.status(400).json({ error: 'Invalid mode' });
-    } catch (e) {
-        console.error('[Cleanup] Error:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Guestbook verification endpoint
-api.get('/verify-guestbook', async (req, res) => {
-    try {
-        console.log('[Guestbook] Verifying guestbook...');
-
-        const result = await pool.query(
-            'SELECT id, data, created_at, updated_at FROM guestbook ORDER BY updated_at DESC LIMIT 50'
-        );
-
-        const entries = result.rows.map(row => ({
-            id: row.id,
-            author: row.data.author || 'Unknown',
-            targetUser: row.data.targetUser || 'Unknown',
-            text: row.data.text || '',
-            timestamp: row.data.timestamp || row.updated_at,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
-        }));
-
-        console.log(`[Guestbook] Found ${entries.length} entries`);
-
-        res.json({
-            success: true,
-            total: entries.length,
-            entries
-        });
-    } catch (e) {
-        console.error('[Guestbook] Error:', e);
-        res.status(500).json({
-            success: false,
-            error: e.message,
-            total: 0,
-            entries: []
-        });
-    }
-});
-
-api.get('/notifications', async (req, res) => {
-    const { username } = req.query;
-    if (!username) return res.status(400).json({ error: "Username required" });
-    try {
-        const cacheKey = `notifications:${username}`;
-        let notifications = cache.get(cacheKey);
-
-        if (!notifications) {
-            const result = await query(`SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY (data->>'timestamp') DESC LIMIT 50`, [username]);
-            notifications = result.rows.map(mapRow);
-            cache.set(cacheKey, notifications, 30); // Cache for 30 seconds
-        }
-
-        res.set('Cache-Control', 'private, max-age=30'); // Private cache for user data
-        res.json(notifications);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ==========================================
-// 🔧 SPECIAL ENDPOINT: GRANT ADMIN RIGHTS
-// ==========================================
-// This endpoint allows auto-upgrading users from ADMIN_USERNAMES/ADMIN_EMAILS list
-// Call this endpoint to grant admin rights without logging in
-api.post('/grant-admin', async (req, res) => {
-    try {
-        console.log('[GrantAdmin] Starting admin rights upgrade for configured users...');
-
-        let upgraded = 0;
-        let skipped = 0;
-        const results = [];
-
-        // Process usernames from ADMIN_USERNAMES list
-        for (const adminUsername of ADMIN_USERNAMES) {
-            try {
-                const result = await query(
-                    'SELECT * FROM users WHERE LOWER(username) = LOWER($1)',
-                    [adminUsername]
-                );
-
-                if (result.rows.length === 0) {
-                    results.push({ username: adminUsername, status: 'not_found' });
-                    skipped++;
-                    continue;
-                }
-
-                const user = mapRow(result.rows[0]);
-
-                if (user.isAdmin) {
-                    results.push({ username: adminUsername, status: 'already_admin' });
-                    skipped++;
-                    continue;
-                }
-
-                // Grant admin rights
-                user.isAdmin = true;
-                const updatedData = extractDataFields(user);
-                await query(
-                    'UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2',
-                    [updatedData, user.username]
-                );
-
-                console.log(`[GrantAdmin] ✓ Granted admin rights to: ${adminUsername}`);
-                results.push({ username: adminUsername, status: 'upgraded', email: user.email });
-                upgraded++;
-            } catch (err) {
-                console.error(`[GrantAdmin] Error processing ${adminUsername}:`, err);
-                results.push({ username: adminUsername, status: 'error', error: err.message });
-            }
-        }
-
-        console.log(`[GrantAdmin] Complete! Upgraded: ${upgraded}, Skipped: ${skipped}`);
-
-        res.json({
-            success: true,
-            upgraded,
-            skipped,
-            results
-        });
-    } catch (e) {
-        console.error('[GrantAdmin] Error:', e);
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.use('/api', api);
-
-// ==========================================
-// 🔐 ADMIN API ENDPOINTS
-// ==========================================
-setupAdminAPI(app, query, cache);
-
-// ==========================================
-// 🔧 ADMIN ENDPOINT: RESET ALL IMAGES
-// ==========================================
-// Временный endpoint для обнуления изображений во всех артефактах
-app.post('/admin/reset-images', async (req, res) => {
-    try {
-        console.log('🔄 Начинаем обнуление изображений во всех артефактах...');
-
-        // Получаем все артефакты
-        const result = await query('SELECT id, data FROM exhibits');
-
-        let updated = 0;
-        let skipped = 0;
-
-        for (const row of result.rows) {
-            const data = row.data;
-
-            // Проверяем, есть ли изображения
-            if (!data.imageUrls || data.imageUrls.length === 0) {
-                skipped++;
-                continue;
-            }
-
-            // Обнуляем imageUrls
-            data.imageUrls = [];
-
-            // Обновляем запись в БД
-            await query(
-                'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
-                [data, row.id]
-            );
-
-            updated++;
-        }
-
-        // Инвалидируем кеш
-        cache.flushPattern('feed:');
-
-        console.log(`✅ Готово! Обновлено: ${updated}, Пропущено: ${skipped}`);
-
-        res.json({
-            success: true,
-            updated,
-            skipped,
-            total: result.rows.length,
-            message: 'Все изображения успешно обнулены. Теперь можно заново загрузить их через интерфейс.'
-        });
-    } catch (e) {
-        console.error('❌ Ошибка обнуления изображений:', e);
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// ==========================================
-// 🖼️ IMAGE SERVING ENDPOINT
-// ==========================================
-// Раздача оптимизированных изображений из uploads/images
+// Раздача оптимизированных изображений из uploads/images, если они там остались
+// (Для S3 это не нужно, но оставим для совместимости)
 app.use('/api/images', express.static(getImagesDir(), {
     setHeaders: (res, filePath) => {
         // Долгий кеш для изображений (они иммутабельные, имена генерируются по хешу)

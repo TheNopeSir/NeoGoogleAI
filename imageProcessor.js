@@ -140,7 +140,7 @@ export async function processImage(inputImage, exhibitId) {
 
     } catch (error) {
         console.error('[ImageProcessor] Error processing/uploading image:', error);
-        // Fallback: возвращаем base64 если S3 упал, чтобы не терять данные (хотя это "раздует" базу)
+        // Fallback: возвращаем base64 если S3 упал, чтобы не терять данные
         if (typeof inputImage === 'string' && inputImage.startsWith('data:')) {
             console.warn('[ImageProcessor] Falling back to Base64 storage due to error');
             return {

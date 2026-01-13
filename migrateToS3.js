@@ -66,12 +66,7 @@ async function migrateToS3() {
                         errorCount++;
                     }
                 } 
-                // Case 2: Already processed object (S3 URL) -> Keep
-                else if (typeof img === 'object' && img.thumbnail && img.thumbnail.startsWith('http')) {
-                    newImageUrls.push(img);
-                }
-                // Case 3: Legacy local path (/api/images) -> Should technically process, but files might not exist locally if running from new env
-                // For now, keep as is or try to re-process if you have the files
+                // Case 2: Already processed object (S3 URL or Legacy)
                 else {
                     newImageUrls.push(img);
                 }
