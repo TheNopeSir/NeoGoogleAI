@@ -1007,6 +1007,16 @@ app.use('/api/images', express.static(getImagesDir(), {
     }
 }));
 
+// ------------------------------------------
+// 🔥 IMPORTANT: API Routes MUST be defined BEFORE wildcard handler
+// ------------------------------------------
+app.use('/api', api);
+setupAdminAPI(app, query, cache);
+
+// ------------------------------------------
+// 📄 STATIC FILES & SPA FALLBACK
+// ------------------------------------------
+
 // Раздача публичных статических файлов (migration UI, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -1020,6 +1030,7 @@ app.use(express.static(path.join(__dirname, 'dist'), {
     }
 }));
 
+// Wildcard handler for SPA - MUST be last
 app.get('*', (req, res) => {
     const filePath = path.join(__dirname, 'dist', 'index.html');
     if (fs.existsSync(filePath)) {
@@ -1027,12 +1038,17 @@ app.get('*', (req, res) => {
         res.sendFile(filePath);
     } else {
         console.error(`[Server] Error: Build not found at ${filePath}. Make sure to run 'npm run build'.`);
-        res.status(200).send('API Online. Build required. Check server logs.');
+        res.status(200).send(`
+            <html>
+                <head><title>NeoArchive - Building...</title></head>
+                <body style="font-family:monospace; background:#111; color:#0f0; padding:20px;">
+                    <h1>API Online. Build required.</h1>
+                    <p>The frontend build is missing. Please run <code>npm run build</code> on the server.</p>
+                </body>
+            </html>
+        `);
     }
 });
-
-app.use('/api', api);
-setupAdminAPI(app, query, cache);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 NeoArchive Server running on port ${PORT}`);
