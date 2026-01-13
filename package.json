@@ -9,11 +9,12 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit --skipLibCheck || vite build",
-    "build:fast": "vite build",
+    "build": "vite build",
+    "type-check": "tsc --noEmit --skipLibCheck",
+    "build:full": "npm run type-check && vite build",
     "preview": "vite preview --host",
     "start": "node server.js",
-    "deploy": "npm install && npm run build && npm run migrate:s3 && pm2 start ecosystem.config.cjs --env production",
+    "deploy": "npm install && npm run build && npm run migrate:s3 && pm2 reload ecosystem.config.cjs --env production || pm2 start ecosystem.config.cjs --env production",
     "migrate:s3": "node migrateToS3.js"
   },
   "dependencies": {

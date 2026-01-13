@@ -1026,9 +1026,13 @@ app.get('*', (req, res) => {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(filePath);
     } else {
-        res.status(200).send('API Online. Build required.');
+        console.error(`[Server] Error: Build not found at ${filePath}. Make sure to run 'npm run build'.`);
+        res.status(200).send('API Online. Build required. Check server logs.');
     }
 });
+
+app.use('/api', api);
+setupAdminAPI(app, query, cache);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 NeoArchive Server running on port ${PORT}`);
