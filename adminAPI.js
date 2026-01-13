@@ -142,21 +142,50 @@ export function setupAdminAPI(app, query, cache) {
                 const data = row.data;
 
                 try {
-                    // Check if this exhibit has base64 images
-                    if (!data.imageUrls || !Array.isArray(data.imageUrls)) {
+                    // Check if this exhibit has imageUrls
+                    if (!data.imageUrls || !Array.isArray(data.imageUrls) || data.imageUrls.length === 0) {
                         results.skipped++;
                         continue;
                     }
 
-                    // Check if images are already processed
+                    // Check if we have base64 images
                     const hasBase64 = data.imageUrls.some(url => isBase64DataUri(url));
-                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
 
-                    if (!hasBase64 && hasProcessedImages) {
+                    // Check if processed images exist and if their physical files are present
+                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
+                    let needsRegeneration = false;
+
+                    if (hasProcessedImages) {
+                        // Check if physical files exist
+                        const firstImage = data.processedImages[0];
+                        if (firstImage && firstImage.thumbnail) {
+                            const fileExists = checkImageFileExists(firstImage.thumbnail);
+                            if (!fileExists) {
+                                needsRegeneration = true;
+                                console.log(`[AdminAPI] Physical files missing for exhibit: ${data.title || exhibitId}`);
+                            }
+                        }
+                    }
+
+                    // Skip if files exist and no regeneration needed
+                    if (hasProcessedImages && !needsRegeneration) {
                         results.skipped++;
                         continue;
                     }
 
+                    // Skip if no base64 data to regenerate from
+                    if (!hasBase64 && needsRegeneration) {
+                        results.errors++;
+                        results.details.push({
+                            id: exhibitId,
+                            title: data.title,
+                            status: 'error',
+                            error: 'Physical files missing and no base64 data available'
+                        });
+                        continue;
+                    }
+
+                    // Skip if no base64 data at all
                     if (!hasBase64) {
                         results.skipped++;
                         continue;
@@ -213,20 +242,50 @@ export function setupAdminAPI(app, query, cache) {
                 const data = row.data;
 
                 try {
-                    // Check if this collection has base64 images
-                    if (!data.imageUrls || !Array.isArray(data.imageUrls)) {
+                    // Check if this collection has imageUrls
+                    if (!data.imageUrls || !Array.isArray(data.imageUrls) || data.imageUrls.length === 0) {
                         results.skipped++;
                         continue;
                     }
 
+                    // Check if we have base64 images
                     const hasBase64 = data.imageUrls.some(url => isBase64DataUri(url));
-                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
 
-                    if (!hasBase64 && hasProcessedImages) {
+                    // Check if processed images exist and if their physical files are present
+                    const hasProcessedImages = data.processedImages && data.processedImages.length > 0;
+                    let needsRegeneration = false;
+
+                    if (hasProcessedImages) {
+                        // Check if physical files exist
+                        const firstImage = data.processedImages[0];
+                        if (firstImage && firstImage.thumbnail) {
+                            const fileExists = checkImageFileExists(firstImage.thumbnail);
+                            if (!fileExists) {
+                                needsRegeneration = true;
+                                console.log(`[AdminAPI] Physical files missing for collection: ${data.title || collectionId}`);
+                            }
+                        }
+                    }
+
+                    // Skip if files exist and no regeneration needed
+                    if (hasProcessedImages && !needsRegeneration) {
                         results.skipped++;
                         continue;
                     }
 
+                    // Skip if no base64 data to regenerate from
+                    if (!hasBase64 && needsRegeneration) {
+                        results.errors++;
+                        results.details.push({
+                            id: collectionId,
+                            title: data.title,
+                            status: 'error',
+                            error: 'Physical files missing and no base64 data available'
+                        });
+                        continue;
+                    }
+
+                    // Skip if no base64 data at all
                     if (!hasBase64) {
                         results.skipped++;
                         continue;
