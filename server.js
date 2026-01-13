@@ -9,7 +9,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
-import { processExhibitImages, deleteExhibitImages, getImagesDir, isBase64DataUri } from './imageProcessor.js';
+import { processExhibitImages, deleteExhibitImages, isBase64DataUri } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 
 // ==========================================
@@ -788,6 +788,18 @@ app.get('*', (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 NeoArchive Server running on port ${PORT} (S3 Enabled)`);
+});
+
+// Handle Port Conflict (EADDRINUSE)
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error('\n❌ ERROR: Port ' + PORT + ' is already occupied!');
+    console.error('👉 Likely cause: A previous instance of the server is still running.');
+    console.error('👉 Solution: Stop the old process. Try running:');
+    console.error('    killall node');
+    console.error('    or check "pm2 list" if you use PM2');
+    process.exit(1);
+  }
 });

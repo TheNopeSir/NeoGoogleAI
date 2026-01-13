@@ -57,10 +57,6 @@ async function getImageBuffer(input) {
         return input;
     }
     
-    // Если это уже URL (например S3), мы не должны его перезаливать,
-    // но если функция вызвана, значит мы хотим обработать.
-    // Если это URL, можно попробовать скачать, но пока считаем, что вход - это новые данные.
-
     throw new Error('Unsupported image input format');
 }
 
@@ -79,12 +75,8 @@ function generateImageHash(buffer) {
  */
 export async function processImage(inputImage, exhibitId) {
     try {
-        // Если это уже URL (например, при обновлении записи без изменения картинки),
-        // и это не base64, то просто возвращаем как есть.
+        // Если это уже URL (например, при обновлении записи без изменения картинки)
         if (typeof inputImage === 'string' && inputImage.startsWith('http')) {
-            // Это костыль для совместимости: если нам передали URL, 
-            // мы не можем создать из него variants, если их нет.
-            // Вернем объект с этим URL везде.
             return {
                 thumbnail: inputImage,
                 medium: inputImage,
@@ -216,7 +208,7 @@ export async function deleteExhibitImages(exhibitId, imageUrls) {
 }
 
 export function getImagesDir() {
-    return path.join(__dirname, 'uploads', 'images'); // Legacy path
+    return path.join(__dirname, 'uploads', 'images'); // Legacy path for fallback
 }
 
 export function isBase64DataUri(str) {
