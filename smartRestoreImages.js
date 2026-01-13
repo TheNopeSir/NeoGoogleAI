@@ -21,13 +21,13 @@ import 'dotenv/config';
 
 const { Pool } = pg;
 
-// Подключение к БД
+// Подключение к БД (используем те же значения что и в server.js)
 const pool = new Pool({
     host: process.env.DB_HOST || '185.152.92.64',
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'default_db',
     user: process.env.DB_USER || 'gen_user',
-    password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD || '9H@DDCb.gQm.S}',
     ssl: false
 });
 
