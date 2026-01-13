@@ -105,9 +105,9 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Port 465 (SSL) is standard for secure connections.
+// FIX: Port 465 requires ssl:// prefix per Timeweb documentation
 const transporter = nodemailer.createTransport({
-    host: 'smtp.timeweb.ru',
+    host: 'ssl://smtp.timeweb.ru',
     port: 465,
     secure: true, // True for 465
     auth: {
