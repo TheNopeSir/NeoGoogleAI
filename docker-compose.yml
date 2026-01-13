@@ -9,8 +9,6 @@ services:
     volumes:
       # Persist the database file
       - ./data:/app/data
-      # Persist uploaded images
-      - ./uploads:/app/uploads
       # Try to mount .env but don't fail hard if missing (managed via env_file mostly)
       - ./.env:/app/.env
     env_file:

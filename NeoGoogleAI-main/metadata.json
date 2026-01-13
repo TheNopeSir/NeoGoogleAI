@@ -1,0 +1,7 @@
+{
+  "name": "Public NeoArchive: Y2K Collections",
+  "description": "A retro-futuristic collection manager inspired by the Matrix and early 2000s WAP interfaces. Share, favorite, and generate neural descriptions for your artifacts.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
