@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Save, Camera, CheckCircle2, Circle, X, Trash2 } from 'lucide-react';
 import { Collection, Exhibit } from '../types';
 import { fileToBase64 } from '../services/storageService';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface CreateCollectionViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -78,7 +79,7 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
                     >
                         {coverImage ? (
                             <>
-                                <img src={coverImage} className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={getImageUrl(coverImage, 'medium')} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                     <Camera size={32} className="text-white"/>
                                 </div>
@@ -135,7 +136,7 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
                                         onClick={() => toggleArtifact(item.id)}
                                         className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? 'border-green-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                     >
-                                        <img src={typeof item.imageUrls[0] === 'string' ? item.imageUrls[0] : (item.imageUrls[0]?.thumbnail || 'https://placehold.co/600x400?text=NO+IMAGE')} className="w-full h-full object-cover" />
+                                        <img src={getImageUrl(item.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-2">
                                             <span className="text-[9px] font-pixel text-white truncate">{item.title}</span>
                                         </div>

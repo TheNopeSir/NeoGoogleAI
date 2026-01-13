@@ -11,6 +11,7 @@ import { getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -92,34 +93,35 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const slides = useMemo(() => {
       const media: Array<{type: 'image' | 'video', url: string, largeUrl?: string}> = [];
 
-      // Получаем оптимизированные изображения (medium для детального просмотра)
-      const getOptimizedImageUrl = (imageData: any, size: 'medium' | 'large' = 'medium') => {
-          if (!imageData) return 'https://placehold.co/600x400?text=NO+IMAGE';
+      const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : [];
+      
+      // Handle case where there are no images
+      if (imageUrls.length === 0) {
+          media.push({
+            type: 'image',
+            url: 'https://placehold.co/600x400?text=NO+IMAGE',
+            largeUrl: 'https://placehold.co/600x400?text=NO+IMAGE'
+          });
+      } else {
+          // Add first image
+          media.push({
+              type: 'image',
+              url: getImageUrl(imageUrls[0], 'medium'),
+              largeUrl: getImageUrl(imageUrls[0], 'large')
+          });
+      }
 
-          // Новый формат (объект с путями к разным размерам)
-          if (typeof imageData === 'object' && imageData[size]) {
-              return imageData[size];
-          }
-
-          // Старый формат (Base64 Data URI или обычный URL)
-          return imageData;
-      };
-
-      const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : ['https://placehold.co/600x400?text=NO+IMAGE'];
-      media.push({
-          type: 'image',
-          url: getOptimizedImageUrl(imageUrls[0], 'medium'),
-          largeUrl: getOptimizedImageUrl(imageUrls[0], 'large')
-      });
       if (exhibit.videoUrl) {
           const embed = getEmbedUrl(exhibit.videoUrl);
-          if (embed) media.push({ type: 'video', url: embed });
+          if (embed) media.push({ type: 'video', url: embed, largeUrl: embed });
       }
+
+      // Add remaining images
       if (imageUrls.length > 1) {
           imageUrls.slice(1).forEach(imageData => media.push({
               type: 'image',
-              url: getOptimizedImageUrl(imageData, 'medium'),
-              largeUrl: getOptimizedImageUrl(imageData, 'large')
+              url: getImageUrl(imageData, 'medium'),
+              largeUrl: getImageUrl(imageData, 'large')
           }));
       }
       return media;
@@ -587,7 +589,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 {linkedArtifacts.map(link => (
                                     <div key={link.id} onClick={() => onExhibitClick(link)} className="flex-shrink-0 w-20 group cursor-pointer">
                                         <div className="aspect-square rounded-lg overflow-hidden border border-white/10 relative bg-black/20">
-                                            <img src={typeof link.imageUrls[0] === 'string' ? link.imageUrls[0] : (link.imageUrls[0]?.thumbnail || 'https://placehold.co/600x400?text=NO+IMAGE')} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <img src={getImageUrl(link.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         </div>
                                         <div className="mt-1 text-[8px] font-bold truncate opacity-70 group-hover:opacity-100">{link.title}</div>
                                     </div>

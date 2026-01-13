@@ -1,3 +1,4 @@
+
 /**
  * Утилиты для работы с оптимизированными изображениями
  */
@@ -6,28 +7,56 @@ import { ProcessedImage } from '../types';
 
 export type ImageSize = 'thumbnail' | 'medium' | 'large' | 'placeholder';
 
+const PLACEHOLDER = 'https://placehold.co/600x400?text=NO+IMAGE';
+
 /**
- * Получает URL изображения нужного размера
+ * Получает URL изображения нужного размера.
+ * Гарантированно возвращает строку.
+ * 
  * @param imageData - Данные изображения (объект ProcessedImage или Base64/URL строка)
  * @param size - Желаемый размер ('thumbnail', 'medium', 'large')
- * @returns URL изображения
+ * @returns URL изображения (строка)
  */
-export function getImageUrl(imageData: ProcessedImage | string | undefined, size: ImageSize = 'medium'): string {
+export function getImageUrl(imageData: ProcessedImage | string | undefined | any, size: ImageSize = 'medium'): string {
     if (!imageData) {
-        return 'https://placehold.co/600x400?text=NO+IMAGE';
+        return PLACEHOLDER;
     }
 
-    // Новый формат (объект с путями к разным размерам)
-    if (typeof imageData === 'object' && imageData[size]) {
-        return imageData[size];
-    }
-
-    // Старый формат (Base64 Data URI или обычный URL)
+    // Если это старый формат (строка - URL или Base64)
     if (typeof imageData === 'string') {
+        // Защита от [object Object] если вдруг строка пришла битой
+        if (imageData === '[object Object]') return PLACEHOLDER;
         return imageData;
     }
 
-    return 'https://placehold.co/600x400?text=NO+IMAGE';
+    // Если это новый формат (объект с путями)
+    if (typeof imageData === 'object') {
+        // 1. Попытка получить запрошенный размер
+        if (imageData[size] && typeof imageData[size] === 'string') {
+            return imageData[size];
+        }
+
+        // 2. Фоллбеки на другие размеры (от большего к меньшему или наоборот, главное найти строку)
+        const candidates = [
+            imageData.medium,
+            imageData.large,
+            imageData.thumbnail,
+            imageData.placeholder
+        ];
+
+        for (const candidate of candidates) {
+            if (candidate && typeof candidate === 'string') {
+                return candidate;
+            }
+        }
+        
+        // 3. Если это объект, но в нем нет нужных полей, возможно это File объект (при загрузке)
+        if (imageData instanceof File) {
+             return URL.createObjectURL(imageData);
+        }
+    }
+
+    return PLACEHOLDER;
 }
 
 /**
@@ -38,7 +67,7 @@ export function getImageUrl(imageData: ProcessedImage | string | undefined, size
  */
 export function getFirstImageUrl(imageUrls: Array<ProcessedImage | string> | undefined, size: ImageSize = 'medium'): string {
     if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-        return 'https://placehold.co/600x400?text=NO+IMAGE';
+        return PLACEHOLDER;
     }
 
     return getImageUrl(imageUrls[0], size);
@@ -52,9 +81,7 @@ export function getFirstImageUrl(imageUrls: Array<ProcessedImage | string> | und
 export function isProcessedImage(imageData: any): imageData is ProcessedImage {
     return typeof imageData === 'object' &&
            imageData !== null &&
-           'thumbnail' in imageData &&
-           'medium' in imageData &&
-           'large' in imageData;
+           ('thumbnail' in imageData || 'medium' in imageData);
 }
 
 /**
@@ -65,7 +92,7 @@ export function isProcessedImage(imageData: any): imageData is ProcessedImage {
  */
 export function getAllImageUrls(imageUrls: Array<ProcessedImage | string> | undefined, size: ImageSize = 'medium'): string[] {
     if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-        return ['https://placehold.co/600x400?text=NO+IMAGE'];
+        return [PLACEHOLDER];
     }
 
     return imageUrls.map(imageData => getImageUrl(imageData, size));

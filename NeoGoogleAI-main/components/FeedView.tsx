@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
@@ -144,33 +145,6 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleExhibits = processedExhibits.slice(0, visibleCount);
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
-
-  // Debug logging
-  useEffect(() => {
-    if (feedMode === 'ARTIFACTS') {
-      console.log('[FeedView] ======================');
-      console.log('[FeedView] Total exhibits in DB:', exhibits.length);
-      console.log('[FeedView] Current user:', user.username);
-      console.log('[FeedView] Feed type:', feedType);
-      console.log('[FeedView] Selected category:', selectedCategory);
-
-      // Count filtering results
-      const ownCount = exhibits.filter(e => e.owner === user.username).length;
-      const draftCount = exhibits.filter(e => e.isDraft).length;
-      const afterBasicFilter = exhibits.filter(e => e.owner !== user.username && !e.isDraft).length;
-
-      console.log('[FeedView] Own artifacts (excluded):', ownCount);
-      console.log('[FeedView] Drafts (excluded):', draftCount);
-      console.log('[FeedView] After basic filter:', afterBasicFilter);
-      console.log('[FeedView] After all filters (processed):', processedExhibits.length);
-      console.log('[FeedView] Visible on screen:', visibleExhibits.length);
-
-      if (processedExhibits.length < 5 && exhibits.length > 10) {
-        console.warn('[FeedView] WARNING: Very few exhibits showing! Check filters.');
-        console.log('[FeedView] Sample exhibit owners:', exhibits.slice(0, 5).map(e => e.owner));
-      }
-    }
-  }, [processedExhibits.length, visibleExhibits.length, feedMode, exhibits.length]);
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in">

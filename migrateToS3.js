@@ -42,6 +42,8 @@ async function migrateToS3() {
         let processedCount = 0;
         let skippedCount = 0;
         let errorCount = 0;
+        let s3SuccessCount = 0;
+        let fallbackCount = 0;
 
         for (const row of exhibitsResult.rows) {
             const exhibitId = row.id;
@@ -117,7 +119,7 @@ async function migrateToS3() {
                          continue;
                     }
                 }
-                // --- CASE 3: Object with nested Base64 strings (NEW FIX) ---
+                // --- CASE 3: Object with nested Base64 strings ---
                 else if (typeof img === 'object' && (isBase64DataUri(img.large) || isBase64DataUri(img.medium) || isBase64DataUri(img.thumbnail))) {
                      console.log(`   🔄 Image ${i + 1}: Found Object with Base64 data, extracting...`);
                      // Prefer large, then medium, then thumbnail
@@ -179,9 +181,19 @@ async function migrateToS3() {
                         const processed = await processImage(bufferToProcess, exhibitId);
                         newImageUrls.push(processed);
                         needsUpdate = true;
-                        console.log(`   ✅ Image ${i + 1}: Uploaded to S3`);
+                        
+                        // Check result type
+                        const isS3 = processed.medium && processed.medium.startsWith('http');
+                        
+                        if (isS3) {
+                            console.log(`   ✅ Image ${i + 1}: Uploaded to S3 (${processed.medium})`);
+                            s3SuccessCount++;
+                        } else {
+                            console.log(`   ⚠️ Image ${i + 1}: S3 Error, saved as Base64 in DB (Fallback)`);
+                            fallbackCount++;
+                        }
                     } catch (err) {
-                        console.error(`   ❌ Failed to upload image ${i + 1}:`, err.message);
+                        console.error(`   ❌ Failed to process image ${i + 1}:`, err.message);
                         newImageUrls.push(img); // Keep original if failed
                         errorCount++;
                     }
@@ -208,8 +220,10 @@ async function migrateToS3() {
 
         console.log('\n\n📊 Migration Summary:');
         console.log(`   ✅ Records Updated: ${processedCount}`);
+        console.log(`   ☁️  Successful S3 Uploads: ${s3SuccessCount}`);
+        console.log(`   ⚠️  Fallback to DB (S3 Failed): ${fallbackCount}`);
         console.log(`   ⏭️  Records Skipped: ${skippedCount}`);
-        console.log(`   ❌ Errors: ${errorCount}`);
+        console.log(`   ❌ Critical Errors: ${errorCount}`);
         console.log('\n✨ Migration complete!\n');
 
     } catch (error) {

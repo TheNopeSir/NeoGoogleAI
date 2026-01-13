@@ -43,6 +43,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
     if (e.target.files && e.target.files.length > 0) {
       const newImages = [...images];
       for (let i = 0; i < e.target.files.length; i++) {
+        // Here we can either upload immediately or just convert to base64 for preview
+        // Since saving happens on submit, we use base64 for preview
         const b64 = await fileToBase64(e.target.files[i]);
         newImages.push(b64);
       }
@@ -105,6 +107,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
       subcategory,
       condition,
       videoUrl,
+      // Images can be strings (base64/legacy urls) or objects (processed)
+      // The server will handle uploading base64 strings to S3
       imageUrls: images.length > 0 ? images : ['https://placehold.co/600x400?text=NO+IMAGE'],
       specs,
       tradeStatus,
@@ -402,7 +406,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                             className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all ${relatedIds.includes(art.id) ? 'bg-green-500/10 border-green-500 text-green-500' : 'border-white/10 hover:bg-white/5'}`}
                           >
                               <div className="w-8 h-8 rounded bg-gray-800 overflow-hidden flex-shrink-0">
-                                  <img src={typeof art.imageUrls[0] === 'string' ? art.imageUrls[0] : (art.imageUrls[0]?.thumbnail || 'https://placehold.co/600x400?text=NO+IMAGE')} className="w-full h-full object-cover" />
+                                  <img src={getImageUrl(art.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover" />
                               </div>
                               <div className="text-xs truncate flex-1">{art.title}</div>
                               {relatedIds.includes(art.id) && <div className="w-2 h-2 rounded-full bg-green-500"></div>}

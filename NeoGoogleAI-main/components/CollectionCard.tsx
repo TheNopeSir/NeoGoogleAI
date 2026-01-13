@@ -3,6 +3,7 @@ import React from 'react';
 import { FolderOpen, Share2, Heart, Layers } from 'lucide-react';
 import { Collection } from '../types';
 import { getUserAvatar } from '../services/storageService';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface CollectionCardProps {
     col: Collection;
@@ -46,7 +47,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
           {/* Background Image with Zoom Effect */}
           <div className={`absolute inset-0 overflow-hidden ${isXP ? 'top-6 border-b-2 border-[#0058EE]' : ''}`}>
             <img 
-                src={col.coverImage} 
+                src={getImageUrl(col.coverImage, 'medium')} 
                 alt={col.title} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
             />
