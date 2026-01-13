@@ -1011,6 +1011,12 @@ app.use('/api/images', express.static(getImagesDir(), {
 // 🔥 IMPORTANT: API Routes MUST be defined BEFORE wildcard handler
 // ------------------------------------------
 app.use('/api', api);
+
+// 404 handler specifically for API routes (to return JSON, not HTML)
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API Endpoint not found' });
+});
+
 setupAdminAPI(app, query, cache);
 
 // ------------------------------------------
