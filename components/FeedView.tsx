@@ -236,6 +236,28 @@ const FeedView: React.FC<FeedViewProps> = ({
         <div className="px-4 max-w-5xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
+                    {/* NEW: Horizontal Collection Preview in Main Feed */}
+                    {processedCollections.length > 0 && selectedCategory === 'ВСЕ' && (
+                        <div className="mb-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-pixel text-[10px] opacity-50 flex items-center gap-2 tracking-widest"><Folder size={12} className="text-blue-500"/> СВЕЖИЕ КОЛЛЕКЦИИ</h3>
+                                <button onClick={() => setFeedMode('COLLECTIONS')} className="text-[10px] font-bold text-blue-500 hover:underline">Смотреть все</button>
+                            </div>
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                {processedCollections.slice(0, 5).map(col => (
+                                    <div key={col.id} className="w-40 flex-shrink-0">
+                                        <CollectionCard 
+                                            col={col} 
+                                            theme={theme} 
+                                            onClick={onCollectionClick} 
+                                            onShare={() => {}} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Loading State / Empty State */}
                     {exhibits.length === 0 ? (
                         <div className="grid grid-cols-2 gap-4">
@@ -268,7 +290,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             <div>
                                                 <div className="flex justify-between"><span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span><div className="flex items-center gap-1 text-[10px] opacity-60"><Heart size={10}/> {item.likes}</div></div>
                                                 <h3 className="font-bold font-pixel text-sm mt-1 line-clamp-1">{item.title}</h3>
-                                                <p className="text-[10px] opacity-60 line-clamp-2 mt-1">{item.description}</p>
+                                                <p className="text-[10px] opacity-60 line-clamp-1 mt-1">{item.description}</p>
                                             </div>
                                             <div className="flex items-center gap-2 mt-2"><span className="text-[10px] font-bold opacity-70">@{item.owner}</span></div>
                                         </div>

@@ -486,6 +486,7 @@ api.get('/feed', async (req, res) => {
                     COALESCE((data->>'likes')::int, 0) as likes,
                     COALESCE((data->>'views')::int, 0) as views,
                     data->>'quality' as quality,
+                    data->'specs' as specs,
                     COALESCE((data->>'isDraft')::boolean, false) as "isDraft"
                 FROM exhibits
                 WHERE COALESCE((data->>'isDraft')::boolean, false) = false
@@ -506,6 +507,7 @@ api.get('/feed', async (req, res) => {
                 likes: row.likes,
                 views: row.views,
                 quality: row.quality,
+                specs: row.specs || {},
                 isDraft: row.isDraft,
                 _isLite: true
             }));
@@ -652,6 +654,30 @@ api.get('/messages', async (req, res) => {
 
         res.set('Cache-Control', 'private, max-age=30'); // Private cache for user data
         res.json(messages);
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// FIX: ADDED MISSING /notifications ENDPOINT
+api.get('/notifications', async (req, res) => {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: "Username required" });
+    try {
+        const cacheKey = `notifications:${username}`;
+        let notifications = cache.get(cacheKey);
+
+        if (!notifications) {
+            const result = await query(
+                `SELECT * FROM notifications WHERE LOWER(data->>'recipient') = LOWER($1) ORDER BY updated_at DESC LIMIT 50`,
+                [username]
+            );
+            notifications = result.rows.map(mapRow);
+            cache.set(cacheKey, notifications, 30); 
+        }
+
+        res.set('Cache-Control', 'private, max-age=30'); 
+        res.json(notifications);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }

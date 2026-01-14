@@ -38,11 +38,17 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   // Получаем первое изображение для отображения с помощью утилиты
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
+  // Extract specs for display (Top 3) - Robust handling
+  const specs = item.specs || {};
+  const specEntries = Object.entries(specs)
+    .filter(([_, val]) => val !== null && val !== undefined && String(val).trim() !== '')
+    .slice(0, 3);
+
   if (isWinamp) {
       return (
         <div 
             onClick={() => onClick(item)}
-            className="group cursor-pointer flex flex-col h-full min-h-[200px] bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden"
+            className="group cursor-pointer flex flex-col h-full min-h-[240px] bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden"
         >
             {/* Winamp Title Bar */}
             <div className="h-4 bg-gradient-to-r from-wa-blue-light to-wa-blue-dark flex items-center justify-between px-1 cursor-default select-none">
@@ -63,11 +69,23 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
                 </div>
 
+                {/* Specs in Winamp style */}
+                {specEntries.length > 0 && (
+                    <div className="mb-2 space-y-0.5">
+                        {specEntries.map(([key, val]) => (
+                            <div key={key} className="flex justify-between text-[9px] font-winamp text-wa-green leading-none">
+                                <span className="opacity-70 uppercase mr-1">{key.substring(0, 8)}:</span>
+                                <span className="truncate flex-1 text-right">{String(val)}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Meta Info - Playlist Style */}
-                <div className="flex justify-between items-end mt-auto font-winamp text-wa-green text-[12px] leading-none">
+                <div className="flex justify-between items-end mt-auto font-winamp text-wa-green text-[12px] leading-none pt-2 border-t border-[#505050]">
                     <div className="flex flex-col">
                         <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
-                        <span className="truncate max-w-[80px]" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
+                        <span className="truncate max-w-[80px] cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button 
@@ -131,14 +149,28 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       </div>
 
       <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
-        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-1 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
-        <div className={`mt-1 font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
+        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
+        
+        {/* Specs Overlay - improved visibility */}
+        {specEntries.length > 0 ? (
+            <div className={`mb-3 space-y-1.5 p-2 rounded-lg ${isXP ? 'bg-white border border-gray-300' : 'bg-white/5 border border-white/5'}`}>
+                {specEntries.map(([key, val]) => (
+                    <div key={key} className="flex justify-between items-baseline text-[9px]">
+                        <span className={`uppercase font-mono opacity-50 mr-2 truncate max-w-[40%] ${isXP ? 'text-gray-600' : ''}`}>{key}:</span>
+                        <span className={`font-bold font-mono truncate flex-1 text-right ${isXP ? 'text-black' : 'text-white/90'}`}>{String(val)}</span>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="mb-3"></div> // Spacer to keep layout consistent
+        )}
+
+        <div className={`mt-auto font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
             <span className="truncate uppercase">{item.condition || item.quality}</span>
-            {isXP && <div className="text-[9px] text-gray-600 mt-1 uppercase tracking-wide">{item.category}</div>}
         </div>
         
-        <div className={`mt-auto pt-4 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author">
+        <div className={`mt-2 pt-3 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
+            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer">
                 <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
                 <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
