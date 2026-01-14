@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo } from 'react';
 import { X, RefreshCw, ArrowRightLeft, Lock, Check, Gift, MessageSquare, ChevronRight, AlertCircle, DollarSign, Wallet } from 'lucide-react';
 import { Exhibit, UserProfile, TradeType } from '../types';
 import { sendTradeRequest } from '../services/storageService';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface TradeOfferModalProps {
     targetItem?: Exhibit; // If initiated from an item (Target inventory)
@@ -212,7 +212,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                     <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2 content-start custom-scrollbar">
                         {availableMyItems.map(item => (
                             <div key={item.id} onClick={() => toggleMyItem(item.id)} className={`relative aspect-square border-2 rounded cursor-pointer ${mySelectedItems.includes(item.id) ? 'border-green-500' : 'border-white/10 hover:border-white/30'}`}>
-                                <img src={item.imageUrls[0]} className="w-full h-full object-cover rounded-sm"/>
+                                <img src={getImageUrl(item.imageUrls[0])} className="w-full h-full object-cover rounded-sm"/>
                                 {mySelectedItems.includes(item.id) && <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center"><Check className="text-green-500 font-bold"/></div>}
                             </div>
                         ))}
@@ -230,7 +230,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                         <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2 content-start custom-scrollbar">
                             {(targetItem && !isWishlist) && (
                                 <div onClick={() => toggleTheirItem(targetItem.id)} className={`relative aspect-square border-2 rounded cursor-pointer ${theirSelectedItems.includes(targetItem.id) ? 'border-blue-500' : 'border-white/10 hover:border-white/30'}`}>
-                                    <img src={targetItem.imageUrls[0]} className="w-full h-full object-cover rounded-sm"/>
+                                    <img src={getImageUrl(targetItem.imageUrls[0])} className="w-full h-full object-cover rounded-sm"/>
                                     <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[8px] px-1 font-bold">ЦЕЛЬ</div>
                                     {theirSelectedItems.includes(targetItem.id) && <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center"><Check className="text-blue-500 font-bold"/></div>}
                                 </div>
