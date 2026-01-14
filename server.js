@@ -473,6 +473,7 @@ api.get('/feed', async (req, res) => {
 
         if (!items) {
             // OPTIMIZED: Select only needed fields from JSONB (10-20x faster)
+            // ADDED: likedBy to enable heart status on feed
             const result = await query(`
                 SELECT
                     id,
@@ -485,6 +486,7 @@ api.get('/feed', async (req, res) => {
                     data->>'owner' as owner,
                     data->>'timestamp' as timestamp,
                     COALESCE((data->>'likes')::int, 0) as likes,
+                    data->'likedBy' as "likedBy",
                     COALESCE((data->>'views')::int, 0) as views,
                     data->>'quality' as quality,
                     data->'specs' as specs,
@@ -506,6 +508,7 @@ api.get('/feed', async (req, res) => {
                 owner: row.owner,
                 timestamp: row.timestamp,
                 likes: row.likes,
+                likedBy: row.likedBy || [],
                 views: row.views,
                 quality: row.quality,
                 specs: row.specs || {},

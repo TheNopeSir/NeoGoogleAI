@@ -56,14 +56,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     };
 
     // --- GROUPING LOGIC ---
+    // Groups notifications from the SAME USER of the SAME TYPE on the SAME DAY
     const groupedNotifications = useMemo(() => {
         const groups: { [key: string]: Notification[] } = {};
         const order: string[] = [];
 
         myNotifs.forEach(notif => {
-            const date = new Date(notif.timestamp).toDateString();
-            // Group key: TYPE + TARGET_ID + DATE
-            const groupKey = `${date}_${notif.type}_${notif.targetId || 'general'}`;
+            const d = new Date(notif.timestamp);
+            const dateKey = !isNaN(d.getTime()) ? d.toDateString() : 'Unknown Date';
+            // Group key: DATE + ACTOR + TYPE
+            const groupKey = `${dateKey}_${notif.actor}_${notif.type}`;
             
             if (!groups[groupKey]) {
                 groups[groupKey] = [];
@@ -77,23 +79,33 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             return {
                 id: key,
                 type: group[0].type,
+                actor: group[0].actor,
                 items: group,
-                timestamp: group[0].timestamp,
-                targetId: group[0].targetId,
-                targetPreview: group[0].targetPreview
+                timestamp: group[0].timestamp, // Latest one is first in myNotifs, so index 0 is correct
+                // Collect unique targets for preview
+                targets: Array.from(new Set(group.map(n => ({ id: n.targetId, title: n.targetPreview }))))
             };
         });
     }, [myNotifs]);
 
     const getTimeLabel = (dateStr: string) => {
         const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return 'НЕДАВНО';
+        
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
 
         if (date.toDateString() === today.toDateString()) return 'СЕГОДНЯ';
         if (date.toDateString() === yesterday.toDateString()) return 'ВЧЕРА';
-        return date.toLocaleDateString();
+        
+        return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    };
+
+    const formatTime = (isoString: string) => {
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     const getIconForType = (type: string) => {
@@ -111,39 +123,45 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const renderNotificationCard = (group: any) => {
         const count = group.items.length;
         const first = group.items[0];
-        // Cast to string array to avoid 'unknown' type in JSX
-        const uniqueActors = Array.from(new Set(group.items.map((n: any) => n.actor as string))) as string[];
         const isUnread = group.items.some((n: any) => !n.isRead);
+        
+        let actionText = '';
+        if (first.type === 'LIKE') actionText = count > 1 ? `оценил ${count} ваших экспонатов` : 'оценил ваш экспонат';
+        else if (first.type === 'COMMENT') actionText = count > 1 ? `оставил ${count} комментариев` : 'прокомментировал';
+        else if (first.type === 'FOLLOW') actionText = 'подписался на вас';
+        else if (first.type.includes('TRADE')) actionText = 'обновил статус сделки';
+        else actionText = 'взаимодействует с вами';
 
-        let title = '';
-        if (first.type === 'LIKE') title = `Понравился ваш экспонат`;
-        else if (first.type === 'COMMENT') title = `Новый комментарий`;
-        else if (first.type === 'FOLLOW') title = `Новый подписчик`;
-        else if (first.type.includes('TRADE')) title = `Обновление по сделке`;
-        else title = 'Уведомление';
-
-        const actorsText = uniqueActors.length === 1 
-            ? <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={() => onAuthorClick(uniqueActors[0])}>@{uniqueActors[0]}</span> 
-            : <span><span className="font-bold text-green-400">@{uniqueActors[0]}</span> и еще <span className="font-bold">{uniqueActors.length - 1}</span></span>;
+        const uniqueTargets = group.targets.filter((t: any) => t.id && t.title).slice(0, 3); // Show max 3 previews
 
         return (
             <div key={group.id} className={`p-4 border-b transition-all flex gap-4 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent'}`}>
                 <div className="pt-1">{getIconForType(first.type)}</div>
                 <div className="flex-1">
-                    <div className="text-sm font-mono mb-1">
-                        {actorsText} <span className="opacity-70">{title.toLowerCase()}</span>
+                    <div className="text-sm font-mono mb-2">
+                        <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={() => onAuthorClick(group.actor)}>@{group.actor}</span> 
+                        <span className="opacity-70"> {actionText}</span>
                     </div>
-                    {first.targetPreview && (
-                        <div 
-                            onClick={() => first.targetId && onExhibitClick(first.targetId)}
-                            className="text-xs font-bold font-pixel opacity-90 cursor-pointer hover:text-green-400 transition-colors border-l-2 border-white/20 pl-2 mt-2"
-                        >
-                            "{first.targetPreview}"
+                    
+                    {uniqueTargets.length > 0 && (
+                        <div className="flex flex-col gap-1 mt-1">
+                            {uniqueTargets.map((t: any, idx: number) => (
+                                <div 
+                                    key={idx}
+                                    onClick={() => onExhibitClick(t.id)}
+                                    className="text-xs font-bold font-pixel opacity-80 cursor-pointer hover:text-green-400 transition-colors border-l-2 border-white/20 pl-2 truncate"
+                                >
+                                    "{t.title}"
+                                </div>
+                            ))}
+                            {group.targets.length > 3 && (
+                                <div className="text-[9px] opacity-40 pl-2">...и еще {group.targets.length - 3}</div>
+                            )}
                         </div>
                     )}
+
                     <div className="text-[10px] opacity-40 mt-2 font-mono flex items-center gap-2">
-                        {new Date(first.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        {count > 1 && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">+{count} событий</span>}
+                        {formatTime(first.timestamp)}
                     </div>
                 </div>
                 {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2"/>}

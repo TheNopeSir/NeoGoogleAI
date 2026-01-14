@@ -135,8 +135,30 @@ export default function App() {
 
   const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
-      if (params?.item) { setSelectedExhibit(params.item); setHighlightCommentId(params.highlightCommentId); }
-      if (params?.collection) setSelectedCollection(params.collection);
+      
+      // Handle CREATE_ARTIFACT specifically to avoid state contamination
+      if (newView === 'CREATE_ARTIFACT') {
+          if (params?.initialData) {
+              setSelectedExhibit(params.initialData);
+          } else {
+              setSelectedExhibit(null); // Clear for new creation
+          }
+      } else if (params?.item) { 
+          setSelectedExhibit(params.item); 
+          setHighlightCommentId(params.highlightCommentId); 
+      }
+
+      // Handle CREATE_COLLECTION specifically
+      if (newView === 'CREATE_COLLECTION') {
+          if (params?.initialData) {
+              setSelectedCollection(params.initialData);
+          } else {
+              setSelectedCollection(null);
+          }
+      } else if (params?.collection) {
+          setSelectedCollection(params.collection);
+      }
+
       if (params?.wishlistItem) setSelectedWishlistItem(params.wishlistItem);
       
       setView(newView);
