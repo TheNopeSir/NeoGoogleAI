@@ -1,2 +1,0 @@
-# This file ensures the images directory is tracked in git
-# Images are stored in subdirectories: {exhibitId}/{hash}_{size}.webp

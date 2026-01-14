@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
@@ -15,7 +16,7 @@ interface MyCollectionProps {
     onBack: () => void;
     onExhibitClick: (item: Exhibit) => void;
     onCollectionClick: (col: Collection) => void;
-    onLike: (id: string, e?: React.MouseEvent) => void;
+    onReact: (id: string) => void;
     onWishlistClick?: (item: WishlistItem) => void;
 }
 
@@ -29,7 +30,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     onBack, 
     onExhibitClick, 
     onCollectionClick, 
-    onLike,
+    onReact,
     onWishlistClick
 }) => {
     const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES' | 'WISHLIST'>('MY_ITEMS');
@@ -102,8 +103,8 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                         item={item} 
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        isLiked={false}
-                                        onLike={(e) => onLike(item.id, e)}
+                                        currentUsername={user.username}
+                                        onReact={() => onReact(item.id)}
                                         onAuthorClick={() => {}}
                                     />
                                 </div>
@@ -131,8 +132,8 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                     item={item} 
                                     theme={theme}
                                     onClick={onExhibitClick}
-                                    isLiked={item.likedBy?.includes(user.username) || false}
-                                    onLike={(e) => onLike(item.id, e)}
+                                    currentUsername={user.username}
+                                    onReact={() => onReact(item.id)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}
@@ -185,8 +186,8 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                                     item={item} 
                                     theme={theme}
                                     onClick={onExhibitClick}
-                                    isLiked={true}
-                                    onLike={(e) => onLike(item.id, e)}
+                                    currentUsername={user.username}
+                                    onReact={() => onReact(item.id)}
                                     onAuthorClick={() => {}}
                                 />
                             ))}

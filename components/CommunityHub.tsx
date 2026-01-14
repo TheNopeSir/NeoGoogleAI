@@ -140,8 +140,8 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                                         item={item}
                                         theme={theme}
                                         onClick={onExhibitClick}
-                                        isLiked={false}
-                                        onLike={() => {}}
+                                        currentUsername={currentUser?.username || ''}
+                                        onReact={() => {}}
                                         onAuthorClick={onUserClick}
                                     />
                                 ))}
@@ -169,8 +169,8 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                                             item={item}
                                             theme={theme}
                                             onClick={onExhibitClick}
-                                            isLiked={false}
-                                            onLike={() => {}}
+                                            currentUsername={currentUser?.username || ''}
+                                            onReact={() => {}}
                                             onAuthorClick={onUserClick}
                                         />
                                         <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-bold rounded shadow-lg ${isWinamp ? 'bg-black text-[#00ff00] border border-[#00ff00]' : 'bg-black/80 text-white backdrop-blur-md'}`}>

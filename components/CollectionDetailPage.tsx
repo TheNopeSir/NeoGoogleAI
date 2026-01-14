@@ -84,14 +84,14 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {artifacts.map(item => (
-                        <ExhibitCard 
-                            key={item.id} 
-                            item={item} 
-                            theme={theme} 
-                            onClick={onExhibitClick} 
-                            isLiked={item.likedBy?.includes(currentUser)} 
-                            onLike={(e) => onLike(item.id, e)} 
-                            onAuthorClick={onAuthorClick} 
+                        <ExhibitCard
+                            key={item.id}
+                            item={item}
+                            theme={theme}
+                            onClick={onExhibitClick}
+                            currentUsername={currentUser}
+                            onReact={() => onLike(item.id)}
+                            onAuthorClick={onAuthorClick}
                         />
                     ))}
                     {artifacts.length === 0 && (

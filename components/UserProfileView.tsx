@@ -27,7 +27,7 @@ interface UserProfileViewProps {
     onFollow: (username: string) => void;
     onChat: (username: string) => void;
     onExhibitClick: (item: Exhibit) => void;
-    onLike: (id: string, e?: React.MouseEvent) => void;
+    onReact: (id: string) => void;
     onAuthorClick: (author: string) => void;
     onCollectionClick: (col: Collection) => void;
     onShareCollection: (col: Collection) => void;
@@ -91,7 +91,7 @@ const RetroCounter: React.FC<{ count: number }> = ({ count }) => {
 
 const UserProfileView: React.FC<UserProfileViewProps> = ({ 
     user, viewedProfileUsername, exhibits, collections, guestbook, theme, 
-    onBack, onLogout, onFollow, onChat, onExhibitClick, onLike, onAuthorClick, 
+    onBack, onLogout, onFollow, onChat, onExhibitClick, onReact, onAuthorClick, 
     onCollectionClick, onShareCollection, onViewHallOfFame, onGuestbookPost, 
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
@@ -359,7 +359,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <div className={`relative overflow-hidden border rounded-xl flex h-28 md:h-32 group cursor-pointer ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gradient-to-r from-yellow-900/20 to-transparent border-yellow-500/20 hover:border-yellow-500/40'}`} onClick={() => onExhibitClick(showcaseItem)}>
                         {/* Compact Image Left */}
                         <div className="w-24 md:w-32 h-full relative flex-shrink-0 bg-black">
-                            <img src={showcaseItem.imageUrls[0]} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <img src={typeof showcaseItem.imageUrls[0] === 'string' ? showcaseItem.imageUrls[0] : (showcaseItem.imageUrls[0]?.thumbnail || 'https://placehold.co/600x400?text=NO+IMAGE')} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-0 left-0 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded-br-lg z-10 font-pixel">
                                 <Crown size={8} className="inline mr-0.5"/> SHOWCASE
                             </div>
@@ -406,7 +406,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 text-xs py-8">Нет предметов</div>}
                             {publishedExhibits.map(item => (
-                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={item.likedBy?.includes(user?.username || '') || false} onLike={(e) => onLike(item.id, e)} onAuthorClick={() => {}} />
+                                <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={() => {}} />
                             ))}
                         </div>
                     )}
@@ -424,7 +424,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             {activeSection === 'FAVORITES' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in px-0 md:px-0">
                     {favoritedExhibits.map(item => (
-                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} isLiked={true} onLike={(e) => onLike(item.id, e)} onAuthorClick={onAuthorClick} />
+                        <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={onAuthorClick} />
                     ))}
                     {favoritedExhibits.length === 0 && <div className="col-span-full text-center opacity-50 py-8 text-xs uppercase">Пусто</div>}
                 </div>
