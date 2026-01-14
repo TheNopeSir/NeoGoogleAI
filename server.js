@@ -105,11 +105,12 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Port 465 requires ssl:// prefix per Timeweb documentation
+// FIX: Correct SMTP configuration for port 465 (SSL)
+// Note: host should NOT include protocol schema like 'ssl://'
 const transporter = nodemailer.createTransport({
-    host: 'ssl://smtp.timeweb.ru',
+    host: 'smtp.timeweb.ru', 
     port: 465,
-    secure: true, // True for 465
+    secure: true, // Use SSL
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
@@ -117,9 +118,9 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 60000, // Increased to 60s
-    greetingTimeout: 60000,   // Increased to 60s
-    socketTimeout: 60000,      // Added socket timeout
+    connectionTimeout: 60000, 
+    greetingTimeout: 60000,   
+    socketTimeout: 60000,      
     debug: true, // Enable debug output
     logger: true // Log to console
 });
@@ -711,7 +712,13 @@ api.get('/sync', async (req, res) => {
         if (!syncData) {
             const userRes = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
             const colsRes = await query(`SELECT * FROM collections WHERE LOWER(data->>'owner') = LOWER($1)`, [username]);
-            syncData = { users: userRes.rows.map(mapRow), collections: colsRes.rows.map(mapRow) };
+            const tradesRes = await query(`SELECT * FROM "trade_requests" WHERE LOWER(data->>'sender') = LOWER($1) OR LOWER(data->>'recipient') = LOWER($1)`, [username]);
+            
+            syncData = { 
+                users: userRes.rows.map(mapRow), 
+                collections: colsRes.rows.map(mapRow),
+                tradeRequests: tradesRes.rows.map(mapRow)
+            };
             cache.set(cacheKey, syncData, 30); // Cache for 30 seconds
         }
 
@@ -898,7 +905,8 @@ const createCrudRoutes = (router, table) => {
 };
 
 // Создаем CRUD маршруты для всех таблиц кроме exhibits (для него свой обработчик)
-['collections', 'notifications', 'messages', 'guestbook', 'wishlist'].forEach(t => createCrudRoutes(api, t));
+// Added trade_requests to the list
+['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'].forEach(t => createCrudRoutes(api, t));
 
 // ==========================================
 // 🖼️ СПЕЦИАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ EXHIBITS

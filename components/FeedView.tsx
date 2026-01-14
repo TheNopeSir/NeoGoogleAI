@@ -236,28 +236,6 @@ const FeedView: React.FC<FeedViewProps> = ({
         <div className="px-4 max-w-5xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
-                    {/* NEW: Horizontal Collection Preview in Main Feed */}
-                    {processedCollections.length > 0 && selectedCategory === 'ВСЕ' && (
-                        <div className="mb-8">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-pixel text-[10px] opacity-50 flex items-center gap-2 tracking-widest"><Folder size={12} className="text-blue-500"/> СВЕЖИЕ КОЛЛЕКЦИИ</h3>
-                                <button onClick={() => setFeedMode('COLLECTIONS')} className="text-[10px] font-bold text-blue-500 hover:underline">Смотреть все</button>
-                            </div>
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                                {processedCollections.slice(0, 5).map(col => (
-                                    <div key={col.id} className="w-40 flex-shrink-0">
-                                        <CollectionCard 
-                                            col={col} 
-                                            theme={theme} 
-                                            onClick={onCollectionClick} 
-                                            onShare={() => {}} 
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Loading State / Empty State */}
                     {exhibits.length === 0 ? (
                         <div className="grid grid-cols-2 gap-4">

@@ -241,7 +241,7 @@ const hydrateContent = async () => {
         hotCache.wishlist = generic.filter((i:any) => i.table === 'wishlist').map((i:any) => i.data);
         hotCache.guestbook = generic.filter((i:any) => i.table === 'guestbook').map((i:any) => i.data);
         hotCache.guilds = generic.filter((i:any) => i.table === 'guilds').map((i:any) => i.data);
-        hotCache.tradeRequests = generic.filter((i:any) => i.table === 'tradeRequests').map((i:any) => i.data);
+        hotCache.tradeRequests = generic.filter((i:any) => i.table === 'trade_requests').map((i:any) => i.data);
 
         console.log(`[NeoDB] Content Hydrated (Lite): ${latestExhibits.length} latest items`);
         notifyListeners();
@@ -312,6 +312,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             } else if (table === 'generic') {
                  if (genericTable === 'wishlist') hotCache.wishlist = data;
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
+                 // Add trade sync if endpoint supports it without param
             }
 
             notifyListeners();
@@ -366,6 +367,12 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                     if(idx !== -1) hotCache.collections[idx] = c; else hotCache.collections.push(c);
                 });
                 await tx.done;
+            }
+            if (syncData.tradeRequests?.length) {
+                hotCache.tradeRequests = syncData.tradeRequests;
+                syncData.tradeRequests.forEach(async (tr: TradeRequest) => {
+                    await saveGeneric('trade_requests', tr);
+                });
             }
             notifyListeners();
         }).catch(e => console.warn("[Sync] Personal Sync Error", e));
@@ -721,8 +728,114 @@ export const toggleFollow = async (me:string, them:string) => {
 export const joinGuild = async (code:string, u:string) => true;
 export const leaveGuild = async (gid:string, u:string) => true;
 export const kickFromGuild = async (gid:string, u:string) => {};
-export const getMyTradeRequests = () => ({ incoming: [], outgoing: [], history: [], active: [], actionRequired: [] });
-export const sendTradeRequest = async (p: any) => {};
-export const acceptTradeRequest = async (id:string) => {};
-export const updateTradeStatus = async (id:string, s:string) => {};
-export const completeTradeRequest = async (id:string) => {};
+
+// --- TRADE SYSTEM ---
+
+// Get my active user from hotCache based on last session logic if simpler, 
+// but it's better to filter by current user passed in context.
+// However, hotCache has everything.
+export const getMyTradeRequests = () => {
+    // This helper returns all known trade requests. Component filters by user.
+    return hotCache.tradeRequests || [];
+};
+
+export const sendTradeRequest = async (payload: Partial<TradeRequest> & { message?: string }) => {
+    const db = await getDB();
+    const storedSession = await db.get('system', SESSION_USER_KEY);
+    const sender = storedSession?.value;
+    
+    if(!sender) throw new Error("Not logged in");
+
+    const req: TradeRequest = {
+        id: crypto.randomUUID(),
+        sender: sender,
+        recipient: payload.recipient!,
+        senderItems: payload.senderItems || [],
+        recipientItems: payload.recipientItems || [],
+        type: payload.type || 'DIRECT',
+        status: 'PENDING',
+        messages: payload.message ? [{ author: sender, text: payload.message, timestamp: new Date().toISOString() }] : [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        price: payload.price,
+        currency: 'RUB',
+        isWishlistFulfillment: payload.isWishlistFulfillment,
+        wishlistId: payload.wishlistId
+    };
+
+    hotCache.tradeRequests.push(req);
+    notifyListeners();
+    
+    await saveGeneric('trade_requests', req);
+    await apiCall('/trade_requests', 'POST', req);
+    
+    // Notify Recipient
+    createNotification(req.recipient, 'TRADE_OFFER', sender, req.id, 'Новое предложение обмена');
+};
+
+export const acceptTradeRequest = async (id: string) => {
+    const req = hotCache.tradeRequests.find(r => r.id === id);
+    if (!req) return;
+
+    // 1. Update Request Status
+    req.status = 'ACCEPTED';
+    req.updatedAt = new Date().toISOString();
+    
+    // 2. Perform Swap Logic (Simplistic: Swap Ownership)
+    // IMPORTANT: In a real app, this should be transactional on the server.
+    // Here we simulate it optimistically.
+    
+    const senderItems = hotCache.exhibits.filter(e => req.senderItems.includes(e.id));
+    const recipientItems = hotCache.exhibits.filter(e => req.recipientItems.includes(e.id));
+
+    // Move Sender items to Recipient
+    for (const item of senderItems) {
+        item.owner = req.recipient;
+        item.tradeStatus = 'NONE'; // Reset status
+        await updateExhibit(item);
+    }
+
+    // Move Recipient items to Sender
+    for (const item of recipientItems) {
+        item.owner = req.sender;
+        item.tradeStatus = 'NONE';
+        await updateExhibit(item);
+    }
+
+    // 3. Save Request
+    await saveGeneric('trade_requests', req);
+    await apiCall('/trade_requests', 'POST', req);
+    
+    notifyListeners();
+    
+    // Notify Sender
+    createNotification(req.sender, 'TRADE_ACCEPTED', req.recipient, req.id, 'Предложение принято!');
+};
+
+export const updateTradeStatus = async (id: string, status: 'DECLINED' | 'CANCELLED') => {
+    const req = hotCache.tradeRequests.find(r => r.id === id);
+    if (!req) return;
+
+    req.status = status;
+    req.updatedAt = new Date().toISOString();
+    
+    await saveGeneric('trade_requests', req);
+    await apiCall('/trade_requests', 'POST', req);
+    notifyListeners();
+    
+    const target = status === 'CANCELLED' ? req.recipient : req.sender; // If cancelled (by sender), notify recipient? Usually no need if pending.
+    // If declined (by recipient), notify sender.
+    if (status === 'DECLINED') {
+        createNotification(req.sender, 'TRADE_DECLINED', req.recipient, req.id, 'Предложение отклонено');
+    }
+};
+
+export const completeTradeRequest = async (id: string) => {
+    const req = hotCache.tradeRequests.find(r => r.id === id);
+    if (!req) return;
+    req.status = 'COMPLETED';
+    req.updatedAt = new Date().toISOString();
+    await saveGeneric('trade_requests', req);
+    await apiCall('/trade_requests', 'POST', req);
+    notifyListeners();
+};
