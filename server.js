@@ -105,11 +105,14 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Reverted to Port 465 (SSL) which is standard for TimeWeb
+// FIX: Increased timeouts significantly and enabled pooling
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru', 
     port: 465,
     secure: true, // true for 465, false for other ports
+    pool: true, // Enable connection pooling
+    maxConnections: 3,
+    maxMessages: 100,
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
@@ -117,6 +120,10 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
+    // TIMEOUT SETTINGS (Increased)
+    connectionTimeout: 60000, // 60 seconds
+    greetingTimeout: 60000,   // 60 seconds
+    socketTimeout: 60000,     // 60 seconds
     debug: true, 
     logger: true 
 });
