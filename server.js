@@ -105,12 +105,11 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Correct SMTP configuration for port 465 (SSL)
-// Note: host should NOT include protocol schema like 'ssl://'
+// FIX: Switched to Port 587 (STARTTLS) for better compatibility
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru', 
-    port: 465,
-    secure: true, // Use SSL
+    port: 587,
+    secure: false, // false for 587, true for 465
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
@@ -121,15 +120,16 @@ const transporter = nodemailer.createTransport({
     connectionTimeout: 60000, 
     greetingTimeout: 60000,   
     socketTimeout: 60000,      
-    debug: true, // Enable debug output
-    logger: true // Log to console
+    debug: true, 
+    logger: true 
 });
 
+// Verify SMTP Connection on Startup
 transporter.verify(function (error, success) {
     if (error) {
-        console.error("⚠️ [Mail] SMTP Config Error:", error.message);
+        console.error("⚠️ [Mail] SMTP Connection Failed:", error.message);
     } else {
-        console.log(`✅ [Mail] SMTP Server is ready. User: ${SMTP_EMAIL}`);
+        console.log(`✅ [Mail] SMTP Server Connected. User: ${SMTP_EMAIL}`);
     }
 });
 
@@ -235,6 +235,8 @@ api.post('/auth/register', async (req, res) => {
     const cleanEmail = email.trim();
     const cleanPassword = password.trim();
 
+    console.log(`[Auth] Registration attempt: ${cleanUsername} / ${cleanEmail}`);
+
     try {
         // Robust duplicate check
         const check = await query(
@@ -266,17 +268,23 @@ api.post('/auth/register', async (req, res) => {
             [cleanUsername, newUser]
         );
         
-        // Try sending email, but don't fail registration if it fails
-        transporter.sendMail({
-            from: `"NeoArchive" <${SMTP_EMAIL}>`,
-            to: cleanEmail,
-            subject: 'WELCOME TO THE ARCHIVE',
-            html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
-        }).catch(err => console.error("[MAIL] Welcome Email Failed:", err.message));
+        // Explicitly handle email sending errors so they appear in logs
+        try {
+            await transporter.sendMail({
+                from: `"NeoArchive" <${SMTP_EMAIL}>`,
+                to: cleanEmail,
+                subject: 'WELCOME TO THE ARCHIVE',
+                html: `<div style="background: black; color: #00ff00; padding: 20px;"><h1>NEO_ARCHIVE // CONNECTED</h1><p>Добро пожаловать, <strong>${cleanUsername}</strong>.</p></div>`
+            });
+            console.log(`[Mail] Welcome email sent to ${cleanEmail}`);
+        } catch (mailErr) {
+            console.error(`[Mail] FAILED sending welcome email to ${cleanEmail}:`, mailErr.message);
+            // We do NOT fail registration if email fails, but we log it.
+        }
 
         res.json(newUser);
     } catch (e) {
-        console.error(e);
+        console.error("[Auth] Registration Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -287,25 +295,18 @@ api.post('/auth/login', async (req, res) => {
     const cleanIdentifier = identifier ? identifier.trim() : '';
     const cleanPassword = password ? password.trim() : '';
 
-    console.log(`[Auth] Login attempt: ${cleanIdentifier}`);
+    console.log(`[Auth] Login attempt for: "${cleanIdentifier}"`);
 
     try {
-        // 1. Try finding by Username (case-insensitive)
-        let result = await query(
-            `SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, 
+        // COMBINED QUERY: Check both Username AND Email in one go for efficiency and safety
+        // This handles cases where user entered email in username field or vice versa
+        const result = await query(
+            `SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(TRIM(data->>'email')) = LOWER($1)`, 
             [cleanIdentifier]
         );
-
-        // 2. If not found, try finding by Email inside JSON (case-insensitive, trimmed)
-        if (result.rows.length === 0) {
-            result = await query(
-                `SELECT * FROM users WHERE LOWER(TRIM(data->>'email')) = LOWER($1)`,
-                [cleanIdentifier]
-            );
-        }
         
         if (result.rows.length === 0) {
-            console.warn(`[Auth] 404 User not found: ${cleanIdentifier}`);
+            console.warn(`[Auth] 404 User NOT found in DB: "${cleanIdentifier}"`);
             return res.status(404).json({ error: "Пользователь не найден" });
         }
         
@@ -334,7 +335,7 @@ api.post('/auth/login', async (req, res) => {
             );
         }
 
-        console.log(`[Auth] Success: ${user.username} (isAdmin: ${user.isAdmin})`);
+        console.log(`[Auth] Success: ${user.username}`);
         res.json(user);
     } catch (e) {
         console.error("[Auth] Login Error:", e);
@@ -414,11 +415,13 @@ api.post('/auth/recover', async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email обязателен" });
     const cleanEmail = email.trim();
 
+    console.log(`[Recover] Request for: ${cleanEmail}`);
+
     try {
         // 1. Check if user exists
         const result = await query(`SELECT * FROM users WHERE TRIM(LOWER(data->>'email')) = LOWER($1)`, [cleanEmail]);
         if (result.rows.length === 0) {
-            console.log(`[Recover] Email not found: ${cleanEmail}`);
+            console.log(`[Recover] Email not found in DB: ${cleanEmail}`);
             // Security: always return success
             return res.json({ success: true, message: "Если email существует, мы отправили инструкцию." });
         }
@@ -430,7 +433,7 @@ api.post('/auth/recover', async (req, res) => {
         // 2. SEND EMAIL FIRST
         // If this fails, we do NOT update the password in DB, preventing lockout.
         try {
-            await transporter.sendMail({
+            const mailInfo = await transporter.sendMail({
                 from: `"NeoArchive Security" <${SMTP_EMAIL}>`,
                 to: cleanEmail,
                 subject: 'PASSWORD RESET // NEO_ARCHIVE',
@@ -443,10 +446,10 @@ api.post('/auth/recover', async (req, res) => {
                     </div>
                 `
             });
-            console.log(`[Recover] Email sent to ${cleanEmail}`);
+            console.log(`[Recover] Email sent to ${cleanEmail}. ID: ${mailInfo.messageId}`);
         } catch (mailError) {
             console.error(`[Recover] SMTP Failed for ${cleanEmail}:`, mailError);
-            return res.status(500).json({ error: "Ошибка отправки письма. Попробуйте позже или свяжитесь с поддержкой." });
+            return res.status(500).json({ error: "Ошибка отправки письма. " + mailError.message });
         }
 
         // 3. Update DB only if email sent
@@ -456,7 +459,7 @@ api.post('/auth/recover', async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        console.error(e);
+        console.error("[Recover] Critical Error:", e);
         res.status(500).json({ error: "Ошибка сервера" });
     }
 });
