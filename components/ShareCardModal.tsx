@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
 import { Exhibit, UserProfile } from '../types';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ShareCardModalProps {
     exhibit: Exhibit;
@@ -44,7 +45,9 @@ const ShareCardModal: React.FC<ShareCardModalProps> = ({ exhibit, user, onClose 
         // 2. Load Image
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = exhibit.imageUrls[0];
+        
+        // Use util to get correct URL
+        img.src = getImageUrl(exhibit.imageUrls[0], 'medium');
         
         await new Promise((resolve) => {
             img.onload = resolve;

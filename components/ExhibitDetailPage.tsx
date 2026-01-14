@@ -11,6 +11,7 @@ import { getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -80,29 +81,55 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
 
   const [showTradeModal, setShowTradeModal] = useState(false);
-  
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const isWinamp = theme === 'winamp';
 
   const slides = useMemo(() => {
-      const media: Array<{type: 'image' | 'video', url: string}> = [];
-      const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : ['https://placehold.co/600x400?text=NO+IMAGE'];
-      media.push({ type: 'image', url: imageUrls[0] });
+      const media: Array<{type: 'image' | 'video', url: string, largeUrl?: string}> = [];
+
+      const imageUrls = Array.isArray(exhibit.imageUrls) && exhibit.imageUrls.length > 0 ? exhibit.imageUrls : [];
+      
+      // Handle case where there are no images
+      if (imageUrls.length === 0) {
+          media.push({
+            type: 'image',
+            url: 'https://placehold.co/600x400?text=NO+IMAGE',
+            largeUrl: 'https://placehold.co/600x400?text=NO+IMAGE'
+          });
+      } else {
+          // Add first image
+          media.push({
+              type: 'image',
+              url: getImageUrl(imageUrls[0], 'medium'),
+              largeUrl: getImageUrl(imageUrls[0], 'large')
+          });
+      }
+
       if (exhibit.videoUrl) {
           const embed = getEmbedUrl(exhibit.videoUrl);
-          if (embed) media.push({ type: 'video', url: embed });
+          if (embed) media.push({ type: 'video', url: embed, largeUrl: embed });
       }
+
+      // Add remaining images
       if (imageUrls.length > 1) {
-          imageUrls.slice(1).forEach(url => media.push({ type: 'image', url }));
+          imageUrls.slice(1).forEach(imageData => media.push({
+              type: 'image',
+              url: getImageUrl(imageData, 'medium'),
+              largeUrl: getImageUrl(imageData, 'large')
+          }));
       }
       return media;
   }, [exhibit.imageUrls, exhibit.videoUrl]);
 
   const specs = exhibit.specs || {};
   const comments = exhibit.comments || [];
-  
+
   const tierKey = getArtifactTier(exhibit);
   const tier = TIER_CONFIG[tierKey];
   const TierIcon = tier.icon;
@@ -122,22 +149,29 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   useEffect(() => {
       setCurrentSlideIndex(0);
+      setZoomLevel(1);
+      setPanPosition({ x: 0, y: 0 });
   }, [exhibit.id]);
+
+  useEffect(() => {
+      setPanPosition({ x: 0, y: 0 });
+  }, [currentSlideIndex, zoomLevel]);
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
           if (e.key === 'Escape') {
               setIsFullscreen(false);
               setZoomLevel(1);
-          } else if (e.key === 'ArrowRight') {
+              setPanPosition({ x: 0, y: 0 });
+          } else if (e.key === 'ArrowRight' && !isDragging) {
               setCurrentSlideIndex(prev => (prev + 1) % slides.length);
-          } else if (e.key === 'ArrowLeft') {
+          } else if (e.key === 'ArrowLeft' && !isDragging) {
               setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length);
           }
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [slides.length]);
+  }, [slides.length, isDragging]);
 
   const commentTree = useMemo(() => {
       const roots = comments.filter(c => !c.parentId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -218,10 +252,58 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const selectMention = (username: string) => {
       const words = commentText.split(' ');
-      words.pop(); 
+      words.pop();
       const newText = [...words, `@${username} `].join(' ');
       setCommentText(newText);
       setMentionQuery(null);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+      if (zoomLevel > 1) {
+          setIsDragging(true);
+          setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+      }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+      if (isDragging && zoomLevel > 1) {
+          setPanPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      }
+  };
+
+  const handleMouseUp = () => {
+      setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (zoomLevel > 1 && e.touches.length === 1) {
+          setIsDragging(true);
+          setDragStart({
+              x: e.touches[0].clientX - panPosition.x,
+              y: e.touches[0].clientY - panPosition.y
+          });
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
+          setPanPosition({
+              x: e.touches[0].clientX - dragStart.x,
+              y: e.touches[0].clientY - dragStart.y
+          });
+      }
+  };
+
+  const handleTouchEnd = () => {
+      setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+      if (isFullscreen && slides[currentSlideIndex].type === 'image') {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? -0.2 : 0.2;
+          setZoomLevel(prev => Math.max(1, Math.min(4, prev + delta)));
+      }
   };
 
   const renderCommentNode = (c: Comment, depth = 0) => {
@@ -281,33 +363,75 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
       {isFullscreen && (
           <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
-              <div className="absolute top-4 right-4 z-50 flex gap-4">
-                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 3))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomIn size={24}/></button>
-                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomOut size={24}/></button>
-                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500"><X size={24}/></button>
+              <div className="absolute top-4 left-4 z-50 flex gap-4">
+                  <button
+                    onClick={() => onLike(exhibit.id)}
+                    className={`p-3 bg-black/50 rounded-full transition-all ${isLiked ? 'text-red-500 hover:bg-red-500/20' : 'text-white hover:bg-white/20'}`}
+                    title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
+                  >
+                    <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
+                  </button>
+                  <div className="flex items-center gap-2 px-4 py-3 bg-black/50 text-white rounded-full text-sm font-mono">
+                    <Heart size={16} className="text-red-500" />
+                    <span>{exhibit.likes}</span>
+                  </div>
               </div>
-              
-              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...gallerySwipeHandlers}>
-                  <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronLeft size={48}/></button>
-                  
-                  <div className="relative w-full h-full flex items-center justify-center p-4">
+              <div className="absolute top-4 right-4 z-50 flex gap-4">
+                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomIn size={24}/></button>
+                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomOut size={24}/></button>
+                  <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-500 transition-colors" title="Сбросить"><Home size={24}/></button>
+                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors"><X size={24}/></button>
+              </div>
+
+              {zoomLevel > 1 && (
+                  <div className="absolute top-4 left-4 z-50 bg-black/50 text-white px-3 py-2 rounded-full text-sm font-mono">
+                      {Math.round(zoomLevel * 100)}%
+                  </div>
+              )}
+
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeHandlers : {})}>
+                  {zoomLevel === 1 && (
+                      <>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronLeft size={48}/></button>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronRight size={48}/></button>
+                      </>
+                  )}
+
+                  <div
+                      className="relative w-full h-full flex items-center justify-center p-4"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      onWheel={handleWheel}
+                      style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+                  >
                       {slides[currentSlideIndex].type === 'image' ? (
-                          <img 
-                            src={slides[currentSlideIndex].url} 
-                            className="max-w-full max-h-full object-contain transition-transform duration-300"
-                            style={{ transform: `scale(${zoomLevel})` }}
+                          <img
+                            src={slides[currentSlideIndex].largeUrl || slides[currentSlideIndex].url}
+                            className="max-w-full max-h-full object-contain select-none"
+                            style={{
+                                transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                                transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                            }}
+                            draggable={false}
                           />
                       ) : (
                           <iframe src={slides[currentSlideIndex].url} className="w-full h-full max-w-4xl max-h-[80vh]" frameBorder="0" allowFullScreen></iframe>
                       )}
                   </div>
-
-                  <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronRight size={48}/></button>
               </div>
 
               <div className="h-20 flex items-center justify-center gap-2 pb-4">
                   {slides.map((_, idx) => (
-                      <div key={idx} className={`w-2 h-2 rounded-full ${idx === currentSlideIndex ? 'bg-white' : 'bg-white/20'}`} />
+                      <button
+                          key={idx}
+                          onClick={() => setCurrentSlideIndex(idx)}
+                          className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`}
+                      />
                   ))}
               </div>
           </div>
@@ -402,7 +526,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         
                         {/* Compact Stats Toolbar */}
                         <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4">
-                            <button onClick={() => onLike(exhibit.id)} className={`flex items-center gap-1.5 hover:text-green-400 transition-colors ${isLiked ? 'text-green-500' : ''}`}>
+                            <button onClick={() => onLike(exhibit.id)} className={`flex items-center gap-1.5 hover:text-red-400 transition-colors ${isLiked ? 'text-red-500 font-bold' : ''}`}>
                                 <Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {exhibit.likes}
                             </button>
                             <div className="flex items-center gap-1.5">
@@ -465,7 +589,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 {linkedArtifacts.map(link => (
                                     <div key={link.id} onClick={() => onExhibitClick(link)} className="flex-shrink-0 w-20 group cursor-pointer">
                                         <div className="aspect-square rounded-lg overflow-hidden border border-white/10 relative bg-black/20">
-                                            <img src={link.imageUrls[0]} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <img src={getImageUrl(link.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         </div>
                                         <div className="mt-1 text-[8px] font-bold truncate opacity-70 group-hover:opacity-100">{link.title}</div>
                                     </div>
@@ -550,13 +674,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><Sparkles size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {similarArtifacts.map(sim => (
-                            <ExhibitCard 
-                                key={sim.id} 
-                                item={sim} 
+                            <ExhibitCard
+                                key={sim.id}
+                                item={sim}
                                 theme={theme}
                                 onClick={() => onExhibitClick(sim)}
-                                isLiked={sim.likedBy?.includes(currentUser)}
-                                onLike={() => {}}
+                                currentUsername={currentUser}
+                                onReact={() => {}}
                                 onAuthorClick={onAuthorClick}
                             />
                         ))}

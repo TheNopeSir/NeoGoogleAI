@@ -9,7 +9,14 @@ export interface Comment {
   likedBy: string[];
 }
 
-export type TierType = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'CURSED';
+export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';
+
+export type ReactionType = 'LIKE';
+
+export interface Reaction {
+  type: ReactionType;
+  users: string[]; // usernames who liked
+}
 
 export type TradeStatus = 'NONE' | 'FOR_TRADE' | 'FOR_SALE' | 'GIFT' | 'NOT_FOR_SALE';
 
@@ -26,20 +33,33 @@ export interface WishlistItem {
     timestamp: string;
 }
 
+export interface ProcessedImage {
+  thumbnail: string;
+  medium: string;
+  large: string;
+  placeholder?: string; // Tiny blurred image for progressive loading
+  originalFormat?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+}
+
 export interface Exhibit {
   id: string;
   slug?: string;
   title: string;
   description: string;
-  imageUrls: string[];
+  imageUrls: (string | ProcessedImage)[];
   videoUrl?: string; 
   category: string; 
   subcategory?: string;
   owner: string;
+  lastEditedBy?: string;
   timestamp: string;
-  likes: number;
-  likedBy: string[]; 
+  likes: number; // Legacy
+  likedBy: string[]; // Legacy
+  reactions?: Reaction[];
   views: number;
+  viewedBy?: string[];
   condition?: string;
   quality: string;
   specs: Record<string, string>;
