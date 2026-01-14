@@ -424,7 +424,7 @@ export default function App() {
 
             {view === 'ACTIVITY' && user && (
                 <div className="p-4 pb-24">
-                    <ActivityView notifications={notifications} messages={messages} currentUser={user} theme={theme} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onExhibitClick={(id, commentId) => { const item = exhibits.find(e => e.id === id); if (item) navigateTo('EXHIBIT', { item, highlightCommentId: commentId }); }} onChatClick={(u) => navigateTo('DIRECT_CHAT', { username: u })} />
+                    <ActivityView notifications={notifications} messages={messages} currentUser={user} theme={theme} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onExhibitClick={(id, commentId) => { const item = exhibits.find(e => e.id === id); if (item) navigateTo('EXHIBIT', { item, highlightCommentId: commentId }); }} onChatClick={(u) => navigateTo('DIRECT_CHAT', { username: u })} exhibits={exhibits} />
                 </div>
             )}
             

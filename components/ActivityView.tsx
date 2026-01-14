@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield } from 'lucide-react';
-import { Notification, Message, UserProfile } from '../types';
-import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase } from '../services/storageService';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet } from 'lucide-react';
+import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
+import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus } from '../services/storageService';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -12,11 +13,12 @@ interface ActivityViewProps {
     onAuthorClick: (username: string) => void;
     onExhibitClick: (id: string, commentId?: string) => void;
     onChatClick: (username: string) => void;
+    exhibits?: Exhibit[]; // Needed for trade cards
 }
 
 const ActivityView: React.FC<ActivityViewProps> = ({ 
     notifications, messages, currentUser, theme, 
-    onAuthorClick, onExhibitClick, onChatClick
+    onAuthorClick, onExhibitClick, onChatClick, exhibits = []
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
@@ -29,7 +31,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     }, [notifications, currentUser.username, filter]);
 
     const myMessages = messages.filter(m => m.sender.toLowerCase() === currentUser.username.toLowerCase() || m.receiver.toLowerCase() === currentUser.username.toLowerCase());
-    const trades = getMyTradeRequests();
+    
+    // Get trades
+    const allTrades = getMyTradeRequests();
+    const myTrades = useMemo(() => {
+        return allTrades.filter(t => t.sender === currentUser.username || t.recipient === currentUser.username).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }, [allTrades, currentUser.username]);
+
+    const pendingIncomingTrades = myTrades.filter(t => t.recipient === currentUser.username && t.status === 'PENDING');
+    const pendingOutgoingTrades = myTrades.filter(t => t.sender === currentUser.username && t.status === 'PENDING');
+    const historyTrades = myTrades.filter(t => t.status !== 'PENDING');
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
 
@@ -140,6 +151,77 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         );
     };
 
+    const renderTradeCard = (trade: TradeRequest) => {
+        const isIncoming = trade.recipient === currentUser.username;
+        const partner = isIncoming ? trade.sender : trade.recipient;
+        const date = new Date(trade.createdAt).toLocaleDateString();
+        
+        // Find items involved (simple lookup)
+        const senderItemsList = exhibits.filter(e => trade.senderItems.includes(e.id));
+        const recipientItemsList = exhibits.filter(e => trade.recipientItems.includes(e.id));
+
+        return (
+            <div key={trade.id} className={`p-4 rounded-xl border mb-3 ${theme === 'winamp' ? 'bg-[#191919] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
+                <div className="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className={trade.status === 'PENDING' ? 'text-blue-400' : trade.status === 'ACCEPTED' ? 'text-green-500' : 'text-gray-500'} />
+                        <span className="font-pixel text-[10px] font-bold uppercase">{trade.status === 'PENDING' ? (isIncoming ? 'ВХОДЯЩИЙ ЗАПРОС' : 'ОЖИДАЕТ ОТВЕТА') : trade.status}</span>
+                    </div>
+                    <div className="text-[9px] font-mono opacity-50">{date}</div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 mb-4">
+                    {/* SENDER SIDE */}
+                    <div className="flex-1 text-center">
+                        <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.sender}</div>
+                        {trade.price && !trade.isWishlistFulfillment ? (
+                            <div className="text-green-400 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                        ) : (
+                            <div className="flex flex-wrap justify-center gap-1">
+                                {senderItemsList.length > 0 ? senderItemsList.map(item => (
+                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className="w-8 h-8 rounded border border-white/10 object-cover" title={item.title}/>
+                                )) : <span className="text-[9px] opacity-30">Ничего</span>}
+                            </div>
+                        )}
+                    </div>
+
+                    <ArrowRight size={16} className="opacity-30"/>
+
+                    {/* RECIPIENT SIDE */}
+                    <div className="flex-1 text-center">
+                        <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.recipient}</div>
+                        {trade.price && trade.isWishlistFulfillment ? (
+                            <div className="text-green-400 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                        ) : (
+                            <div className="flex flex-wrap justify-center gap-1">
+                                {recipientItemsList.length > 0 ? recipientItemsList.map(item => (
+                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className="w-8 h-8 rounded border border-white/10 object-cover" title={item.title}/>
+                                )) : <span className="text-[9px] opacity-30">Ничего</span>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {trade.messages && trade.messages.length > 0 && (
+                    <div className="bg-black/20 p-2 rounded text-[10px] font-mono opacity-70 mb-3 italic">
+                        "{trade.messages[0].text}"
+                    </div>
+                )}
+
+                {trade.status === 'PENDING' && isIncoming && (
+                    <div className="flex gap-2">
+                        <button onClick={() => acceptTradeRequest(trade.id)} className="flex-1 py-2 bg-green-600 text-black font-bold text-[10px] rounded uppercase hover:bg-green-500">Принять</button>
+                        <button onClick={() => updateTradeStatus(trade.id, 'DECLINED')} className="flex-1 py-2 border border-red-500 text-red-500 font-bold text-[10px] rounded uppercase hover:bg-red-500/10">Отклонить</button>
+                    </div>
+                )}
+
+                {trade.status === 'PENDING' && !isIncoming && (
+                    <button onClick={() => updateTradeStatus(trade.id, 'CANCELLED')} className="w-full py-2 border border-white/10 text-white/50 font-bold text-[10px] rounded uppercase hover:bg-white/10 hover:text-white">Отменить запрос</button>
+                )}
+            </div>
+        );
+    };
+
     // Grouping by Date for display
     let lastDateLabel = '';
 
@@ -166,6 +248,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'TRADES' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
                 >
                     <RefreshCw size={14} /> ОБМЕН
+                    {pendingIncomingTrades.length > 0 && <span className="bg-blue-500 text-black text-[8px] font-bold px-1 rounded-full">{pendingIncomingTrades.length}</span>}
                 </button>
             </div>
 
@@ -258,9 +341,33 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             )}
 
             {activeTab === 'TRADES' && (
-                <div>
-                    {/* Trades Logic (simplified) */}
-                    <div className="text-center opacity-30 py-10 font-pixel text-xs">АКТИВНЫЕ СДЕЛКИ</div>
+                <div className="space-y-6">
+                    {pendingIncomingTrades.length > 0 && (
+                        <div>
+                            <h3 className="font-pixel text-[10px] text-blue-400 mb-3 uppercase tracking-widest flex items-center gap-2"><ArrowRight size={12}/> Входящие запросы</h3>
+                            <div className="space-y-2">{pendingIncomingTrades.map(renderTradeCard)}</div>
+                        </div>
+                    )}
+
+                    {pendingOutgoingTrades.length > 0 && (
+                        <div>
+                            <h3 className="font-pixel text-[10px] opacity-50 mb-3 uppercase tracking-widest flex items-center gap-2"><Clock size={12}/> Отправленные (Ожидание)</h3>
+                            <div className="space-y-2">{pendingOutgoingTrades.map(renderTradeCard)}</div>
+                        </div>
+                    )}
+
+                    {historyTrades.length > 0 && (
+                        <div>
+                            <h3 className="font-pixel text-[10px] opacity-30 mb-3 uppercase tracking-widest flex items-center gap-2"><BookOpen size={12}/> История сделок</h3>
+                            <div className="space-y-2 opacity-70 hover:opacity-100 transition-opacity">
+                                {historyTrades.map(renderTradeCard)}
+                            </div>
+                        </div>
+                    )}
+
+                    {myTrades.length === 0 && (
+                        <div className="text-center py-20 opacity-30 font-pixel text-xs">НЕТ АКТИВНЫХ СДЕЛОК</div>
+                    )}
                 </div>
             )}
         </div>
