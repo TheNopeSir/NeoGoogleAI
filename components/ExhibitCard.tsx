@@ -1,11 +1,9 @@
 
-import React, { useState } from 'react';
-import { Heart, Eye, Image as ImageIcon } from 'lucide-react';
-import { Exhibit, ReactionType, Reaction } from '../types';
+import React from 'react';
+import { Heart, Eye } from 'lucide-react';
+import { Exhibit } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
-import ReactionPicker from './ReactionPicker';
-import { getTotalReactions, getUserReaction } from '../utils/reactionUtils';
 import ProgressiveImage from './ProgressiveImage';
 import { getImageUrl } from '../utils/imageUtils';
 
@@ -26,20 +24,9 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const isHighTier = config.glow; // UNCOMMON and above get glow effects
   const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
 
-  // Get reaction info (ensure reactions is defined with error handling)
-  let reactions: Reaction[] = [];
-  let totalReactions = 0;
-  let userReaction: ReactionType | null = null;
-
-  try {
-    reactions = item.reactions || [];
-    totalReactions = getTotalReactions(reactions);
-    userReaction = getUserReaction(reactions, currentUsername);
-  } catch (error) {
-    console.error('[ExhibitCard] Error processing reactions for item:', item.id, error);
-    // Fallback to legacy likes if reactions fail
-    totalReactions = item.likes || 0;
-  }
+  // Simple Like Logic
+  const isLiked = item.likedBy?.includes(currentUsername) || false;
+  const likeCount = item.likes || 0;
   
   // Trade Status Logic
   const tradeStatus = item.tradeStatus || 'NONE';
@@ -83,12 +70,12 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                         <span className="truncate max-w-[80px]" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <ReactionPicker
-                            reactions={reactions}
-                            currentUsername={currentUsername}
-                            onReact={onReact}
-                            theme={theme}
-                        />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onReact(); }}
+                            className="flex items-center gap-1 hover:text-[#FFD700]"
+                        >
+                            <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -161,12 +148,12 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <Eye size={12} /> <span>{uniqueViews}</span>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
-                    <ReactionPicker
-                        reactions={reactions}
-                        currentUsername={currentUsername}
-                        onReact={onReact}
-                        theme={theme}
-                    />
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onReact(); }}
+                        className={`flex items-center gap-1 text-[10px] transition-colors ${isLiked ? 'text-red-500' : (isXP ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
+                    >
+                        <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
+                    </button>
                 </div>
             </div>
         </div>
