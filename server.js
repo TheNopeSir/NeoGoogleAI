@@ -105,11 +105,11 @@ app.use((req, res, next) => {
 const SMTP_EMAIL = process.env.SMTP_EMAIL || 'morpheus@neoarch.ru';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || 'tntgz9o3e9';
 
-// FIX: Switched to Port 587 (STARTTLS) for better compatibility
+// FIX: Reverted to Port 465 (SSL) which is standard for TimeWeb
 const transporter = nodemailer.createTransport({
     host: 'smtp.timeweb.ru', 
-    port: 587,
-    secure: false, // false for 587, true for 465
+    port: 465,
+    secure: true, // true for 465, false for other ports
     auth: {
         user: SMTP_EMAIL,
         pass: SMTP_PASSWORD
@@ -117,9 +117,6 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 60000, 
-    greetingTimeout: 60000,   
-    socketTimeout: 60000,      
     debug: true, 
     logger: true 
 });
@@ -128,8 +125,9 @@ const transporter = nodemailer.createTransport({
 transporter.verify(function (error, success) {
     if (error) {
         console.error("⚠️ [Mail] SMTP Connection Failed:", error.message);
+        console.error("   Hint: Check SMTP_PASSWORD in .env or TimeWeb block.");
     } else {
-        console.log(`✅ [Mail] SMTP Server Connected. User: ${SMTP_EMAIL}`);
+        console.log(`✅ [Mail] SMTP Server Connected via SSL (465). User: ${SMTP_EMAIL}`);
     }
 });
 
@@ -159,17 +157,18 @@ const pool = new Pool({
     keepAlive: true
 });
 
-// Test DB Connection immediately
-pool.connect().then(client => {
-    console.log(`✅ [Database] Successfully connected to ${dbHost} as ${dbUser}`);
-    client.release();
-}).catch(err => {
-    console.error(`❌ [Database] Initial connection failed:`, err.message);
-});
+// Helper: Extract data fields
+const extractDataFields = (userObject) => {
+    const { id, username, updated_at, ...dataFields } = userObject;
+    return dataFields;
+};
 
-pool.on('error', (err) => {
-    console.error('❌ [Database] Unexpected error on idle client', err.message);
-});
+// Helper: Map DB row
+const mapRow = (row) => {
+    if (!row) return null;
+    const { data, ...rest } = row;
+    return { ...rest, ...(data || {}) };
+};
 
 const query = async (text, params = []) => {
     try {
@@ -180,17 +179,69 @@ const query = async (text, params = []) => {
     }
 };
 
-const mapRow = (row) => {
-    if (!row) return null;
-    const { data, ...rest } = row;
-    return { ...rest, ...(data || {}) };
+// ==========================================
+// 🛡️ SECURITY & INTEGRITY CHECKS
+// ==========================================
+
+const ensureAdminIntegrity = async () => {
+    try {
+        console.log('🛡️ [Security] Verifying User Integrity...');
+        
+        // 1. Force fix for main admin (Truester)
+        const targetUser = 'Truester';
+        const targetEmail = 'kennyornope@gmail.com';
+
+        const res = await query(`SELECT * FROM users WHERE username = $1`, [targetUser]);
+        if (res.rows.length > 0) {
+            const user = mapRow(res.rows[0]);
+            
+            let needsUpdate = false;
+            
+            // Check Email
+            if (!user.email || user.email !== targetEmail) {
+                console.warn(`⚠️ [Security] Fixing email for ${targetUser}: "${user.email || '(missing)'}" -> "${targetEmail}"`);
+                user.email = targetEmail;
+                needsUpdate = true;
+            }
+            
+            // Check Admin Status
+            if (!user.isAdmin) {
+                console.warn(`⚠️ [Security] Restoring Admin privileges for ${targetUser}`);
+                user.isAdmin = true;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                const updatedData = extractDataFields(user);
+                await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [updatedData, targetUser]);
+                console.log(`✅ [Security] Integrity restoration complete for ${targetUser}.`);
+                // Clear cache to ensure login gets fresh data
+                cache.del('users_global');
+            } else {
+                console.log(`✅ [Security] ${targetUser} integrity check passed.`);
+            }
+        } else {
+            console.log(`ℹ️ [Security] User ${targetUser} not found. Skipping fix.`);
+        }
+
+    } catch (e) {
+        console.error('❌ [Security] Integrity check failed:', e);
+    }
 };
 
-// Helper to extract data fields for saving back to DB
-const extractDataFields = (userObject) => {
-    const { id, username, updated_at, ...dataFields } = userObject;
-    return dataFields;
-};
+// Test DB Connection immediately
+pool.connect().then(client => {
+    console.log(`✅ [Database] Successfully connected to ${dbHost} as ${dbUser}`);
+    // Run integrity check on startup
+    ensureAdminIntegrity();
+    client.release();
+}).catch(err => {
+    console.error(`❌ [Database] Initial connection failed:`, err.message);
+});
+
+pool.on('error', (err) => {
+    console.error('❌ [Database] Unexpected error on idle client', err.message);
+});
 
 // ==========================================
 // API ROUTER
