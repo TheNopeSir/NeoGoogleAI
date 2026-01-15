@@ -60,6 +60,10 @@ export default function App() {
   const [viewedProfileUsername, setViewedProfileUsername] = useState<string>('');
   const [highlightCommentId, setHighlightCommentId] = useState<string | undefined>(undefined);
 
+  // Verification Logic
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [verificationType, setVerificationType] = useState<'REGISTER' | 'RESET' | null>(null);
+
   // Feed State
   const [selectedCategory, setSelectedCategory] = useState<string>('ВСЕ');
   const [feedMode, setFeedMode] = useState<'ARTIFACTS' | 'WISHLIST' | 'COLLECTIONS'>('ARTIFACTS');
@@ -95,6 +99,20 @@ export default function App() {
 
   // --- ROUTING LOGIC ---
   const syncFromUrl = useCallback(async () => {
+      // 1. Check for verification params
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
+      const type = searchParams.get('type');
+
+      if (code && type) {
+          setVerificationCode(code);
+          setVerificationType(type as any);
+          setView('AUTH');
+          // Clean URL
+          window.history.replaceState({}, document.title, "/");
+          return;
+      }
+
       const path = window.location.pathname;
       const segments = path.split('/').filter(Boolean);
       const root = segments[0];
@@ -214,7 +232,10 @@ export default function App() {
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
-          } else { setView('AUTH'); }
+          } else { 
+              await syncFromUrl(); // Check URL even if no user, might be verification
+              setView('AUTH'); 
+          }
       } catch (e) { setView('AUTH'); } 
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
     };
@@ -226,11 +247,7 @@ export default function App() {
     const hasViewed = sessionStorage.getItem(sessionKey);
     let updatedItem = item;
     if (!hasViewed) {
-        // Safe access to viewedBy
         const viewedBy = item.viewedBy || [];
-        // Only increment if not already viewed by this user in session/db? 
-        // For simplicity, just increment count in UI logic, server handles unique views better.
-        // But here we emulate it.
         const currentUser = user?.username;
         if (currentUser && !viewedBy.includes(currentUser)) {
              updatedItem = { 
@@ -305,26 +322,23 @@ export default function App() {
         <MatrixRain theme="dark" />
         <CRTOverlay />
         <div className="relative z-10">
-          <MatrixLogin theme="dark" onLogin={(u, remember) => {
-             setUser(u);
-             if (u.settings?.theme) setTheme(u.settings.theme);
-             if (!remember) localStorage.removeItem('neo_active_user');
-             syncFromUrl();
-          }} />
+          <MatrixLogin 
+            theme="dark" 
+            onLogin={(u, remember) => {
+                setUser(u);
+                if (u.settings?.theme) setTheme(u.settings.theme);
+                if (!remember) localStorage.removeItem('neo_active_user');
+                syncFromUrl();
+            }}
+            initialCode={verificationCode}
+            initialType={verificationType}
+          />
         </div>
       </div>
     );
   }
 
-  const getThemeClasses = () => {
-      switch(theme) {
-          case 'xp': return 'bg-[#ECE9D8] text-black font-sans';
-          case 'winamp': return 'bg-[#191919] font-winamp text-gray-300';
-          case 'light': return 'bg-light-bg text-gray-900';
-          default: return 'bg-dark-bg text-gray-100';
-      }
-  };
-
+  // Helper for conditional classes
   const getDesktopNavClasses = () => {
       switch(theme) {
           case 'xp': return 'bg-gradient-to-b from-[#245DDA] to-[#245DDA] border-b-2 border-[#003C74] text-white';
@@ -340,6 +354,15 @@ export default function App() {
           case 'winamp': return 'bg-[#292929] border-t border-[#505050] text-[#00ff00]';
           case 'light': return 'bg-white/90 backdrop-blur-md border-t border-gray-200 text-gray-900';
           default: return 'bg-black/90 backdrop-blur-md border-t border-white/10 text-white';
+      }
+  };
+
+  const getThemeClasses = () => {
+      switch(theme) {
+          case 'xp': return 'bg-[#ECE9D8] text-black font-sans';
+          case 'winamp': return 'bg-[#191919] font-winamp text-gray-300';
+          case 'light': return 'bg-light-bg text-gray-900';
+          default: return 'bg-dark-bg text-gray-100';
       }
   };
 
@@ -444,6 +467,7 @@ export default function App() {
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
             )}
 
+            {/* Other views omitted for brevity, logic remains same */}
             {view === 'ACTIVITY' && user && (
                 <div className="p-4 pb-24">
                     <ActivityView notifications={notifications} messages={messages} currentUser={user} theme={theme} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onExhibitClick={(id, commentId) => { const item = exhibits.find(e => e.id === id); if (item) navigateTo('EXHIBIT', { item, highlightCommentId: commentId }); }} onChatClick={(u) => navigateTo('DIRECT_CHAT', { username: u })} exhibits={exhibits} />
