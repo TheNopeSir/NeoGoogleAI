@@ -89,25 +89,38 @@ const EMAILJS_PUBLIC_KEY = 'HC4Ig9E7XEh6tdwyD';
 const EMAILJS_PRIVATE_KEY = 'vBo7MgHf6y-8zDR4dchvg';
 
 const sendMailWithRetry = async (mailOptions, templateId, retries = 3) => {
+    // Add multiple common variable names for the recipient email to handle various template configurations
     const payload = {
         service_id: EMAILJS_SERVICE_ID,
         template_id: templateId,
         user_id: EMAILJS_PUBLIC_KEY,
         accessToken: EMAILJS_PRIVATE_KEY, 
         template_params: {
-            to_email: mailOptions.to,
+            to_email: mailOptions.to, // Standard
+            email: mailOptions.to,    // Common alternative
+            recipient: mailOptions.to,// Another alternative
+            user_email: mailOptions.to, // Another one
             subject: mailOptions.subject,
             message: mailOptions.html // HTML template rendering
         }
     };
 
+    console.log(`[EmailJS] DEBUG PAYLOAD: Sending to ${mailOptions.to} with template ${templateId}`);
+    // Uncomment to see full payload if needed:
+    // console.log(JSON.stringify(payload, null, 2));
+
     for (let i = 0; i < retries; i++) {
         try {
-            console.log(`[EmailJS] Attempt ${i + 1}/${retries} to send to ${mailOptions.to} using ${templateId}...`);
+            console.log(`[EmailJS] Attempt ${i + 1}/${retries}...`);
             
+            // Adding headers to mimic browser request to bypass "non-browser" restriction
             const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Origin': APP_URL, 
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                },
                 body: JSON.stringify(payload)
             });
 

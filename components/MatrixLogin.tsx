@@ -166,8 +166,15 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
         setPassword(''); 
     } 
     catch (err: any) { 
-        setError(err.message || "ОШИБКА РЕГИСТРАЦИИ"); 
-        if (err.message?.includes('заняты')) { setShowRecoverOption(true); setInfoMessage("Email или Никнейм занят"); } 
+        let msg = err.message || "ОШИБКА РЕГИСТРАЦИИ";
+        if (msg.includes('403') && msg.includes('disabled for non-browser')) {
+            msg = "Настройка EmailJS запрещает отправку. Включите 'Allow API calls from non-browser applications' в админке EmailJS.";
+        }
+        if (msg.includes('422') && msg.includes('recipients address is empty')) {
+            msg = "ОШИБКА НАСТРОЙКИ: В панели EmailJS (скриншот 2) замените {{email}} на {{to_email}} в поле 'To Email'.";
+        }
+        setError(msg); 
+        if (msg?.includes('заняты')) { setShowRecoverOption(true); setInfoMessage("Email или Никнейм занят"); } 
     } 
     finally { setIsLoading(false); }
   };
@@ -181,7 +188,14 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
         setInfoMessage('ИНСТРУКЦИИ ОТПРАВЛЕНЫ НА EMAIL');
         setStep('LOGIN');
     } catch (err: any) {
-        setError(err.message || "ОШИБКА ВОССТАНОВЛЕНИЯ");
+        let msg = err.message || "ОШИБКА ВОССТАНОВЛЕНИЯ";
+        if (msg.includes('403') && msg.includes('disabled for non-browser')) {
+            msg = "Настройка EmailJS запрещает отправку. Включите 'Allow API calls from non-browser applications' в админке EmailJS.";
+        }
+        if (msg.includes('422') && msg.includes('recipients address is empty')) {
+            msg = "ОШИБКА НАСТРОЙКИ: В панели EmailJS замените {{email}} на {{to_email}} в поле 'To Email'.";
+        }
+        setError(msg);
     } finally {
         setIsLoading(false);
     }
