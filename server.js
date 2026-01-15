@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
@@ -420,6 +419,18 @@ api.post('/auth/telegram', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// HEALTH CHECK - ADDED TO FIX SSL/FETCH ERROR
+api.get('/health', async (req, res) => {
+    try {
+        const result = await query('SELECT count(*) FROM users');
+        const count = parseInt(result.rows[0].count, 10);
+        res.json({ status: 'ok', totalUsers: count });
+    } catch (e) {
+        console.error("Health check DB failed:", e);
+        res.json({ status: 'ok', totalUsers: 0 });
+    }
+});
+
 // FEED
 api.get('/feed', async (req, res) => {
     try {
@@ -477,6 +488,11 @@ api.post('/exhibits', async (req, res) => {
 
 app.use('/api', api);
 setupAdminAPI(app, query, cache);
+
+// 404 Handler for API
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'Endpoint not found' });
+});
 
 // Static Handlers
 app.use(express.static(path.join(__dirname, 'dist')));

@@ -43,9 +43,18 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
         }
     } else {
         // Only fetch stats if not verifying
-        fetch('/api/health').then(res => res.json()).then(data => {
-            if (typeof data.totalUsers === 'number') setUserCount(data.totalUsers);
-        }).catch(console.error);
+        fetch('/api/health')
+            .then(res => {
+                if (!res.ok) throw new Error("Health check failed");
+                return res.json();
+            })
+            .then(data => {
+                if (data && typeof data.totalUsers === 'number') setUserCount(data.totalUsers);
+            })
+            .catch(() => {
+                // Silently ignore errors to avoid console noise for users
+                // console.debug("Server stats unavailable");
+            });
     }
   }, [initialCode, initialType]);
 
