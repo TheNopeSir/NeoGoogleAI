@@ -5,7 +5,6 @@ import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
-import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -30,6 +29,11 @@ const ADMIN_USER = 'Truester';
 const ADMIN_EMAIL = 'kennyornope@gmail.com';
 const ADMIN_EMAILS = [ADMIN_EMAIL];
 const ADMIN_USERNAMES = [ADMIN_USER];
+
+// URL вашего приложения (для генерации ссылок)
+// Если вы используете локально - http://localhost:5173
+// Если продакшн - https://neoarchive.ru
+const APP_URL = process.env.APP_URL || 'https://neoarchive.ru';
 
 const shouldBeAdmin = (username, email) => {
     return ADMIN_USERNAMES.includes(username) || (email && ADMIN_EMAILS.includes(email));
@@ -76,37 +80,47 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
 // ==========================================
-// 📧 ПОЧТА (Resend Integration)
+// 📧 ПОЧТА (EmailJS REST API)
 // ==========================================
-const RESEND_API_KEY = 're_PTJX3b96_Ds6T37QBCSXsdneHEnupes9d';
-const resend = new Resend(RESEND_API_KEY);
-const EMAIL_FROM = 'NeoArchive <morpheus@neoarch.ru>';
+const EMAILJS_SERVICE_ID = 'service_s27hkib';
+const EMAILJS_TEMPLATE_ID = 'template_ki5vwvp';
+const EMAILJS_PUBLIC_KEY = 'HC4Ig9E7XEh6tdwyD';
+const EMAILJS_PRIVATE_KEY = 'vBo7MgHf6y-8zDR4dchvg';
 
-// Helper for sending mail with retries
 const sendMailWithRetry = async (mailOptions, retries = 3) => {
+    const payload = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        accessToken: EMAILJS_PRIVATE_KEY, 
+        template_params: {
+            to_email: mailOptions.to,
+            subject: mailOptions.subject,
+            message: mailOptions.html // HTML template rendering
+        }
+    };
+
     for (let i = 0; i < retries; i++) {
         try {
-            console.log(`[Mail] Attempt ${i + 1}/${retries} to send to ${mailOptions.to}...`);
+            console.log(`[EmailJS] Attempt ${i + 1}/${retries} to send to ${mailOptions.to}...`);
             
-            const { data, error } = await resend.emails.send({
-                from: EMAIL_FROM,
-                to: mailOptions.to,
-                subject: mailOptions.subject,
-                html: mailOptions.html
+            const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            if (error) {
-                console.error(`[Mail] Resend API Error:`, error);
-                throw new Error(error.message);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`EmailJS API Error: ${response.status} ${errorText}`);
             }
 
-            console.log(`[Mail] Success! ID: ${data.id}`);
-            return data;
+            console.log(`[EmailJS] Success! Sent to ${mailOptions.to}`);
+            return true;
         } catch (err) {
-            console.error(`[Mail] Attempt ${i + 1} failed: ${err.message}`);
+            console.error(`[EmailJS] Attempt ${i + 1} failed: ${err.message}`);
             if (i === retries - 1) throw err;
-            // Wait 5 seconds before retry
-            await new Promise(res => setTimeout(res, 5000));
+            await new Promise(res => setTimeout(res, 3000));
         }
     }
 };
@@ -146,8 +160,23 @@ const query = async (text, params = []) => {
 };
 
 // ==========================================
-// 🛡️ INTEGRITY REPAIR MECHANISM
+// 🛡️ INTEGRITY & MIGRATIONS
 // ==========================================
+const ensureSchema = async () => {
+    // Create verification_codes table for holding pending registrations and resets
+    await query(`
+        CREATE TABLE IF NOT EXISTS verification_codes (
+            code TEXT PRIMARY KEY,
+            type TEXT NOT NULL, -- 'REGISTER' or 'RESET'
+            payload JSONB NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    `);
+    
+    // Cleanup old codes (older than 24h)
+    await query(`DELETE FROM verification_codes WHERE created_at < NOW() - INTERVAL '24 HOURS'`);
+};
+
 const repairUser = async (username, forcedEmail = null) => {
     try {
         const res = await query(`SELECT * FROM users WHERE username = $1`, [username]);
@@ -157,6 +186,7 @@ const repairUser = async (username, forcedEmail = null) => {
         let changed = false;
 
         // 1. Repair Email
+        // FORCE UPDATE if forcedEmail is provided and differs
         if (forcedEmail && user.email !== forcedEmail) {
             console.log(`[Integrity] Repairing email for ${username}: ${user.email} -> ${forcedEmail}`);
             user.email = forcedEmail;
@@ -187,6 +217,7 @@ const repairUser = async (username, forcedEmail = null) => {
 
 const ensureGlobalIntegrity = async () => {
     console.log('🛡️ [System] Running global data integrity check...');
+    await ensureSchema();
     await repairUser(ADMIN_USER, ADMIN_EMAIL);
 };
 
@@ -200,45 +231,84 @@ pool.connect().then(() => {
 // ==========================================
 const api = express.Router();
 
+// 1. REGISTER: Create pending verification
 api.post('/auth/register', async (req, res) => {
     const { username, password, tagline, email } = req.body;
     if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
     try {
+        // Check existing users
         const check = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(data->>'email') = LOWER($2)`, [username.trim(), email.trim()]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь или Email уже занят" });
 
+        // Generate Verification Code
+        const code = crypto.randomUUID();
+        const verificationLink = `${APP_URL}/verify?code=${code}&type=REGISTER`;
+
+        // Store in temporary table
+        const payload = { username: username.trim(), email: email.trim(), password: password.trim(), tagline };
+        await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'REGISTER', $2)`, [code, payload]);
+
+        // Send Email
+        await sendMailWithRetry({
+            to: email.trim(),
+            subject: 'NEO_ARCHIVE // VERIFICATION',
+            html: `
+                <div style="background:#000; color:#0f0; padding:20px; font-family:monospace; border:2px solid #0f0;">
+                    <h2 style="border-bottom:1px solid #0f0; padding-bottom:10px;">ПОДТВЕРЖДЕНИЕ РЕГИСТРАЦИИ</h2>
+                    <p>Для активации аккаунта <strong>${username}</strong> нажмите на ссылку ниже:</p>
+                    <p style="margin: 20px 0;">
+                        <a href="${verificationLink}" style="background:#0f0; color:#000; padding:10px 20px; text-decoration:none; font-weight:bold;">АКТИВИРОВАТЬ АККАУНТ</a>
+                    </p>
+                    <p style="font-size:10px; color:#555;">Или скопируйте: ${verificationLink}</p>
+                </div>
+            `
+        });
+
+        res.json({ success: true, message: "Ссылка для активации отправлена на Email" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2. VERIFY REGISTER: Move from pending to users
+api.post('/auth/verify-email', async (req, res) => {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: "Код обязателен" });
+
+    try {
+        const result = await query(`SELECT * FROM verification_codes WHERE code = $1 AND type = 'REGISTER'`, [code]);
+        if (result.rows.length === 0) return res.status(400).json({ error: "Неверный или истекший код" });
+
+        const { payload } = result.rows[0];
+        
+        // Double check collision just in case
+        const check = await query(`SELECT * FROM users WHERE LOWER(username) = LOWER($1)`, [payload.username]);
+        if (check.rows.length > 0) return res.status(400).json({ error: "Пользователь уже существует" });
+
         const newUser = {
-            username: username.trim(),
-            email: email.trim(),
-            password: password.trim(),
-            tagline: tagline || "Новый пользователь",
-            avatarUrl: `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`,
+            username: payload.username,
+            email: payload.email,
+            password: payload.password,
+            tagline: payload.tagline || "Новый пользователь",
+            avatarUrl: `https://ui-avatars.com/api/?name=${payload.username}&background=random&color=fff`,
             joinedDate: new Date().toLocaleDateString(),
             following: [], followers: [],
             achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
             settings: { theme: 'dark' },
-            isAdmin: shouldBeAdmin(username.trim(), email.trim())
+            isAdmin: shouldBeAdmin(payload.username, payload.email)
         };
 
         await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [newUser.username, newUser]);
-        
-        // Robust welcome email sending
-        sendMailWithRetry({
-            to: newUser.email,
-            subject: 'WELCOME TO THE ARCHIVE',
-            html: `<h1>Добро пожаловать, ${newUser.username}</h1><p>Вы успешно зарегистрировались в NeoArchive.</p>`
-        }).catch(e => console.error("[Mail] Welcome fail after all retries (ignored):", e.message));
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]); // Cleanup
 
         res.json(newUser);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 3. LOGIN (Unchanged)
 api.post('/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     const cleanId = identifier ? identifier.trim() : '';
 
-    // CRITICAL PROTECTION: Ensure admin user is okay
     if (cleanId.toLowerCase() === ADMIN_USER.toLowerCase() || cleanId.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         await repairUser(ADMIN_USER, ADMIN_EMAIL);
     }
@@ -254,49 +324,64 @@ api.post('/auth/login', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Ошибка сервера" }); }
 });
 
+// 4. RECOVER REQUEST: Create pending reset
 api.post('/auth/recover', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email обязателен" });
 
     try {
         const result = await query(`SELECT * FROM users WHERE TRIM(LOWER(data->>'email')) = LOWER($1)`, [email.trim()]);
-        if (result.rows.length === 0) return res.json({ success: true, message: "Проверьте почту" });
+        if (result.rows.length === 0) return res.json({ success: true, message: "Если аккаунт существует, письмо отправлено." });
 
         const user = mapRow(result.rows[0]);
-        const newPass = crypto.randomBytes(4).toString('hex');
-        
-        // 🚨 CRITICAL FALLBACK: Always log code in giant box in logs
-        console.log(`\n\n`);
-        console.log(`╔══════════════════════════════════════════════════════════════╗`);
-        console.log(`║                  NEO_ARCHIVE SECURITY ALERT                  ║`);
-        console.log(`╠══════════════════════════════════════════════════════════════╣`);
-        console.log(`║ User: ${user.username.padEnd(54)} ║`);
-        console.log(`║ Email: ${email.padEnd(53)} ║`);
-        console.log(`║ NEW_ACCESS_CODE: ${newPass.padEnd(44)} ║`);
-        console.log(`╚══════════════════════════════════════════════════════════════╝`);
-        console.log(`\n\n`);
+        const code = crypto.randomUUID();
+        const verificationLink = `${APP_URL}/verify?code=${code}&type=RESET`;
 
-        try {
-            await sendMailWithRetry({
-                to: email.trim(),
-                subject: 'PASSWORD RESET // NEO_ARCHIVE',
-                html: `<div style="font-family:monospace; background:#000; color:#0f0; padding:20px; border: 2px solid #0f0;">
-                    <h2 style="color: #0f0; border-bottom: 1px solid #0f0; padding-bottom: 10px;">NEO_ARCHIVE // RECOVERY PROTOCOL</h2>
-                    <p>Запрошен сброс пароля для узла <strong>${user.username}</strong>.</p>
-                    <div style="background: #111; border: 1px dashed #0f0; padding: 15px; margin: 20px 0; text-align: center;">
-                        <span style="font-size: 24px; letter-spacing: 5px;">${newPass}</span>
-                    </div>
-                    <p style="font-size: 10px; color: #008800;">Если вы не запрашивали этот код, немедленно проверьте целостность своего соединения.</p>
-                </div>`
-            });
-        } catch (mailError) {
-            console.error(`[Recover] Resend Failed after retries, but code is logged above.`);
-        }
+        await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { username: user.username, email: email.trim() }]);
 
-        user.password = newPass;
-        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [extractDataFields(user), user.username]);
-        res.json({ success: true, note: "Check server logs if email does not arrive." });
+        await sendMailWithRetry({
+            to: email.trim(),
+            subject: 'NEO_ARCHIVE // PASSWORD RESET',
+            html: `
+                <div style="background:#000; color:#fff; padding:20px; font-family:monospace; border:2px solid #fff;">
+                    <h2 style="border-bottom:1px solid #fff; padding-bottom:10px;">СБРОС ПАРОЛЯ</h2>
+                    <p>Для пользователя <strong>${user.username}</strong> запрошена смена пароля.</p>
+                    <p>Нажмите на ссылку, чтобы установить новый пароль:</p>
+                    <p style="margin: 20px 0;">
+                        <a href="${verificationLink}" style="background:#fff; color:#000; padding:10px 20px; text-decoration:none; font-weight:bold;">СМЕНИТЬ ПАРОЛЬ</a>
+                    </p>
+                    <p style="font-size:10px; color:#aaa;">Если вы этого не делали, проигнорируйте письмо.</p>
+                </div>
+            `
+        });
+
+        res.json({ success: true, message: "Инструкция отправлена на почту" });
     } catch (e) { res.status(500).json({ error: "Ошибка сервера" }); }
+});
+
+// 5. COMPLETE RESET: Update password
+api.post('/auth/complete-reset', async (req, res) => {
+    const { code, newPassword } = req.body;
+    if (!code || !newPassword) return res.status(400).json({ error: "Неверные данные" });
+
+    try {
+        const result = await query(`SELECT * FROM verification_codes WHERE code = $1 AND type = 'RESET'`, [code]);
+        if (result.rows.length === 0) return res.status(400).json({ error: "Ссылка устарела или недействительна" });
+
+        const { payload } = result.rows[0];
+        
+        // Update user
+        const userRes = await query(`SELECT * FROM users WHERE username = $1`, [payload.username]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
+
+        const user = mapRow(userRes.rows[0]);
+        user.password = newPassword.trim();
+
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [extractDataFields(user), user.username]);
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+
+        res.json({ success: true, message: "Пароль успешно изменен" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // TELEGRAM AUTH
