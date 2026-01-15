@@ -82,14 +82,16 @@ app.use(express.json({ limit: '50mb' }));
 // 📧 ПОЧТА (EmailJS REST API)
 // ==========================================
 const EMAILJS_SERVICE_ID = 'service_s27hkib';
-const EMAILJS_TEMPLATE_ID = 'template_ki5vwvp';
+// Updated Template IDs based on user input
+const EMAILJS_TEMPLATE_WELCOME = 'template_w89ggy9';
+const EMAILJS_TEMPLATE_RESET = 'template_gsrqbjb';
 const EMAILJS_PUBLIC_KEY = 'HC4Ig9E7XEh6tdwyD';
 const EMAILJS_PRIVATE_KEY = 'vBo7MgHf6y-8zDR4dchvg';
 
-const sendMailWithRetry = async (mailOptions, retries = 3) => {
+const sendMailWithRetry = async (mailOptions, templateId, retries = 3) => {
     const payload = {
         service_id: EMAILJS_SERVICE_ID,
-        template_id: EMAILJS_TEMPLATE_ID,
+        template_id: templateId,
         user_id: EMAILJS_PUBLIC_KEY,
         accessToken: EMAILJS_PRIVATE_KEY, 
         template_params: {
@@ -101,7 +103,7 @@ const sendMailWithRetry = async (mailOptions, retries = 3) => {
 
     for (let i = 0; i < retries; i++) {
         try {
-            console.log(`[EmailJS] Attempt ${i + 1}/${retries} to send to ${mailOptions.to}...`);
+            console.log(`[EmailJS] Attempt ${i + 1}/${retries} to send to ${mailOptions.to} using ${templateId}...`);
             
             const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
                 method: 'POST',
@@ -248,7 +250,7 @@ api.post('/auth/register', async (req, res) => {
         const payload = { username: username.trim(), email: email.trim(), password: password.trim(), tagline };
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'REGISTER', $2)`, [code, payload]);
 
-        // Send Email
+        // Send Email using WELCOME Template
         await sendMailWithRetry({
             to: email.trim(),
             subject: 'NEO_ARCHIVE // VERIFICATION',
@@ -262,10 +264,13 @@ api.post('/auth/register', async (req, res) => {
                     <p style="font-size:10px; color:#555;">Или скопируйте: ${verificationLink}</p>
                 </div>
             `
-        });
+        }, EMAILJS_TEMPLATE_WELCOME);
 
         res.json({ success: true, message: "Ссылка для активации отправлена на Email" });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("Register error:", e);
+        res.status(500).json({ error: e.message || "Ошибка сервера" }); 
+    }
 });
 
 // 2. VERIFY REGISTER: Move from pending to users
@@ -338,6 +343,7 @@ api.post('/auth/recover', async (req, res) => {
 
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { username: user.username, email: email.trim() }]);
 
+        // Send Email using RESET Template
         await sendMailWithRetry({
             to: email.trim(),
             subject: 'NEO_ARCHIVE // PASSWORD RESET',
@@ -352,10 +358,13 @@ api.post('/auth/recover', async (req, res) => {
                     <p style="font-size:10px; color:#aaa;">Если вы этого не делали, проигнорируйте письмо.</p>
                 </div>
             `
-        });
+        }, EMAILJS_TEMPLATE_RESET);
 
         res.json({ success: true, message: "Инструкция отправлена на почту" });
-    } catch (e) { res.status(500).json({ error: "Ошибка сервера" }); }
+    } catch (e) { 
+        console.error("Recover error:", e);
+        res.status(500).json({ error: e.message || "Ошибка сервера" }); 
+    }
 });
 
 // 5. COMPLETE RESET: Update password
