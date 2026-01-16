@@ -275,12 +275,12 @@ api.post('/auth/register', async (req, res) => {
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#000000; padding: 40px 0;">
     <tr>
       <td align="center">
-        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #22c55e; background-color:#0a0a0a; box-shadow: 0 0 30px rgba(34, 197, 94, 0.2);">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #22c55e; background-color:#0a0a0a; box-shadow: 0 0 30px rgba(34, 197, 94, 0.2); max-width: 100%;">
           
           <!-- Header -->
           <tr>
             <td style="background-color:#22c55e; padding: 20px; text-align:center;">
-              <h1 style="color:#000000; margin:0; font-size:28px; letter-spacing:4px; font-weight:900;">NEO_ARCHIVE</h1>
+              <h1 style="color:#000000; margin:0; font-size:28px; letter-spacing:4px; font-weight:900; font-family: sans-serif;">NEO_ARCHIVE</h1>
               <p style="color:#000000; margin:5px 0 0 0; font-size:12px; font-weight:bold;">// PROTOCOL v5.5 // INITIALIZATION</p>
             </td>
           </tr>
@@ -289,9 +289,9 @@ api.post('/auth/register', async (req, res) => {
           <tr>
             <td style="padding: 40px; color:#22c55e;">
               <p style="margin:0 0 20px 0; font-size:12px; opacity:0.7;">
-                > ESTABLISHING SECURE CONNECTION...<br>
-                > ENCRYPTING DATA STREAM...<br>
-                > TARGET: <span style="color:#ffffff;">${username}</span>
+                &gt; ESTABLISHING SECURE CONNECTION...<br>
+                &gt; ENCRYPTING DATA STREAM...<br>
+                &gt; TARGET: <span style="color:#ffffff;">${username}</span>
               </p>
 
               <h2 style="color:#ffffff; font-size:20px; margin:0 0 20px 0; border-bottom:1px dashed #22c55e; padding-bottom:10px;">
@@ -314,8 +314,8 @@ api.post('/auth/register', async (req, res) => {
               </table>
 
               <p style="margin:20px 0 0 0; font-size:10px; color:#666666;">
-                > MANUAL_OVERRIDE:<br>
-                <a href="${verificationLink}" style="color:#444444; text-decoration:none;">${verificationLink}</a>
+                &gt; MANUAL_OVERRIDE:<br>
+                <a href="${verificationLink}" style="color:#444444; text-decoration:none; word-break: break-all;">${verificationLink}</a>
               </p>
             </td>
           </tr>
@@ -427,12 +427,12 @@ api.post('/auth/recover', async (req, res) => {
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#000000; padding: 40px 0;">
     <tr>
       <td align="center">
-        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #ff3333; background-color:#0a0a0a; box-shadow: 0 0 40px rgba(255, 51, 51, 0.15);">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #ff3333; background-color:#0a0a0a; box-shadow: 0 0 40px rgba(255, 51, 51, 0.15); max-width: 100%;">
           
           <!-- Header -->
           <tr>
             <td style="background-color:#ff3333; padding: 15px; text-align:center;">
-              <h1 style="color:#000000; margin:0; font-size:24px; letter-spacing:4px; font-weight:900;">SECURITY_ALERT</h1>
+              <h1 style="color:#000000; margin:0; font-size:24px; letter-spacing:4px; font-weight:900; font-family: sans-serif;">SECURITY_ALERT</h1>
               <p style="color:#000000; margin:5px 0 0 0; font-size:10px; font-weight:bold;">// UNAUTHORIZED_ACCESS_PREVENTION // v9.0</p>
             </td>
           </tr>
@@ -441,9 +441,9 @@ api.post('/auth/recover', async (req, res) => {
           <tr>
             <td style="padding: 40px; color:#ff3333;">
               <p style="margin:0 0 20px 0; font-size:12px; color:#ff5555;">
-                > WARNING: KEY_RESET_INITIATED<br>
-                > USER_ID: <span style="color:#ffffff;">${user.username}</span><br>
-                > IP_TRACE: HIDDEN
+                &gt; WARNING: KEY_RESET_INITIATED<br>
+                &gt; USER_ID: <span style="color:#ffffff;">${user.username}</span><br>
+                &gt; IP_TRACE: HIDDEN
               </p>
 
               <h2 style="color:#ffffff; font-size:18px; margin:0 0 20px 0; border-bottom:1px solid #ff3333; padding-bottom:10px;">
@@ -467,8 +467,8 @@ api.post('/auth/recover', async (req, res) => {
               </table>
 
               <p style="margin:20px 0 0 0; font-size:10px; color:#666666;">
-                > SECURE_LINK:<br>
-                <a href="${verificationLink}" style="color:#664444; text-decoration:none;">${verificationLink}</a>
+                &gt; SECURE_LINK:<br>
+                <a href="${verificationLink}" style="color:#664444; text-decoration:none; word-break: break-all;">${verificationLink}</a>
               </p>
             </td>
           </tr>
@@ -560,7 +560,7 @@ api.post('/auth/telegram', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// HEALTH CHECK - ADDED TO FIX SSL/FETCH ERROR
+// HEALTH CHECK
 api.get('/health', async (req, res) => {
     try {
         const result = await query('SELECT count(*) FROM users');
@@ -591,18 +591,129 @@ api.get('/feed', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- NEW SPECIFIC ROUTES ---
+
+// USERS LIST & GET
+api.get('/users', async (req, res) => {
+    try {
+        // Return public profiles
+        const result = await query('SELECT * FROM users LIMIT 100');
+        res.json(result.rows.map(mapRow));
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+api.get('/users/:username', async (req, res) => {
+    try {
+        const result = await query('SELECT * FROM users WHERE username = $1', [req.params.username]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+        res.json(mapRow(result.rows[0]));
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// UPDATE USER (Special handling for PK=username)
+api.post('/users', async (req, res) => {
+    try {
+        const { username, ...data } = req.body;
+        // User update might come with or without explicit ID field matching username
+        const userKey = username || req.body.id; 
+        
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()`, [userKey, req.body]);
+        cache.del('users_global');
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// SYNC (Personal Data)
+api.get('/sync', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).json({ error: "Username required" });
+
+        // 1. Trade Requests (sender OR recipient)
+        // Note: trade_requests might be stored in 'generic' table if they were created via generic CRUD before explicit table exist.
+        // But let's assume 'trade_requests' table exists or handled via createCrud logic below.
+        // Wait, createCrud handles 'trade_requests' table. So we query that table.
+        // NOTE: If table doesn't exist yet, query might fail. But ensureSchema should handle it in full app.
+        // For now we assume tables exist as per createCrud usage.
+        
+        const trades = await query(`SELECT * FROM "trade_requests" WHERE data->>'sender' = $1 OR data->>'recipient' = $1`, [username]);
+        const collections = await query(`SELECT * FROM "collections" WHERE data->>'owner' = $1`, [username]);
+        const user = await query(`SELECT * FROM "users" WHERE username = $1`, [username]);
+
+        res.json({
+            tradeRequests: trades.rows.map(mapRow),
+            collections: collections.rows.map(mapRow),
+            users: user.rows.map(mapRow)
+        });
+    } catch (e) {
+        // If table doesn't exist, return empty arrays instead of crashing
+        console.warn("Sync error (tables might be missing):", e.message);
+        res.json({ tradeRequests: [], collections: [], users: [] });
+    }
+});
+
+// GENERIC CRUD WITH LIST SUPPORT
 const createCrud = (router, table) => {
+    // 1. LIST (GET /table?params...)
+    router.get(`/${table}`, async (req, res) => {
+        try {
+            let q = `SELECT * FROM "${table}"`;
+            let params = [];
+            let conditions = [];
+
+            // Specific filters
+            if (req.query.username) {
+                if (table === 'messages') {
+                    conditions.push(`(data->>'sender' = $${params.length + 1} OR data->>'receiver' = $${params.length + 1})`);
+                    params.push(req.query.username);
+                } else if (table === 'notifications') {
+                    conditions.push(`data->>'recipient' = $${params.length + 1}`);
+                    params.push(req.query.username);
+                }
+            }
+            
+            // Standard filters (owner, recipient, etc)
+            ['owner', 'recipient', 'sender'].forEach(field => {
+                if (req.query[field]) {
+                     conditions.push(`data->>'${field}' = $${params.length + 1}`);
+                     params.push(req.query[field]);
+                }
+            });
+
+            if (conditions.length > 0) {
+                q += ` WHERE ${conditions.join(' AND ')}`;
+            }
+
+            // Ordering & Limit
+            const limit = parseInt(req.query.limit) || 100;
+            // Updated_at is standard in our schema
+            q += ` ORDER BY updated_at DESC LIMIT ${limit}`;
+
+            const r = await query(q, params);
+            res.json(r.rows.map(mapRow));
+        } catch (e) { 
+            console.error(`List error for ${table}:`, e.message);
+            res.status(500).json({ error: e.message }); 
+        }
+    });
+
+    // 2. GET ONE
     router.get(`/${table}/:id`, async (req, res) => {
         const r = await query(`SELECT * FROM "${table}" WHERE id = $1`, [req.params.id]);
         if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
         res.json(mapRow(r.rows[0]));
     });
+
+    // 3. CREATE / UPDATE
     router.post(`/${table}`, async (req, res) => {
         const id = req.body.id;
+        if (!id) return res.status(400).json({ error: "ID required" });
         await query(`INSERT INTO "${table}" (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
         cache.flushPattern(`${table}:`);
         res.json({ success: true });
     });
+
+    // 4. DELETE
     router.delete(`/${table}/:id`, async (req, res) => {
         await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
         res.json({ success: true });
