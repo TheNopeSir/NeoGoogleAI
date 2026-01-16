@@ -154,7 +154,7 @@ const query = async (text, params = []) => {
     try {
         return await pool.query(text, params);
     } catch (err) {
-        console.error(`❌ [DB Error]`, err.message);
+        console.error(`❌ [DB Error] ${err.message}`, text);
         throw err;
     }
 };
@@ -163,6 +163,21 @@ const query = async (text, params = []) => {
 // 🛡️ INTEGRITY & MIGRATIONS
 // ==========================================
 const ensureSchema = async () => {
+    const commonSchema = `(
+        id TEXT PRIMARY KEY,
+        data JSONB,
+        updated_at TIMESTAMP DEFAULT NOW()
+    )`;
+
+    await query(`CREATE TABLE IF NOT EXISTS users ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS exhibits ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS collections ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS notifications ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS messages ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS guestbook ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS wishlist ${commonSchema}`);
+    await query(`CREATE TABLE IF NOT EXISTS trade_requests ${commonSchema}`);
+
     await query(`
         CREATE TABLE IF NOT EXISTS verification_codes (
             code TEXT PRIMARY KEY,
@@ -172,7 +187,6 @@ const ensureSchema = async () => {
         );
     `);
     
-    // New Table for Push Subscriptions
     await query(`
         CREATE TABLE IF NOT EXISTS push_subscriptions (
             username TEXT NOT NULL,
@@ -220,10 +234,6 @@ api.post('/auth/register', async (req, res) => {
         };
 
         await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
-        
-        // Email отправка (опционально)
-        // await sendMailWithRetry({ to: email, subject: 'Welcome to NeoArchive', html: 'Welcome!' }, EMAILJS_TEMPLATE_WELCOME);
-
         res.json(newUser);
     } catch (e) {
         console.error(e);
@@ -234,13 +244,13 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     try {
         const { identifier, password } = req.body;
+        // Using strict checking on columns to avoid 500 error if schema differs, but relying on ensureSchema
         const result = await query(`SELECT * FROM users WHERE (id = $1 OR data->>'email' = $1) AND data->>'password' = $2`, [identifier, password]);
         
         if (result.rows.length === 0) return res.status(401).json({ error: "Неверный логин или пароль" });
         
         const user = mapRow(result.rows[0]);
         
-        // Auto-fix admin status if needed
         if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
             user.isAdmin = true;
             await query(`UPDATE users SET data = $1 WHERE id = $2`, [user, user.username]);
@@ -262,8 +272,6 @@ api.post('/auth/recover', async (req, res) => {
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { email }]);
 
         const resetLink = `${APP_URL}/?code=${code}&type=RESET`;
-        
-        // Пытаемся отправить письмо
         try {
             await sendMailWithRetry({ 
                 to: email, 
@@ -272,10 +280,7 @@ api.post('/auth/recover', async (req, res) => {
             }, EMAILJS_TEMPLATE_RESET, { reset_link: resetLink });
         } catch (e) {
             console.error("Email send failed:", e);
-            // Для демо режима можно вернуть код в ответе, если почта не работает
-            // return res.json({ success: true, debugCode: code });
         }
-
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -288,7 +293,6 @@ api.post('/auth/telegram', async (req, res) => {
         const username = tgUser.username || `tg_${tgUser.id}`;
         
         const result = await query(`SELECT * FROM users WHERE id = $1`, [username]);
-        
         if (result.rows.length > 0) {
             return res.json(mapRow(result.rows[0]));
         }
@@ -313,26 +317,17 @@ api.post('/auth/telegram', async (req, res) => {
 });
 
 api.post('/auth/verify-email', async (req, res) => {
-    res.json({ success: true }); // Заглушка, так как в текущей форме регистрации верификация опциональна
+    res.json({ success: true });
 });
 
 api.post('/auth/complete-reset', async (req, res) => {
     try {
         const { code, newPassword } = req.body;
         const codeRes = await query(`SELECT * FROM verification_codes WHERE code = $1 AND type = 'RESET'`, [code]);
-        
         if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
         
         const email = codeRes.rows[0].payload.email;
-        
-        // Находим пользователя, обновляем пароль внутри JSONB data
-        // PostgreSQL JSONB update syntax:
-        await query(`
-            UPDATE users 
-            SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) 
-            WHERE data->>'email' = $2
-        `, [newPassword, email]);
-
+        await query(`UPDATE users SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) WHERE data->>'email' = $2`, [newPassword, email]);
         await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
         
         res.json({ success: true });
@@ -345,52 +340,116 @@ api.post('/auth/complete-reset', async (req, res) => {
 api.post('/push/subscribe', async (req, res) => {
     const { username, subscription } = req.body;
     if (!username || !subscription) return res.status(400).json({ error: "Missing data" });
-
     try {
-        await query(`
-            INSERT INTO push_subscriptions (username, endpoint, auth, p256dh)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (endpoint) DO UPDATE SET username = $1, created_at = NOW()
-        `, [username, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh]);
+        await query(`INSERT INTO push_subscriptions (username, endpoint, auth, p256dh) VALUES ($1, $2, $3, $4) ON CONFLICT (endpoint) DO UPDATE SET username = $1, created_at = NOW()`, [username, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh]);
         res.json({ success: true });
     } catch (e) {
-        console.error("Push subscribe error:", e);
         res.status(500).json({ error: e.message });
     }
 });
 
-// Helper to send push
 const sendPushToUser = async (username, title, body, url = '/') => {
     if (!vapidPublicKey || !vapidPrivateKey) return;
     try {
         const res = await query('SELECT * FROM push_subscriptions WHERE username = $1', [username]);
         if (res.rows.length === 0) return;
-
         const payload = JSON.stringify({ title, body, url });
-
         const promises = res.rows.map(row => {
-            const subscription = {
-                endpoint: row.endpoint,
-                keys: { auth: row.auth, p256dh: row.p256dh }
-            };
+            const subscription = { endpoint: row.endpoint, keys: { auth: row.auth, p256dh: row.p256dh } };
             return webpush.sendNotification(subscription, payload).catch(err => {
-                if (err.statusCode === 410) {
-                    // Subscription expired
-                    query('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint]);
-                }
-                console.error("Push send error", err);
+                if (err.statusCode === 410) query('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint]);
             });
         });
-
         await Promise.all(promises);
-    } catch (e) {
-        console.error("Send Push Error:", e);
-    }
+    } catch (e) { console.error("Send Push Error:", e); }
 };
 
-// ... (CRUD) ...
+// --- HEALTH & SYSTEM ---
+api.get('/health', async (req, res) => {
+    try {
+        const result = await query('SELECT count(*) FROM users');
+        res.json({ status: 'ok', totalUsers: parseInt(result.rows[0].count) });
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: e.message });
+    }
+});
 
-// GENERIC CRUD WITH NOTIFICATION HOOK
+// --- FEED & USERS (RESTORED) ---
+api.get('/feed', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1', [limit]);
+        res.json(result.rows.map(mapRow));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Sync endpoint for client background refresh
+api.get('/sync', async (req, res) => {
+    const { username } = req.query;
+    if(!username) return res.json({});
+    try {
+        const tradeRequests = await query(`SELECT * FROM trade_requests WHERE data->>'recipient' = $1 OR data->>'sender' = $1`, [username]);
+        res.json({
+            tradeRequests: tradeRequests.rows.map(mapRow)
+        });
+    } catch(e) {
+        res.status(500).json({error: e.message});
+    }
+});
+
+// Users CRUD (Explicitly added to fix 404s)
+api.get('/users', async (req, res) => {
+    try {
+        const result = await query('SELECT * FROM users LIMIT 100');
+        res.json(result.rows.map(mapRow));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/users', async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "ID required" });
+    try {
+        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Exhibits GET/DELETE (POST is separate)
+api.get('/exhibits', async (req, res) => {
+    try {
+        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100');
+        res.json(result.rows.map(mapRow));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.get('/exhibits/:id', async (req, res) => {
+    try {
+        const result = await query('SELECT * FROM exhibits WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+        res.json(mapRow(result.rows[0]));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.delete('/exhibits/:id', async (req, res) => {
+    try {
+        await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- GENERIC CRUD ---
 const createCrud = (router, table) => {
     router.get(`/${table}`, async (req, res) => {
         try {
@@ -429,11 +488,9 @@ const createCrud = (router, table) => {
     router.post(`/${table}`, async (req, res) => {
         const id = req.body.id;
         if (!id) return res.status(400).json({ error: "ID required" });
-        
         await query(`INSERT INTO "${table}" (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
         cache.flushPattern(`${table}:`);
 
-        // PUSH TRIGGER for Notifications
         if (table === 'notifications') {
             const notif = req.body;
             let title = 'NeoArchive';
@@ -442,13 +499,8 @@ const createCrud = (router, table) => {
             else if (notif.type === 'COMMENT') { title = 'Новый комментарий'; body = `@${notif.actor}: ${notif.targetPreview || '...'}`; }
             else if (notif.type === 'FOLLOW') { title = 'Новый подписчик'; body = `@${notif.actor} подписался на вас`; }
             else if (notif.type === 'TRADE_OFFER') { title = 'Предложение обмена'; body = `@${notif.actor} хочет обменяться`; }
-            
-            // Do not send push to self
-            if (notif.recipient !== notif.actor) {
-                sendPushToUser(notif.recipient, title, body, `/activity`);
-            }
+            if (notif.recipient !== notif.actor) sendPushToUser(notif.recipient, title, body, `/activity`);
         }
-
         res.json({ success: true });
     });
 
@@ -460,7 +512,7 @@ const createCrud = (router, table) => {
 
 ['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'].forEach(t => createCrud(api, t));
 
-// Special Exhibits Handler
+// Special Exhibits Handler (POST)
 api.post('/exhibits', async (req, res) => {
     try {
         const { id, imageUrls } = req.body;
