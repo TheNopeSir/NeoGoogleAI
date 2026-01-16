@@ -577,13 +577,23 @@ api.get('/feed', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 30;
         const offset = parseInt(req.query.offset) || 0;
+        // Updated query to include specs, comments, condition, and tradeStatus
         const result = await query(`
-            SELECT id, data->>'slug' as slug, data->>'title' as title, 
+            SELECT id, 
+            data->>'slug' as slug, 
+            data->>'title' as title, 
             substring(data->>'description', 1, 200) as description,
-            data->'imageUrls' as "imageUrls", data->>'category' as category,
-            data->>'owner' as owner, data->>'timestamp' as timestamp,
-            COALESCE((data->>'likes')::int, 0) as likes, data->'likedBy' as "likedBy",
-            COALESCE((data->>'views')::int, 0) as views
+            data->'imageUrls' as "imageUrls", 
+            data->>'category' as category,
+            data->>'owner' as owner, 
+            data->>'timestamp' as timestamp,
+            COALESCE((data->>'likes')::int, 0) as likes, 
+            data->'likedBy' as "likedBy",
+            COALESCE((data->>'views')::int, 0) as views,
+            data->'specs' as specs,
+            data->>'condition' as condition,
+            data->'comments' as comments,
+            data->>'tradeStatus' as "tradeStatus"
             FROM exhibits WHERE COALESCE((data->>'isDraft')::boolean, false) = false
             ORDER BY updated_at DESC LIMIT $1 OFFSET $2
         `, [limit, offset]);

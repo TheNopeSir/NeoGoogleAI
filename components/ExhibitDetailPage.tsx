@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2, 
   ArrowLeft, Eye, BookmarkPlus, Send, MessageCircle, CornerDownRight, Edit2, Link2, Sparkles, Video, Pin, RefreshCw,
-  Maximize2, ZoomIn, ZoomOut, Home, X
+  Maximize2, ZoomIn, ZoomOut, Home, X, Info, Award
 } from 'lucide-react';
 import { Exhibit, Comment, UserProfile } from '../types';
-import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG, getSimilarArtifacts } from '../constants';
+import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG, getSimilarArtifacts, CATEGORY_CONDITIONS } from '../constants';
 import { getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
@@ -560,21 +559,23 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     {/* Description */}
                     <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 mb-6 ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.description}</p>
 
-                    {/* ULTRA COMPACT SPECS GRID */}
+                    {/* DETAILED SPECS GRID */}
                     {nonEmptySpecs.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-2">ХАРАКТЕРИСТИКИ</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
+                            <h3 className={`font-pixel text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : 'opacity-70'}`}>
+                                <Info size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
+                            </h3>
+                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-4 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-black/20 border-white/5'}`}>
                                 {nonEmptySpecs.map(([key, val]) => (
-                                    <div key={key} className={`px-2 py-1.5 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-black/20 border-white/5'}`}>
-                                        <div className="text-[7px] uppercase opacity-40 font-pixel tracking-wider mb-0.5">{key}</div>
-                                        <div className="font-bold font-mono text-[10px] break-words leading-tight">{val}</div>
+                                    <div key={key} className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/5'}`}>
+                                        <div className={`text-[8px] uppercase tracking-wider mb-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}>{key}</div>
+                                        <div className={`font-bold font-mono text-xs break-words leading-tight ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>{val}</div>
                                     </div>
                                 ))}
                                 {exhibit.condition && (
-                                    <div className={`px-2 py-1.5 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-black/20 border-white/5'}`}>
-                                        <div className="text-[7px] uppercase opacity-40 font-pixel tracking-wider mb-0.5">СОСТОЯНИЕ</div>
-                                        <div className="font-bold font-mono text-[10px] text-green-400 uppercase leading-tight">{exhibit.condition}</div>
+                                    <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/5'}`}>
+                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}><Award size={10}/> СОСТОЯНИЕ</div>
+                                        <div className={`font-bold font-mono text-xs text-green-400 uppercase leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
                                     </div>
                                 )}
                             </div>
@@ -601,7 +602,10 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
                 {/* Comments Section */}
                 <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-dark-surface border-white/5'}`}>
-                    <h3 className="font-pixel text-xs mb-4 flex items-center gap-2"><MessageSquare size={14} /> ОБСУЖДЕНИЕ ({comments.length})</h3>
+                    <h3 className={`font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>
+                        <MessageSquare size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} /> 
+                        ОБСУЖДЕНИЕ ({comments.length})
+                    </h3>
                     
                     <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {comments.length === 0 ? ( <div className="text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed border-white/10 rounded-xl">ТИШИНА В ЭФИРЕ</div> ) : ( 
@@ -640,7 +644,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 value={commentText} 
                                 onChange={handleCommentChange} 
                                 placeholder={replyTo ? "Ваш ответ..." : "Написать комментарий..."}
-                                className={`flex-1 bg-black/40 border border-white/10 px-3 py-2.5 font-mono text-xs focus:outline-none focus:border-green-500 transition-colors rounded-lg`} 
+                                className={`flex-1 bg-black/40 border border-white/10 px-3 py-2.5 font-mono text-xs focus:outline-none focus:border-green-500 transition-colors rounded-lg ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`} 
                                 onKeyDown={(e) => { 
                                     if(e.key === 'Enter' && commentText.trim()) { 
                                         onPostComment(exhibit.id, commentText, replyTo?.id); 

@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Heart, Eye } from 'lucide-react';
+import { Heart, Eye, MessageSquare } from 'lucide-react';
 import { Exhibit } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
@@ -27,6 +26,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   // Simple Like Logic
   const isLiked = item.likedBy?.includes(currentUsername) || false;
   const likeCount = item.likes || 0;
+  const commentCount = item.comments?.length || 0;
   
   // Trade Status Logic
   const tradeStatus = item.tradeStatus || 'NONE';
@@ -87,10 +87,14 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                         <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
                         <span className="truncate max-w-[80px] cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
                     </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
+                            <MessageSquare size={10} /> {commentCount}
+                        </div>
                         <button 
                             onClick={(e) => { e.stopPropagation(); onReact(); }}
                             className="flex items-center gap-1 hover:text-[#FFD700]"
+                            title="Лайки"
                         >
                             <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
                         </button>
@@ -153,7 +157,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
         
         {/* Specs Overlay - improved visibility */}
         {specEntries.length > 0 ? (
-            <div className={`mb-3 space-y-1.5 p-2 rounded-lg ${isXP ? 'bg-white border border-gray-300' : 'bg-white/5 border border-white/5'}`}>
+            <div className={`mb-3 space-y-1.5 p-2 rounded-lg ${isXP ? 'bg-white border border-gray-300' : 'bg-white/10 border border-white/10'}`}>
                 {specEntries.map(([key, val]) => (
                     <div key={key} className="flex justify-between items-baseline text-[9px]">
                         <span className={`uppercase font-mono opacity-50 mr-2 truncate max-w-[40%] ${isXP ? 'text-gray-600' : ''}`}>{key}:</span>
@@ -176,13 +180,17 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
             </div>
             
             <div className="flex items-center gap-3">
-                <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`}>
+                <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Просмотры">
                     <Eye size={12} /> <span>{uniqueViews}</span>
+                </div>
+                <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
+                    <MessageSquare size={12} /> <span>{commentCount}</span>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onReact(); }}
                         className={`flex items-center gap-1 text-[10px] transition-colors ${isLiked ? 'text-red-500' : (isXP ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
+                        title="Лайки"
                     >
                         <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
                     </button>
