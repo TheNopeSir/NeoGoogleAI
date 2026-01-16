@@ -48,7 +48,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       return (
         <div 
             onClick={() => onClick(item)}
-            className="group cursor-pointer flex flex-col h-full min-h-[240px] bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden"
+            className="group cursor-pointer flex flex-col h-full bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden"
         >
             {/* Winamp Title Bar */}
             <div className="h-4 bg-gradient-to-r from-wa-blue-light to-wa-blue-dark flex items-center justify-between px-1 cursor-default select-none">
@@ -69,35 +69,33 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
                 </div>
 
-                {/* Specs in Winamp style */}
-                {specEntries.length > 0 && (
-                    <div className="mb-2 space-y-0.5">
-                        {specEntries.map(([key, val]) => (
-                            <div key={key} className="flex justify-between text-[9px] font-winamp text-wa-green leading-none">
-                                <span className="opacity-70 uppercase mr-1">{key.substring(0, 8)}:</span>
-                                <span className="truncate flex-1 text-right">{String(val)}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                {/* Specs removed to save space as requested */}
 
                 {/* Meta Info - Playlist Style */}
-                <div className="flex justify-between items-end mt-auto font-winamp text-wa-green text-[12px] leading-none pt-2 border-t border-[#505050]">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-[#00A000]">{item.views} kbps</span>
-                        <span className="truncate max-w-[80px] cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}>{item.owner}.mp3</span>
+                <div className="mt-auto pt-2 border-t border-[#505050] font-winamp text-wa-green leading-none">
+                    {/* Username Line */}
+                    <div 
+                        className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white" 
+                        onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}
+                    >
+                        @{item.owner}
                     </div>
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
-                            <MessageSquare size={10} /> {commentCount}
+                    
+                    {/* Stats Line */}
+                    <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-[#00A000]">{item.views} kbps</span>
+                        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
+                                <MessageSquare size={10} /> {commentCount}
+                            </div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onReact(); }}
+                                className="flex items-center gap-1 hover:text-[#FFD700]"
+                                title="Лайки"
+                            >
+                                <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
+                            </button>
                         </div>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onReact(); }}
-                            className="flex items-center gap-1 hover:text-[#FFD700]"
-                            title="Лайки"
-                        >
-                            <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
-                        </button>
                     </div>
                 </div>
             </div>
