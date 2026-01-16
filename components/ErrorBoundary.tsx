@@ -11,26 +11,23 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    };
-  }
+  public state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+  };
 
-  static getDerivedStateFromError(error: Error): Partial<State> {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("🔴 [ErrorBoundary] Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="fixed inset-0 z-[10000] p-4 md:p-10 bg-black text-green-500 font-mono h-screen overflow-auto">

@@ -88,7 +88,7 @@ const EMAILJS_TEMPLATE_RESET = 'template_gsrqbjb';
 const EMAILJS_PUBLIC_KEY = 'HC4Ig9E7XEh6tdwyD';
 const EMAILJS_PRIVATE_KEY = 'vBo7MgHf6y-8zDR4dchvg';
 
-const sendMailWithRetry = async (mailOptions, templateId, retries = 3) => {
+const sendMailWithRetry = async (mailOptions, templateId, extraParams = {}, retries = 3) => {
     // Add multiple common variable names for the recipient email to handle various template configurations
     const payload = {
         service_id: EMAILJS_SERVICE_ID,
@@ -101,7 +101,8 @@ const sendMailWithRetry = async (mailOptions, templateId, retries = 3) => {
             recipient: mailOptions.to,// Another alternative
             user_email: mailOptions.to, // Another one
             subject: mailOptions.subject,
-            message: mailOptions.html // HTML template rendering
+            message: mailOptions.html, // Legacy: HTML template rendering
+            ...extraParams // Inject specific variables (username, verification_link) for the dashboard template
         }
     };
 
@@ -263,21 +264,80 @@ api.post('/auth/register', async (req, res) => {
         const payload = { username: username.trim(), email: email.trim(), password: password.trim(), tagline };
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'REGISTER', $2)`, [code, payload]);
 
-        // Send Email using WELCOME Template
+        // Send Email using WELCOME Template with NEO_ARCHIVE HTML STYLE
         await sendMailWithRetry({
             to: email.trim(),
-            subject: 'NEO_ARCHIVE // VERIFICATION',
+            subject: 'NEO_ARCHIVE: ACCESS_TOKEN_REQUIRED',
             html: `
-                <div style="background:#000; color:#0f0; padding:20px; font-family:monospace; border:2px solid #0f0;">
-                    <h2 style="border-bottom:1px solid #0f0; padding-bottom:10px;">ПОДТВЕРЖДЕНИЕ РЕГИСТРАЦИИ</h2>
-                    <p>Для активации аккаунта <strong>${username}</strong> нажмите на ссылку ниже:</p>
-                    <p style="margin: 20px 0;">
-                        <a href="${verificationLink}" style="background:#0f0; color:#000; padding:10px 20px; text-decoration:none; font-weight:bold;">АКТИВИРОВАТЬ АККАУНТ</a>
-                    </p>
-                    <p style="font-size:10px; color:#555;">Или скопируйте: ${verificationLink}</p>
-                </div>
+<!DOCTYPE html>
+<html>
+<body style="margin:0; padding:0; background-color:#000000; font-family:'Courier New', Courier, monospace;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#000000; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #22c55e; background-color:#0a0a0a; box-shadow: 0 0 30px rgba(34, 197, 94, 0.2);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#22c55e; padding: 20px; text-align:center;">
+              <h1 style="color:#000000; margin:0; font-size:28px; letter-spacing:4px; font-weight:900;">NEO_ARCHIVE</h1>
+              <p style="color:#000000; margin:5px 0 0 0; font-size:12px; font-weight:bold;">// PROTOCOL v5.5 // INITIALIZATION</p>
+            </td>
+          </tr>
+
+          <!-- Matrix Content -->
+          <tr>
+            <td style="padding: 40px; color:#22c55e;">
+              <p style="margin:0 0 20px 0; font-size:12px; opacity:0.7;">
+                > ESTABLISHING SECURE CONNECTION...<br>
+                > ENCRYPTING DATA STREAM...<br>
+                > TARGET: <span style="color:#ffffff;">${username}</span>
+              </p>
+
+              <h2 style="color:#ffffff; font-size:20px; margin:0 0 20px 0; border-bottom:1px dashed #22c55e; padding-bottom:10px;">
+                IDENTITY_VERIFICATION
+              </h2>
+
+              <p style="font-size:14px; line-height:1.6; margin-bottom:30px; color:#cccccc;">
+                Ваша цифровая подпись была загружена в сеть. Для активации учетной записи и доступа к архиву требуется подтверждение нейро-линка.
+              </p>
+
+              <!-- Action Button -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <a href="${verificationLink}" style="background-color:#000000; border: 2px solid #22c55e; color:#22c55e; padding: 15px 40px; text-decoration:none; font-weight:bold; font-size:16px; letter-spacing:2px; display:inline-block; text-transform:uppercase;">
+                      [ ПОДТВЕРДИТЬ ]
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:20px 0 0 0; font-size:10px; color:#666666;">
+                > MANUAL_OVERRIDE:<br>
+                <a href="${verificationLink}" style="color:#444444; text-decoration:none;">${verificationLink}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0f0f0f; padding: 15px; text-align:center; border-top:1px solid #22c55e; color:#444444; font-size:10px;">
+              NEO_ARCHIVE SYSTEMS &copy; 2024<br>
+              TERMINAL_ID: 884-XJ
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
             `
-        }, EMAILJS_TEMPLATE_WELCOME);
+        }, EMAILJS_TEMPLATE_WELCOME, { 
+            username: username, 
+            verification_link: verificationLink 
+        });
 
         res.json({ success: true, message: "Ссылка для активации отправлена на Email" });
     } catch (e) { 
@@ -356,22 +416,81 @@ api.post('/auth/recover', async (req, res) => {
 
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { username: user.username, email: email.trim() }]);
 
-        // Send Email using RESET Template
+        // Send Email using RESET Template - RED ALERT STYLE
         await sendMailWithRetry({
             to: email.trim(),
-            subject: 'NEO_ARCHIVE // PASSWORD RESET',
+            subject: 'NEO_ARCHIVE: SECURITY ALERT',
             html: `
-                <div style="background:#000; color:#fff; padding:20px; font-family:monospace; border:2px solid #fff;">
-                    <h2 style="border-bottom:1px solid #fff; padding-bottom:10px;">СБРОС ПАРОЛЯ</h2>
-                    <p>Для пользователя <strong>${user.username}</strong> запрошена смена пароля.</p>
-                    <p>Нажмите на ссылку, чтобы установить новый пароль:</p>
-                    <p style="margin: 20px 0;">
-                        <a href="${verificationLink}" style="background:#fff; color:#000; padding:10px 20px; text-decoration:none; font-weight:bold;">СМЕНИТЬ ПАРОЛЬ</a>
-                    </p>
-                    <p style="font-size:10px; color:#aaa;">Если вы этого не делали, проигнорируйте письмо.</p>
-                </div>
+<!DOCTYPE html>
+<html>
+<body style="margin:0; padding:0; background-color:#000000; font-family:'Courier New', Courier, monospace;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#000000; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 2px solid #ff3333; background-color:#0a0a0a; box-shadow: 0 0 40px rgba(255, 51, 51, 0.15);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#ff3333; padding: 15px; text-align:center;">
+              <h1 style="color:#000000; margin:0; font-size:24px; letter-spacing:4px; font-weight:900;">SECURITY_ALERT</h1>
+              <p style="color:#000000; margin:5px 0 0 0; font-size:10px; font-weight:bold;">// UNAUTHORIZED_ACCESS_PREVENTION // v9.0</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px; color:#ff3333;">
+              <p style="margin:0 0 20px 0; font-size:12px; color:#ff5555;">
+                > WARNING: KEY_RESET_INITIATED<br>
+                > USER_ID: <span style="color:#ffffff;">${user.username}</span><br>
+                > IP_TRACE: HIDDEN
+              </p>
+
+              <h2 style="color:#ffffff; font-size:18px; margin:0 0 20px 0; border-bottom:1px solid #ff3333; padding-bottom:10px;">
+                CREDENTIAL RECOVERY
+              </h2>
+
+              <p style="font-size:14px; line-height:1.6; margin-bottom:30px; color:#cccccc;">
+                Система зафиксировала запрос на обновление ключей шифрования (сброс пароля). 
+                Если это были не вы, <span style="color:#ff3333; font-weight:bold;">НЕМЕДЛЕННО ИГНОРИРУЙТЕ</span> это сообщение.
+              </p>
+
+              <!-- Action Button -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <a href="${verificationLink}" style="background-color:#000000; border: 2px solid #ff3333; color:#ff3333; padding: 15px 30px; text-decoration:none; font-weight:bold; font-size:14px; letter-spacing:2px; display:inline-block; text-transform:uppercase;">
+                      [ СБРОСИТЬ_КЛЮЧИ ]
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:20px 0 0 0; font-size:10px; color:#666666;">
+                > SECURE_LINK:<br>
+                <a href="${verificationLink}" style="color:#664444; text-decoration:none;">${verificationLink}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0f0f0f; padding: 15px; text-align:center; border-top:1px dashed #ff3333; color:#444444; font-size:10px;">
+              NEO_ARCHIVE SECURITY DIVISION<br>
+              TRACE_ID: ${crypto.randomUUID().slice(0,8).toUpperCase()}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
             `
-        }, EMAILJS_TEMPLATE_RESET);
+        }, EMAILJS_TEMPLATE_RESET, { 
+            username: user.username, 
+            verification_link: verificationLink 
+        });
 
         res.json({ success: true, message: "Инструкция отправлена на почту" });
     } catch (e) { 
