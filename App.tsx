@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
@@ -153,19 +154,17 @@ export default function App() {
   const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
       
-      // Handle CREATE_ARTIFACT specifically to avoid state contamination
       if (newView === 'CREATE_ARTIFACT') {
           if (params?.initialData) {
               setSelectedExhibit(params.initialData);
           } else {
-              setSelectedExhibit(null); // Clear for new creation
+              setSelectedExhibit(null); 
           }
       } else if (params?.item) { 
           setSelectedExhibit(params.item); 
           setHighlightCommentId(params.highlightCommentId); 
       }
 
-      // Handle CREATE_COLLECTION specifically
       if (newView === 'CREATE_COLLECTION') {
           if (params?.initialData) {
               setSelectedCollection(params.initialData);
@@ -232,7 +231,7 @@ export default function App() {
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
           } else { 
-              await syncFromUrl(); // Check URL even if no user, might be verification
+              await syncFromUrl();
               setView('AUTH'); 
           }
       } catch (e) { setView('AUTH'); } 
@@ -262,46 +261,57 @@ export default function App() {
     navigateTo('EXHIBIT', { item: updatedItem });
   };
 
+  // ROBUST REACTION HANDLER - FIXES DUPLICATION
   const handleReaction = async (id: string) => {
     if (!user) return;
-    const item = exhibits.find(e => e.id === id);
-    if (item) {
-        const currentReactions = item.reactions || [];
-        const hasLiked = currentReactions.some(r => r.type === 'LIKE' && r.users.includes(user.username));
-        
-        let newReactions: Reaction[];
-        if (hasLiked) {
-             newReactions = currentReactions.map(r => 
-                r.type === 'LIKE' ? { ...r, users: r.users.filter(u => u !== user.username) } : r
-             ).filter(r => r.users.length > 0);
-        } else {
-             const likeReaction = currentReactions.find(r => r.type === 'LIKE');
-             if (likeReaction) {
-                 newReactions = currentReactions.map(r => 
-                    r.type === 'LIKE' ? { ...r, users: [...r.users, user.username] } : r
-                 );
-             } else {
-                 newReactions = [...currentReactions, { type: 'LIKE', users: [user.username] }];
-             }
-        }
-        
-        const likeCount = newReactions.reduce((acc, r) => r.type === 'LIKE' ? acc + r.users.length : acc, 0);
-        const likedBy = newReactions.find(r => r.type === 'LIKE')?.users || [];
+    
+    // Find in exhibits state
+    const itemIndex = exhibits.findIndex(e => e.id === id);
+    if (itemIndex === -1) return;
+    
+    const item = exhibits[itemIndex];
+    
+    // Using Set ensures unique users
+    const currentLikes = new Set(item.likedBy || []);
+    
+    // Check reactions for legacy migration/consistency
+    item.reactions?.filter(r => r.type === 'LIKE').forEach(r => {
+        r.users.forEach(u => currentLikes.add(u));
+    });
 
-        const updatedItem = {
-            ...item,
-            reactions: newReactions,
-            likes: likeCount,
-            likedBy: likedBy
-        };
-        
-        setExhibits(prev => prev.map(ex => ex.id === id ? updatedItem : ex));
-        if (selectedExhibit?.id === id) setSelectedExhibit(updatedItem);
-        await db.updateExhibit(updatedItem);
-        
-        if (!hasLiked && item.owner !== user.username) {
-            db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
-        }
+    const isLiked = currentLikes.has(user.username);
+    if (isLiked) {
+        currentLikes.delete(user.username);
+    } else {
+        currentLikes.add(user.username);
+    }
+
+    const newLikedBy = Array.from(currentLikes);
+    const newReactions = [{ type: 'LIKE' as const, users: newLikedBy }];
+
+    const updatedItem = {
+        ...item,
+        likes: newLikedBy.length,
+        likedBy: newLikedBy,
+        reactions: newReactions
+    };
+
+    // Optimistic Update
+    const newExhibits = [...exhibits];
+    newExhibits[itemIndex] = updatedItem;
+    setExhibits(newExhibits);
+
+    // Also update selectedExhibit if it matches
+    if (selectedExhibit?.id === id) {
+        setSelectedExhibit(updatedItem);
+    }
+
+    // Persist
+    await db.updateExhibit(updatedItem);
+
+    // Notify Owner (only if liking)
+    if (!isLiked && item.owner !== user.username) {
+        db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
     }
   };
 
@@ -409,15 +419,13 @@ export default function App() {
 
         {user && (
             <>
-                {/* DESKTOP NAV (Hidden on Mobile) */}
+                {/* DESKTOP NAV */}
                 <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
-                    {/* Logo Area */}
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
                         <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
                         <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
                     </div>
 
-                    {/* Center Links */}
                     <div className="flex items-center gap-8">
                         <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
                             <LayoutGrid size={18} /> ЛЕНТА
@@ -434,7 +442,6 @@ export default function App() {
                         </button>
                     </div>
 
-                    {/* Right Actions */}
                     <div className="flex items-center gap-6">
                         <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><Search size={20}/></button>
                         <div className="h-6 w-[1px] bg-white/10"></div>
@@ -448,7 +455,7 @@ export default function App() {
                     </div>
                 </nav>
 
-                {/* MOBILE NAV (Hidden on Desktop) */}
+                {/* MOBILE NAV */}
                 <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
                     <div className="flex justify-around items-center h-16">
                         <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
@@ -466,7 +473,6 @@ export default function App() {
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
             )}
 
-            {/* Other views omitted for brevity, logic remains same */}
             {view === 'ACTIVITY' && user && (
                 <div className="p-4 pb-24">
                     <ActivityView notifications={notifications} messages={messages} currentUser={user} theme={theme} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onExhibitClick={(id, commentId) => { const item = exhibits.find(e => e.id === id); if (item) navigateTo('EXHIBIT', { item, highlightCommentId: commentId }); }} onChatClick={(u) => navigateTo('DIRECT_CHAT', { username: u })} exhibits={exhibits} />
@@ -515,6 +521,7 @@ export default function App() {
                 <DirectChat theme={theme} currentUser={user} partnerUsername={viewedProfileUsername} messages={messages.filter(m => (m.sender.toLowerCase() === user.username.toLowerCase() && m.receiver.toLowerCase() === viewedProfileUsername.toLowerCase()) || (m.sender.toLowerCase() === viewedProfileUsername.toLowerCase() && m.receiver.toLowerCase() === user.username.toLowerCase()))} onBack={handleBack} onSendMessage={async (text) => { const msg = { id: crypto.randomUUID(), sender: user.username, receiver: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveMessage(msg); }} />
             )}
 
+            {/* Other views (Create, Edit etc) */}
             {view === 'CREATE_HUB' && (
                 <div className="p-6 pb-24 animate-in slide-in-from-bottom-10">
                     <div className="flex items-center justify-between mb-8">
@@ -536,12 +543,7 @@ export default function App() {
                       onBack={handleBack} 
                       onSave={async (item) => { 
                         if (!user) return; 
-                        
-                        // Preserve original owner if editing (unless admin explicitly changes it via adminOwner prop)
-                        // If creating new (no ID), set owner to current user
-                        // adminOwner comes from CreateArtifactView if admin selected a new owner
                         const ownerToSet = item.adminOwner || (item.id ? item.owner : user.username);
-
                         const newItem = { 
                           ...item, 
                           id: item.id || crypto.randomUUID(), 
@@ -550,13 +552,9 @@ export default function App() {
                           likes: item.likes || 0, 
                           views: item.views || 0 
                         }; 
-                        
-                        // Clean up temporary field
                         if (newItem.adminOwner) delete newItem.adminOwner;
-
                         if (item.id) await db.updateExhibit(newItem); 
                         else await db.saveExhibit(newItem); 
-                        
                         handleBack(); 
                       }} 
                       initialData={selectedExhibit} 
@@ -595,7 +593,49 @@ export default function App() {
             )}
             
             {view === 'USER_PROFILE' && user && (
-                <UserProfileView user={user} viewedProfileUsername={viewedProfileUsername} exhibits={exhibits} collections={collections} guestbook={guestbook} theme={theme} onBack={handleBack} onLogout={() => { db.logoutUser(); setView('AUTH'); }} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} onExhibitClick={handleExhibitClick} onReact={handleReaction} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onShareCollection={() => {}} onViewHallOfFame={() => setView('HALL_OF_FAME')} onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} refreshData={refreshData} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} editTagline={editTagline} setEditTagline={setEditTagline} editBio={editBio} setEditBio={setEditBio} editStatus={editStatus} setEditStatus={setEditStatus} editTelegram={editTelegram} setEditTelegram={setEditTelegram} editPassword={editPassword} setEditPassword={setEditPassword} onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} guestbookInput={guestbookInput} setGuestbookInput={setGuestbookInput} guestbookInputRef={guestbookInputRef} profileTab={profileTab} setProfileTab={setProfileTab} onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} onThemeChange={(t) => setTheme(t)} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <UserProfileView 
+                    user={user} 
+                    viewedProfileUsername={viewedProfileUsername} 
+                    exhibits={exhibits} 
+                    collections={collections} 
+                    guestbook={guestbook} 
+                    theme={theme} 
+                    onBack={handleBack} 
+                    onLogout={() => { db.logoutUser(); setView('AUTH'); }} 
+                    onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } } }} 
+                    onChat={(u) => navigateTo('DIRECT_CHAT', { username: u })} 
+                    onExhibitClick={handleExhibitClick} 
+                    onReact={handleReaction} 
+                    onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} 
+                    onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} 
+                    onShareCollection={() => {}} 
+                    onViewHallOfFame={() => setView('HALL_OF_FAME')} 
+                    onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} 
+                    refreshData={refreshData} 
+                    isEditingProfile={isEditingProfile} 
+                    setIsEditingProfile={setIsEditingProfile} 
+                    editTagline={editTagline} 
+                    setEditTagline={setEditTagline} 
+                    editBio={editBio} 
+                    setEditBio={setEditBio} 
+                    editStatus={editStatus} 
+                    setEditStatus={setEditStatus} 
+                    editTelegram={editTelegram} 
+                    setEditTelegram={setEditTelegram} 
+                    editPassword={editPassword} 
+                    setEditPassword={setEditPassword} 
+                    onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} 
+                    onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} 
+                    onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} 
+                    guestbookInput={guestbookInput} 
+                    setGuestbookInput={setGuestbookInput} 
+                    guestbookInputRef={guestbookInputRef} 
+                    profileTab={profileTab} 
+                    setProfileTab={setProfileTab} 
+                    onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} 
+                    onThemeChange={(t) => setTheme(t)} 
+                    onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} 
+                />
             )}
 
             {view === 'HALL_OF_FAME' && user && (
