@@ -37,12 +37,16 @@ const vapidPublicKey = process.env.VITE_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
 if (vapidPublicKey && vapidPrivateKey) {
-    webpush.setVapidDetails(
-        `mailto:${ADMIN_EMAIL}`,
-        vapidPublicKey,
-        vapidPrivateKey
-    );
-    console.log('✅ [Push] VAPID Keys Configured');
+    try {
+        webpush.setVapidDetails(
+            `mailto:${ADMIN_EMAIL}`,
+            vapidPublicKey,
+            vapidPrivateKey
+        );
+        console.log('✅ [Push] VAPID Keys Configured');
+    } catch (e) {
+        console.error('⚠️ [Push] Error configuring VAPID:', e.message);
+    }
 } else {
     console.warn('⚠️ [Push] VAPID Keys Missing. Push notifications disabled.');
 }
@@ -169,14 +173,33 @@ const ensureSchema = async () => {
         updated_at TIMESTAMP DEFAULT NOW()
     )`;
 
-    await query(`CREATE TABLE IF NOT EXISTS users ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS exhibits ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS collections ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS notifications ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS messages ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS guestbook ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS wishlist ${commonSchema}`);
-    await query(`CREATE TABLE IF NOT EXISTS trade_requests ${commonSchema}`);
+    // Tables logic
+    const tables = ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'];
+    
+    // Ensure USERS table (special case: might have username instead of id)
+    await query(`CREATE TABLE IF NOT EXISTS users (
+        username TEXT PRIMARY KEY,
+        data JSONB,
+        updated_at TIMESTAMP DEFAULT NOW()
+    )`);
+
+    // Ensure other tables
+    for (const table of tables) {
+        await query(`CREATE TABLE IF NOT EXISTS "${table}" ${commonSchema}`);
+        
+        // Add 'id' column to tables if missing (except users initially)
+        try {
+            await query(`ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS id TEXT`);
+        } catch(e) {}
+    }
+
+    // Attempt to add 'id' to users for consistency (alias for username)
+    try {
+        await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS id TEXT`);
+        await query(`UPDATE users SET id = username WHERE id IS NULL`);
+    } catch (e) {
+        console.warn("[Schema] Could not alias username to id on users table (non-critical):", e.message);
+    }
 
     await query(`
         CREATE TABLE IF NOT EXISTS verification_codes (
@@ -217,7 +240,8 @@ api.post('/auth/register', async (req, res) => {
         const { username, password, tagline, email } = req.body;
         if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
-        const check = await query(`SELECT id FROM users WHERE id = $1 OR data->>'email' = $2`, [username, email]);
+        // Use 'username' column, fallback to 'id' if 'username' not found (hybrid support)
+        const check = await query(`SELECT * FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
         if (check.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
 
         const newUser = {
@@ -233,7 +257,12 @@ api.post('/auth/register', async (req, res) => {
             isAdmin: shouldBeAdmin(username, email)
         };
 
-        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        // Insert using username
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        
+        // Also try to set ID if column exists
+        try { await query(`UPDATE users SET id = username WHERE username = $1`, [username]); } catch(e){}
+
         res.json(newUser);
     } catch (e) {
         console.error(e);
@@ -244,8 +273,13 @@ api.post('/auth/register', async (req, res) => {
 api.post('/auth/login', async (req, res) => {
     try {
         const { identifier, password } = req.body;
-        // Using strict checking on columns to avoid 500 error if schema differs, but relying on ensureSchema
-        const result = await query(`SELECT * FROM users WHERE (id = $1 OR data->>'email' = $1) AND data->>'password' = $2`, [identifier, password]);
+        
+        // Updated query to use 'username' column instead of 'id'
+        const result = await query(`
+            SELECT * FROM users 
+            WHERE (username = $1 OR data->>'email' = $1) 
+            AND data->>'password' = $2
+        `, [identifier, password]);
         
         if (result.rows.length === 0) return res.status(401).json({ error: "Неверный логин или пароль" });
         
@@ -253,11 +287,12 @@ api.post('/auth/login', async (req, res) => {
         
         if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
             user.isAdmin = true;
-            await query(`UPDATE users SET data = $1 WHERE id = $2`, [user, user.username]);
+            await query(`UPDATE users SET data = $1 WHERE username = $2`, [user, user.username]);
         }
 
         res.json(user);
     } catch (e) {
+        console.error("Login Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -292,7 +327,7 @@ api.post('/auth/telegram', async (req, res) => {
         const tgUser = req.body;
         const username = tgUser.username || `tg_${tgUser.id}`;
         
-        const result = await query(`SELECT * FROM users WHERE id = $1`, [username]);
+        const result = await query(`SELECT * FROM users WHERE username = $1`, [username]);
         if (result.rows.length > 0) {
             return res.json(mapRow(result.rows[0]));
         }
@@ -309,7 +344,7 @@ api.post('/auth/telegram', async (req, res) => {
             settings: { theme: 'dark' }
         };
 
-        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
         res.json(newUser);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -374,7 +409,7 @@ api.get('/health', async (req, res) => {
     }
 });
 
-// --- FEED & USERS (RESTORED) ---
+// --- FEED & USERS ---
 api.get('/feed', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
@@ -385,7 +420,6 @@ api.get('/feed', async (req, res) => {
     }
 });
 
-// Sync endpoint for client background refresh
 api.get('/sync', async (req, res) => {
     const { username } = req.query;
     if(!username) return res.json({});
@@ -399,7 +433,7 @@ api.get('/sync', async (req, res) => {
     }
 });
 
-// Users CRUD (Explicitly added to fix 404s)
+// USERS CRUD (Fixed to use username)
 api.get('/users', async (req, res) => {
     try {
         const result = await query('SELECT * FROM users LIMIT 100');
@@ -410,10 +444,12 @@ api.get('/users', async (req, res) => {
 });
 
 api.post('/users', async (req, res) => {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: "ID required" });
+    const { id, username } = req.body;
+    const targetKey = username || id;
+    if (!targetKey) return res.status(400).json({ error: "Username required" });
     try {
-        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()`, [targetKey, req.body]);
+        try { await query(`UPDATE users SET id = username WHERE username = $1`, [targetKey]); } catch(e){}
         res.json({ success: true });
     } catch(e) {
         res.status(500).json({ error: e.message });
