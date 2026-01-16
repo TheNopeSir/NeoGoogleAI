@@ -38,11 +38,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   // Получаем первое изображение для отображения с помощью утилиты
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
-  // Extract specs for display (Top 3) - Robust handling
-  const specs = item.specs || {};
-  const specEntries = Object.entries(specs)
-    .filter(([_, val]) => val !== null && val !== undefined && String(val).trim() !== '')
-    .slice(0, 3);
+  // Specs are no longer extracted for preview to save space as per user request
 
   if (isWinamp) {
       return (
@@ -69,7 +65,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
                 </div>
 
-                {/* Specs removed to save space as requested */}
+                {/* Specs removed */}
 
                 {/* Meta Info - Playlist Style */}
                 <div className="mt-auto pt-2 border-t border-[#505050] font-winamp text-wa-green leading-none">
@@ -153,45 +149,38 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
         {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
         
-        {/* Specs Overlay - improved visibility */}
-        {specEntries.length > 0 ? (
-            <div className={`mb-3 space-y-1.5 p-2 rounded-lg ${isXP ? 'bg-white border border-gray-300' : 'bg-white/10 border border-white/10'}`}>
-                {specEntries.map(([key, val]) => (
-                    <div key={key} className="flex justify-between items-baseline text-[9px]">
-                        <span className={`uppercase font-mono opacity-50 mr-2 truncate max-w-[40%] ${isXP ? 'text-gray-600' : ''}`}>{key}:</span>
-                        <span className={`font-bold font-mono truncate flex-1 text-right ${isXP ? 'text-black' : 'text-white/90'}`}>{String(val)}</span>
-                    </div>
-                ))}
-            </div>
-        ) : (
-            <div className="mb-3"></div> // Spacer to keep layout consistent
-        )}
+        {/* Specs Overlay removed for preview compactness */}
+        <div className="mb-2"></div>
 
         <div className={`mt-auto font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
             <span className="truncate uppercase">{item.condition || item.quality}</span>
         </div>
         
-        <div className={`mt-2 pt-3 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer">
+        {/* Footer with Stacked User/Stats */}
+        <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
+            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full">
                 <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
-                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
+                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
                 <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Просмотры">
                     <Eye size={12} /> <span>{uniqueViews}</span>
                 </div>
-                <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
-                    <MessageSquare size={12} /> <span>{commentCount}</span>
-                </div>
-                <div onClick={(e) => e.stopPropagation()}>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onReact(); }}
-                        className={`flex items-center gap-1 text-[10px] transition-colors ${isLiked ? 'text-red-500' : (isXP ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
-                        title="Лайки"
-                    >
-                        <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
-                    </button>
+                
+                <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
+                        <MessageSquare size={12} /> <span>{commentCount}</span>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onReact(); }}
+                            className={`flex items-center gap-1 text-[10px] transition-colors ${isLiked ? 'text-red-500' : (isXP ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
+                            title="Лайки"
+                        >
+                            <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

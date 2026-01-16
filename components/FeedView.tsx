@@ -7,7 +7,7 @@ import {
 import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
-import { calculateFeedScore, getUserAvatar } from '../services/storageService';
+import { getUserAvatar } from '../services/storageService';
 import ExhibitCard from './ExhibitCard';
 import { getFirstImageUrl } from '../utils/imageUtils';
 import WishlistCard from './WishlistCard';
