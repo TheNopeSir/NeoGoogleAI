@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
@@ -532,7 +531,39 @@ export default function App() {
 
             {view === 'CREATE_ARTIFACT' && (
                 <div className="p-4 pb-24">
-                    <CreateArtifactView theme={theme} onBack={handleBack} onSave={async (item) => { if (!user) return; const newItem = { ...item, id: item.id || crypto.randomUUID(), owner: user.username, timestamp: new Date().toLocaleString(), likes: 0, views: 0 }; if (item.id) await db.updateExhibit(newItem); else await db.saveExhibit(newItem); handleBack(); }} initialData={selectedExhibit} userArtifacts={exhibits.filter(e => e.owner === user?.username)} />
+                    <CreateArtifactView 
+                      theme={theme} 
+                      onBack={handleBack} 
+                      onSave={async (item) => { 
+                        if (!user) return; 
+                        
+                        // Preserve original owner if editing (unless admin explicitly changes it via adminOwner prop)
+                        // If creating new (no ID), set owner to current user
+                        // adminOwner comes from CreateArtifactView if admin selected a new owner
+                        const ownerToSet = item.adminOwner || (item.id ? item.owner : user.username);
+
+                        const newItem = { 
+                          ...item, 
+                          id: item.id || crypto.randomUUID(), 
+                          owner: ownerToSet,
+                          timestamp: item.id ? (item.timestamp || new Date().toLocaleString()) : new Date().toLocaleString(), 
+                          likes: item.likes || 0, 
+                          views: item.views || 0 
+                        }; 
+                        
+                        // Clean up temporary field
+                        if (newItem.adminOwner) delete newItem.adminOwner;
+
+                        if (item.id) await db.updateExhibit(newItem); 
+                        else await db.saveExhibit(newItem); 
+                        
+                        handleBack(); 
+                      }} 
+                      initialData={selectedExhibit} 
+                      userArtifacts={exhibits.filter(e => e.owner === user?.username)}
+                      currentUser={user}
+                      allUsers={db.getFullDatabase().users}
+                    />
                 </div>
             )}
 

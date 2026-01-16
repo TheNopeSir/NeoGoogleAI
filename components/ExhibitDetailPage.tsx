@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2, 
   ArrowLeft, Eye, BookmarkPlus, Send, MessageCircle, CornerDownRight, Edit2, Link2, Sparkles, Video, Pin, RefreshCw,
-  Maximize2, ZoomIn, ZoomOut, Home, X, Info, Award
+  Maximize2, ZoomIn, ZoomOut, Home, X, Info, Award, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Exhibit, Comment, UserProfile } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG, getSimilarArtifacts, CATEGORY_CONDITIONS } from '../constants';
@@ -86,6 +86,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const isWinamp = theme === 'winamp';
 
@@ -347,6 +349,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const recipientProfile = users.find(u => u.username === exhibit.owner);
 
+  // Description truncation logic
+  const MAX_DESCRIPTION_LENGTH = 300;
+  const isLongDescription = exhibit.description && exhibit.description.length > MAX_DESCRIPTION_LENGTH;
+  const displayDescription = isLongDescription && !isDescriptionExpanded 
+      ? exhibit.description.slice(0, MAX_DESCRIPTION_LENGTH) + '...'
+      : exhibit.description;
+
   return (
     <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
       
@@ -557,7 +566,23 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     </div>
 
                     {/* Description */}
-                    <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 mb-6 ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.description}</p>
+                    <div className="mb-6">
+                        <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
+                            {displayDescription}
+                        </p>
+                        {isLongDescription && (
+                            <button 
+                                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                className={`mt-2 text-[10px] font-bold uppercase flex items-center gap-1 hover:underline ${isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}`}
+                            >
+                                {isDescriptionExpanded ? (
+                                    <>Свернуть <ChevronUp size={12}/></>
+                                ) : (
+                                    <>Читать далее <ChevronDown size={12}/></>
+                                )}
+                            </button>
+                        )}
+                    </div>
 
                     {/* DETAILED SPECS GRID */}
                     {nonEmptySpecs.length > 0 && (
