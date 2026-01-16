@@ -45,9 +45,6 @@ if (vapidPublicKey && vapidPrivateKey) {
     console.log('✅ [Push] VAPID Keys Configured');
 } else {
     console.warn('⚠️ [Push] VAPID Keys Missing. Push notifications disabled.');
-    // Generate new ones for log info
-    // const keys = webpush.generateVAPIDKeys();
-    // console.log('Generated Keys:', keys);
 }
 
 const shouldBeAdmin = (username, email) => {
@@ -94,7 +91,7 @@ app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
-// ... (Email Logic Omitted for brevity - assuming it's the same) ...
+// ... (Email Logic) ...
 const EMAILJS_SERVICE_ID = 'service_s27hkib';
 const EMAILJS_TEMPLATE_WELCOME = 'template_w89ggy9';
 const EMAILJS_TEMPLATE_RESET = 'template_gsrqbjb';
@@ -199,9 +196,152 @@ pool.connect().then(() => {
 // ==========================================
 const api = express.Router();
 
-// ... (Auth Routes Omitted - same as before) ...
+// --- AUTH ROUTES ---
 
-// PUSH SUBSCRIPTION
+api.post('/auth/register', async (req, res) => {
+    try {
+        const { username, password, tagline, email } = req.body;
+        if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
+
+        const check = await query(`SELECT id FROM users WHERE id = $1 OR data->>'email' = $2`, [username, email]);
+        if (check.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
+
+        const newUser = {
+            username,
+            password, // В реальном продакшене здесь должен быть хеш
+            email,
+            tagline,
+            joinedDate: new Date().toLocaleDateString('ru-RU'),
+            following: [],
+            followers: [],
+            achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+            settings: { theme: 'dark' },
+            isAdmin: shouldBeAdmin(username, email)
+        };
+
+        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        
+        // Email отправка (опционально)
+        // await sendMailWithRetry({ to: email, subject: 'Welcome to NeoArchive', html: 'Welcome!' }, EMAILJS_TEMPLATE_WELCOME);
+
+        res.json(newUser);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/login', async (req, res) => {
+    try {
+        const { identifier, password } = req.body;
+        const result = await query(`SELECT * FROM users WHERE (id = $1 OR data->>'email' = $1) AND data->>'password' = $2`, [identifier, password]);
+        
+        if (result.rows.length === 0) return res.status(401).json({ error: "Неверный логин или пароль" });
+        
+        const user = mapRow(result.rows[0]);
+        
+        // Auto-fix admin status if needed
+        if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
+            user.isAdmin = true;
+            await query(`UPDATE users SET data = $1 WHERE id = $2`, [user, user.username]);
+        }
+
+        res.json(user);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/recover', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Email не найден" });
+
+        const code = crypto.randomBytes(16).toString('hex');
+        await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { email }]);
+
+        const resetLink = `${APP_URL}/?code=${code}&type=RESET`;
+        
+        // Пытаемся отправить письмо
+        try {
+            await sendMailWithRetry({ 
+                to: email, 
+                subject: 'Сброс пароля NeoArchive', 
+                html: `Для сброса пароля перейдите по ссылке: ${resetLink}` 
+            }, EMAILJS_TEMPLATE_RESET, { reset_link: resetLink });
+        } catch (e) {
+            console.error("Email send failed:", e);
+            // Для демо режима можно вернуть код в ответе, если почта не работает
+            // return res.json({ success: true, debugCode: code });
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/telegram', async (req, res) => {
+    try {
+        const tgUser = req.body;
+        const username = tgUser.username || `tg_${tgUser.id}`;
+        
+        const result = await query(`SELECT * FROM users WHERE id = $1`, [username]);
+        
+        if (result.rows.length > 0) {
+            return res.json(mapRow(result.rows[0]));
+        }
+
+        const newUser = {
+            username,
+            email: `tg_${tgUser.id}@placeholder.com`,
+            tagline: 'Telegram User',
+            joinedDate: new Date().toLocaleDateString('ru-RU'),
+            following: [],
+            followers: [],
+            achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+            avatarUrl: tgUser.photo_url || null,
+            settings: { theme: 'dark' }
+        };
+
+        await query(`INSERT INTO users (id, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        res.json(newUser);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/verify-email', async (req, res) => {
+    res.json({ success: true }); // Заглушка, так как в текущей форме регистрации верификация опциональна
+});
+
+api.post('/auth/complete-reset', async (req, res) => {
+    try {
+        const { code, newPassword } = req.body;
+        const codeRes = await query(`SELECT * FROM verification_codes WHERE code = $1 AND type = 'RESET'`, [code]);
+        
+        if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
+        
+        const email = codeRes.rows[0].payload.email;
+        
+        // Находим пользователя, обновляем пароль внутри JSONB data
+        // PostgreSQL JSONB update syntax:
+        await query(`
+            UPDATE users 
+            SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) 
+            WHERE data->>'email' = $2
+        `, [newPassword, email]);
+
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+        
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PUSH SUBSCRIPTION ---
 api.post('/push/subscribe', async (req, res) => {
     const { username, subscription } = req.body;
     if (!username || !subscription) return res.status(400).json({ error: "Missing data" });
