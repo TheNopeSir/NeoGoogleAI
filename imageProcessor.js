@@ -154,6 +154,20 @@ export async function processImage(inputImage, exhibitId) {
 }
 
 /**
+ * Обрабатывает одно изображение и возвращает только Medium URL (для аватарок, обложек и т.д.)
+ */
+export async function processSingleImage(inputImage, folderName = 'misc') {
+    if (!isBase64DataUri(inputImage)) return inputImage;
+    try {
+        const processed = await processImage(inputImage, folderName);
+        return processed.medium || processed.thumbnail;
+    } catch (e) {
+        console.error('Failed to process single image:', e);
+        return inputImage;
+    }
+}
+
+/**
  * Обрабатывает массив изображений
  */
 export async function processExhibitImages(images, exhibitId) {

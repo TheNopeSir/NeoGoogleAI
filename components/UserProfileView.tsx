@@ -4,7 +4,8 @@ import {
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings, 
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
-    AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key, Bell
+    AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key, Bell,
+    BookOpen
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
 import { STATUS_OPTIONS } from '../constants';
@@ -205,10 +206,10 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     };
 
     return (
-        <div className={`max-w-4xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
+        <div className={`max-w-7xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 px-4 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
             <SEO title={`@${profileUser.username} | Профиль`} />
 
-            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-4 md:px-0"><ArrowLeft size={16} /> НАЗАД</button>}
+            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-2 md:px-0"><ArrowLeft size={16} /> НАЗАД</button>}
             
             <div className={isWinamp ? '' : `md:rounded-3xl border-b md:border overflow-hidden relative ${theme === 'dark' ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
                 {isWinamp ? (
@@ -354,7 +355,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Settings size={20} className="mx-auto"/></button>}
             </div>
 
-            {/* SECTIONS CONTENT (Abbreviated to focus on changes) */}
+            {/* SECTIONS CONTENT */}
             
             {activeSection === 'SHELF' && (
                 <div className="space-y-6 animate-in fade-in px-0 md:px-0">
@@ -363,19 +364,108 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <button onClick={() => setLocalProfileTab('COLLECTIONS')} className={`text-xs font-pixel uppercase ${localProfileTab === 'COLLECTIONS' ? 'text-green-500 font-bold' : 'opacity-50'}`}>Коллекции ({userCollections.length})</button>
                     </div>
                     {localProfileTab === 'ARTIFACTS' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                             {publishedExhibits.map(item => <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={() => {}} />)}
+                            {publishedExhibits.length === 0 && <div className="col-span-full text-center py-10 opacity-30 font-mono text-xs">Полка пуста</div>}
                         </div>
                     )}
                     {localProfileTab === 'COLLECTIONS' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                             {userCollections.map(col => <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={onShareCollection} />)}
+                            {userCollections.length === 0 && <div className="col-span-full text-center py-10 opacity-30 font-mono text-xs">Нет коллекций</div>}
                         </div>
                     )}
                 </div>
             )}
 
-            {/* ... Other Tabs ... */}
+            {activeSection === 'FAVORITES' && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 animate-in fade-in">
+                    {favoritedExhibits.map(item => (
+                        <ExhibitCard
+                            key={item.id}
+                            item={item}
+                            theme={theme}
+                            onClick={onExhibitClick}
+                            currentUsername={user.username}
+                            onReact={() => onReact(item.id)}
+                            onAuthorClick={onAuthorClick}
+                        />
+                    ))}
+                    {favoritedExhibits.length === 0 && (
+                        <div className="col-span-full py-12 text-center opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-2xl">
+                            В избранном пока пусто
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeSection === 'WISHLIST' && (
+                <div className="space-y-4 animate-in fade-in">
+                    <div className="flex justify-end px-2">
+                        <button onClick={handleShareWishlist} className="flex items-center gap-2 text-xs font-pixel opacity-70 hover:opacity-100 uppercase tracking-widest"><LinkIcon size={12}/> Поделиться вишлистом</button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        {wishlistItems.map(item => (
+                            <WishlistCard 
+                                key={item.id} 
+                                item={item} 
+                                theme={theme} 
+                                onClick={onWishlistClick}
+                                onUserClick={() => {}}
+                            />
+                        ))}
+                    </div>
+                    {wishlistItems.length === 0 && (
+                        <div className="py-12 text-center opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-2xl">
+                            Вишлист пуст
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeSection === 'LOGS' && (
+                <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in">
+                    {!isCurrentUser && (
+                        <div className="flex gap-2 mb-6">
+                            <input 
+                                ref={guestbookInputRef}
+                                value={guestbookInput}
+                                onChange={(e) => setGuestbookInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleGuestbookSubmit()}
+                                placeholder={`Оставить запись для @${profileUser.username}...`}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-green-500 outline-none"
+                            />
+                            <button onClick={handleGuestbookSubmit} className="bg-green-500 text-black px-4 py-2 rounded-lg hover:bg-green-400">
+                                <Send size={16} />
+                            </button>
+                        </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                        {profileGuestbook.length === 0 ? (
+                            <div className="text-center py-10 opacity-30 font-mono text-xs">Гостевая книга пуста</div>
+                        ) : (
+                            profileGuestbook.map(entry => (
+                                <div key={entry.id} className={`p-4 rounded-xl border ${isWinamp ? 'bg-black border-[#505050] text-[#00ff00]' : 'bg-white/5 border-white/10'}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => onAuthorClick(entry.author)}>
+                                            <img src={getUserAvatar(entry.author)} className="w-6 h-6 rounded-full border border-white/20"/>
+                                            <span className="font-bold text-xs font-pixel">@{entry.author}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] opacity-40 font-mono">{entry.timestamp}</span>
+                                            {(isCurrentUser || entry.author === user.username) && (
+                                                <button onClick={() => handleDeleteEntry(entry.id)} className="text-red-500 opacity-50 hover:opacity-100"><Trash2 size={12}/></button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="font-mono text-xs opacity-80 break-words leading-relaxed">{entry.text}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
 
             {isCurrentUser && activeSection === 'CONFIG' && (
                 <div className="p-6 rounded-xl border flex flex-col gap-6 animate-in fade-in bg-white/5 border-white/10 mx-0 md:mx-0">

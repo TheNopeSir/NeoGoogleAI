@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Heart, Eye, MessageSquare } from 'lucide-react';
 import { Exhibit } from '../types';
@@ -20,7 +21,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   const config = TIER_CONFIG[tier];
   const Icon = config.icon;
   const isCursed = tier === 'CURSED';
-  const isHighTier = config.glow; // UNCOMMON and above get glow effects
+  const isHighTier = tier !== 'COMMON'; // Any tier above common gets glow
   const uniqueViews = item.viewedBy?.length || item.views; // Use unique viewers if available
 
   // Simple Like Logic
@@ -38,7 +39,11 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   // Получаем первое изображение для отображения с помощью утилиты
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
-  // Specs are no longer extracted for preview to save space as per user request
+  // Dynamic Glow Style
+  const glowStyle = isHighTier && theme === 'dark' ? {
+      boxShadow: `0 0 15px ${config.badge.split(' ')[0].replace('bg-', 'var(--tw-colors-')})`, 
+      borderColor: config.color.replace('text-', '') // Approximation, reliance on tailwind classes is better below
+  } : {};
 
   if (isWinamp) {
       return (
@@ -106,13 +111,11 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative
         ${isXP
           ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white'
-          : `rounded-2xl overflow-hidden border-2 ${theme === 'dark' ? `bg-dark-surface border-white/10 hover:border-green-500/50 ${config.shadow}` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
+          : `rounded-2xl overflow-hidden border-2 ${theme === 'dark' ? `bg-dark-surface border-white/10 hover:border-green-500/50` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
         }
-        ${isCursed || config.animated ? 'animate-pulse' : ''}`
-      }
-      style={isHighTier && theme === 'dark' ? {
-        boxShadow: `0 0 20px ${config.glowColor}, inset 0 0 20px ${config.glowColor}15`
-      } : undefined}
+        ${isCursed || config.animated ? 'animate-pulse' : ''}
+        ${isHighTier && theme === 'dark' ? config.borderDark : ''}
+      `}
     >
       {/* XP Window Header */}
       {isXP && (
@@ -149,9 +152,6 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
         {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
         
-        {/* Specs Overlay removed for preview compactness */}
-        <div className="mb-2"></div>
-
         <div className={`mt-auto font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
             <span className="truncate uppercase">{item.condition || item.quality}</span>
         </div>
