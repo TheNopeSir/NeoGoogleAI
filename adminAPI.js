@@ -4,7 +4,7 @@
  * Специальные endpoints для админ-панели
  */
 
-import { processImage } from './imageProcessor.js';
+import { processImage, isBase64DataUri } from './imageProcessor.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -80,146 +80,155 @@ export function setupAdminAPI(app, query, cache) {
     });
 
     // ==========================================
-    // 🔄 Migrate Images (Convert to WebP Base64 in DB)
+    // 🔄 Migrate Images (Convert to WebP Base64/S3 in DB)
     // ==========================================
     app.post('/api/admin/migrate-images', async (req, res) => {
         try {
-            console.log('[AdminAPI] Starting migration to DB storage...');
+            console.log('[AdminAPI] Starting comprehensive image migration...');
 
             const results = {
-                processed: 0,
-                skipped: 0,
-                errors: 0,
-                migrated: 0,
-                details: []
+                exhibits: { processed: 0, migrated: 0, errors: 0 },
+                collections: { processed: 0, migrated: 0, errors: 0 },
+                wishlist: { processed: 0, migrated: 0, errors: 0 },
+                users: { processed: 0, migrated: 0, errors: 0 },
             };
 
-            // Process exhibits
+            // 1. EXHIBITS
+            console.log('[AdminAPI] Migrating Exhibits...');
             const exhibitsResult = await query('SELECT id, data FROM exhibits');
-            console.log(`[AdminAPI] Found ${exhibitsResult.rows.length} exhibits`);
-
             for (const row of exhibitsResult.rows) {
                 const exhibitId = row.id;
                 const data = row.data;
                 let needsUpdate = false;
 
                 try {
-                    // Check images
-                    if (!data.imageUrls || !Array.isArray(data.imageUrls) || data.imageUrls.length === 0) {
-                        results.skipped++;
-                        continue;
-                    }
+                    if (data.imageUrls && Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
+                        const newImageUrls = [];
+                        for (let i = 0; i < data.imageUrls.length; i++) {
+                            const img = data.imageUrls[i];
+                            let bufferToProcess = null;
 
-                    const newImageUrls = [];
+                            // Handle raw Base64 strings
+                            if (typeof img === 'string' && isBase64DataUri(img)) {
+                                bufferToProcess = img;
+                            } 
+                            // Handle legacy objects with Base64
+                            else if (typeof img === 'object' && isBase64DataUri(img.medium)) {
+                                // Already in object format but might need re-processing/optimization? 
+                                // Actually if it is base64 inside object, it means it is not S3.
+                                // Let's check if we want to move to S3.
+                                bufferToProcess = img.medium || img.large || img.thumbnail;
+                            }
 
-                    for (let i = 0; i < data.imageUrls.length; i++) {
-                        const img = data.imageUrls[i];
-                        let bufferToProcess = null;
-
-                        // Case 1: Legacy file path (/api/images/...)
-                        // Мы должны попробовать найти этот файл на диске и прочитать его
-                        if (typeof img === 'string' && img.startsWith('/api/images/')) {
-                            const relPath = img.replace('/api/images/', '');
-                            const fullPath = path.join(LEGACY_IMAGES_DIR, relPath);
-                            
-                            if (fs.existsSync(fullPath)) {
-                                bufferToProcess = fs.readFileSync(fullPath);
-                                console.log(`[AdminAPI] Read legacy file: ${fullPath}`);
+                            if (bufferToProcess) {
+                                const processed = await processImage(bufferToProcess, exhibitId);
+                                // If processed returns URLs (http...), we succeeded.
+                                newImageUrls.push(processed);
+                                needsUpdate = true;
                             } else {
-                                console.warn(`[AdminAPI] Legacy file missing: ${fullPath}`);
-                                // Keep broken link? Or remove? Let's keep for safety.
                                 newImageUrls.push(img);
-                                continue;
                             }
-                        }
-                        // Case 2: Legacy object with file paths ({ thumbnail: '/api/...' })
-                        else if (typeof img === 'object' && img.medium && img.medium.startsWith('/api/images/')) {
-                            // Try to find the medium file (best quality usually available)
-                            const relPath = img.medium.replace('/api/images/', '');
-                            const fullPath = path.join(LEGACY_IMAGES_DIR, relPath);
-
-                            if (fs.existsSync(fullPath)) {
-                                bufferToProcess = fs.readFileSync(fullPath);
-                            } else {
-                                // Try large?
-                                const relPathL = img.large?.replace('/api/images/', '');
-                                const fullPathL = relPathL ? path.join(LEGACY_IMAGES_DIR, relPathL) : null;
-                                if (fullPathL && fs.existsSync(fullPathL)) {
-                                    bufferToProcess = fs.readFileSync(fullPathL);
-                                } else {
-                                     // Try thumbnail as last resort?
-                                     const relPathT = img.thumbnail?.replace('/api/images/', '');
-                                     const fullPathT = path.join(LEGACY_IMAGES_DIR, relPathT);
-                                     if (fs.existsSync(fullPathT)) {
-                                         bufferToProcess = fs.readFileSync(fullPathT);
-                                     }
-                                }
-                            }
-                            
-                            if (!bufferToProcess) {
-                                console.warn(`[AdminAPI] Legacy object files missing for ${exhibitId}`);
-                                newImageUrls.push(img);
-                                continue;
-                            }
-                        }
-                        // Case 3: Raw Base64 string (Old unoptimized or New unoptimized)
-                        else if (typeof img === 'string' && img.startsWith('data:image/')) {
-                             // Если это уже webp, можно пропустить, если мы доверяем качеству
-                             // Но лучше прогнать через процессор, чтобы убедиться в размерах
-                             // Для простоты: обрабатываем всё.
-                             bufferToProcess = img; // processImage handles base64 string
-                        }
-                        // Case 4: Already optimized object with Base64 ({ thumbnail: 'data:...' })
-                        else if (typeof img === 'object' && img.thumbnail && img.thumbnail.startsWith('data:')) {
-                            // Already migrated format. Skip unless forced.
-                            newImageUrls.push(img);
-                            continue;
                         }
 
-                        if (bufferToProcess) {
-                            // Convert to Optimized WebP Base64 Object
-                            const processed = await processImage(bufferToProcess, exhibitId);
-                            newImageUrls.push(processed);
-                            needsUpdate = true;
-                        } else {
-                            // Unknown format, keep as is
-                            newImageUrls.push(img);
+                        if (needsUpdate) {
+                            data.imageUrls = newImageUrls;
+                            if (data.processedImages) delete data.processedImages;
+                            await query('UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), exhibitId]);
+                            results.exhibits.migrated++;
                         }
                     }
+                    results.exhibits.processed++;
+                } catch (e) {
+                    console.error(`[AdminAPI] Error migrating exhibit ${exhibitId}:`, e);
+                    results.exhibits.errors++;
+                }
+            }
 
-                    if (needsUpdate) {
-                        data.imageUrls = newImageUrls;
+            // 2. COLLECTIONS
+            console.log('[AdminAPI] Migrating Collections...');
+            const collectionsResult = await query('SELECT id, data FROM collections');
+            for (const row of collectionsResult.rows) {
+                const id = row.id;
+                const data = row.data;
+                try {
+                    if (data.coverImage && isBase64DataUri(data.coverImage)) {
+                        // processImage returns object { thumbnail, medium ... }
+                        // Collections use a single string URL usually.
+                        const processed = await processImage(data.coverImage, `col_${id}`);
+                        // Use medium URL if available, else thumbnail
+                        data.coverImage = processed.medium || processed.thumbnail; 
                         
-                        // Clean up legacy field if it exists
-                        if (data.processedImages) delete data.processedImages;
-
-                        await query(
-                            'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
-                            [JSON.stringify(data), exhibitId]
-                        );
-                        
-                        results.migrated++;
-                        console.log(`[AdminAPI] Migrated exhibit ${exhibitId}`);
-                    } else {
-                        results.skipped++;
+                        await query('UPDATE collections SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), id]);
+                        results.collections.migrated++;
                     }
-                    
-                    results.processed++;
+                    results.collections.processed++;
+                } catch(e) {
+                    console.error(`[AdminAPI] Error migrating collection ${id}:`, e);
+                    results.collections.errors++;
+                }
+            }
 
-                } catch (error) {
-                    results.errors++;
-                    console.error(`[AdminAPI] Error migrating exhibit ${exhibitId}:`, error);
+            // 3. WISHLIST
+            console.log('[AdminAPI] Migrating Wishlist...');
+            const wishlistResult = await query('SELECT id, data FROM wishlist');
+            for (const row of wishlistResult.rows) {
+                const id = row.id;
+                const data = row.data;
+                try {
+                    if (data.referenceImageUrl && isBase64DataUri(data.referenceImageUrl)) {
+                        const processed = await processImage(data.referenceImageUrl, `wish_${id}`);
+                        data.referenceImageUrl = processed.medium || processed.thumbnail;
+                        
+                        await query('UPDATE wishlist SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), id]);
+                        results.wishlist.migrated++;
+                    }
+                    results.wishlist.processed++;
+                } catch(e) {
+                    console.error(`[AdminAPI] Error migrating wishlist ${id}:`, e);
+                    results.wishlist.errors++;
+                }
+            }
+
+            // 4. USERS
+            console.log('[AdminAPI] Migrating Users...');
+            const usersResult = await query('SELECT username, data FROM users');
+            for (const row of usersResult.rows) {
+                const username = row.username;
+                const data = row.data;
+                let userUpdated = false;
+                try {
+                    if (data.avatarUrl && isBase64DataUri(data.avatarUrl)) {
+                        const processed = await processImage(data.avatarUrl, `user_${username}_avatar`);
+                        data.avatarUrl = processed.medium || processed.thumbnail;
+                        userUpdated = true;
+                    }
+                    if (data.coverUrl && isBase64DataUri(data.coverUrl)) {
+                        const processed = await processImage(data.coverUrl, `user_${username}_cover`);
+                        data.coverUrl = processed.medium || processed.thumbnail;
+                        userUpdated = true;
+                    }
+
+                    if (userUpdated) {
+                        await query('UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2', [JSON.stringify(data), username]);
+                        results.users.migrated++;
+                    }
+                    results.users.processed++;
+                } catch(e) {
+                    console.error(`[AdminAPI] Error migrating user ${username}:`, e);
+                    results.users.errors++;
                 }
             }
             
             // Invalidate cache
             cache.flushPattern('feed:');
+            cache.flushPattern('collections:');
+            cache.flushPattern('wishlist:');
 
-            console.log(`[AdminAPI] Migration complete. Migrated: ${results.migrated}`);
+            console.log(`[AdminAPI] Migration complete.`);
 
             res.json({
                 success: true,
-                ...results
+                results
             });
 
         } catch (error) {
@@ -253,8 +262,6 @@ export function setupAdminAPI(app, query, cache) {
     // ==========================================
     // 🧹 Clean up broken paths (Legacy)
     // ==========================================
-    // Этот эндпоинт теперь можно использовать для удаления ссылок на файлы, если они не существуют,
-    // но основной метод теперь - migrate-images
     app.post('/api/admin/cleanup-broken', async (req, res) => {
          res.json({ success: true, message: "Use migrate-images to fix broken file paths by converting to DB storage." });
     });

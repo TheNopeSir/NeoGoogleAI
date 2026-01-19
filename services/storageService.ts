@@ -228,8 +228,6 @@ const hydrateContent = async () => {
     } catch (e) { console.error("Content hydration failed:", e); }
 };
 
-// ... (Existing Save Functions) ...
-
 // --- PUSH NOTIFICATIONS ---
 
 const urlBase64ToUint8Array = (base64String: string) => {
@@ -324,9 +322,7 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     return null;
 };
 
-// ... (Rest of existing functions) ...
-
-// --- CRUD OPERATIONS (Restored from previous) ---
+// --- CRUD OPERATIONS ---
 const saveGeneric = async (table: string, data: any) => {
     const db = await getDB();
     await db.put('generic', { id: data.id, table, data });
@@ -512,7 +508,17 @@ export const saveCollection = async (c: Collection) => {
     notifyListeners();
     const db = await getDB();
     await db.put('collections', c);
-    await apiCall('/collections', 'POST', c);
+    
+    try {
+        const res = await apiCall('/collections', 'POST', c);
+        if (res && res.success && res.data) {
+            const updated = res.data;
+            const idx = hotCache.collections.findIndex(col => col.id === c.id);
+            if (idx !== -1) hotCache.collections[idx] = updated;
+            await db.put('collections', updated);
+            notifyListeners();
+        }
+    } catch (e) { console.error("Save collection sync error:", e); }
 };
 
 export const updateCollection = async (c: Collection) => {
@@ -520,7 +526,16 @@ export const updateCollection = async (c: Collection) => {
     notifyListeners();
     const db = await getDB();
     await db.put('collections', c);
-    await apiCall('/collections', 'POST', c);
+    
+    try {
+        const res = await apiCall('/collections', 'POST', c);
+        if (res && res.success && res.data) {
+            const updated = res.data;
+            hotCache.collections = hotCache.collections.map(col => col.id === c.id ? updated : col);
+            await db.put('collections', updated);
+            notifyListeners();
+        }
+    } catch (e) { console.error("Update collection sync error:", e); }
 };
 
 export const deleteCollection = async (id: string) => {
@@ -537,7 +552,20 @@ export const updateUserProfile = async (u: UserProfile) => {
     notifyListeners();
     const db = await getDB();
     await db.put('users', u);
-    await apiCall('/users', 'POST', { id: u.username, ...u });
+    
+    try {
+        const res = await apiCall('/users', 'POST', { id: u.username, ...u });
+        if (res && res.success) {
+            let updated = { ...u };
+            if (res.avatarUrl) updated.avatarUrl = res.avatarUrl;
+            if (res.coverUrl) updated.coverUrl = res.coverUrl;
+            
+            const idx2 = hotCache.users.findIndex(us => us.username === u.username);
+            if (idx2 !== -1) hotCache.users[idx2] = updated;
+            await db.put('users', updated);
+            notifyListeners();
+        }
+    } catch(e) { console.error("Update profile sync error:", e); }
 };
 
 export const createNotification = async (r:string, t:NotificationType, a:string, id?:string, p?:string) => {
@@ -558,7 +586,17 @@ export const saveWishlistItem = async (w: WishlistItem) => {
     hotCache.wishlist.push(w);
     notifyListeners();
     await saveGeneric('wishlist', w);
-    await apiCall('/wishlist', 'POST', w);
+    
+    try {
+        const res = await apiCall('/wishlist', 'POST', w);
+        if (res && res.success && res.data) {
+            const updated = res.data;
+            const idx = hotCache.wishlist.findIndex(item => item.id === w.id);
+            if (idx !== -1) hotCache.wishlist[idx] = updated;
+            await saveGeneric('wishlist', updated);
+            notifyListeners();
+        }
+    } catch(e) { console.error("Save wishlist sync error:", e); }
 };
 
 export const deleteWishlistItem = async (id: string) => {
