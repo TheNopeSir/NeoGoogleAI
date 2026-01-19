@@ -8,7 +8,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
-import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri } from './imageProcessor.js';
+import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri, processSingleImage } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 import webpush from 'web-push';
 
@@ -448,9 +448,17 @@ api.post('/users', async (req, res) => {
     const targetKey = username || id;
     if (!targetKey) return res.status(400).json({ error: "Username required" });
     try {
+        // IMAGE PROCESSING FOR AVATAR/COVER
+        if (req.body.avatarUrl && isBase64DataUri(req.body.avatarUrl)) {
+            req.body.avatarUrl = await processSingleImage(req.body.avatarUrl, `user_${targetKey}_avatar`);
+        }
+        if (req.body.coverUrl && isBase64DataUri(req.body.coverUrl)) {
+            req.body.coverUrl = await processSingleImage(req.body.coverUrl, `user_${targetKey}_cover`);
+        }
+
         await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()`, [targetKey, req.body]);
         try { await query(`UPDATE users SET id = username WHERE username = $1`, [targetKey]); } catch(e){}
-        res.json({ success: true });
+        res.json({ success: true, avatarUrl: req.body.avatarUrl, coverUrl: req.body.coverUrl });
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -524,20 +532,38 @@ const createCrud = (router, table) => {
     router.post(`/${table}`, async (req, res) => {
         const id = req.body.id;
         if (!id) return res.status(400).json({ error: "ID required" });
-        await query(`INSERT INTO "${table}" (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
-        cache.flushPattern(`${table}:`);
+        
+        try {
+            // Processing for specific tables
+            if (table === 'collections') {
+                if (req.body.coverImage && isBase64DataUri(req.body.coverImage)) {
+                    req.body.coverImage = await processSingleImage(req.body.coverImage, `col_${id}_cover`);
+                }
+            }
+            if (table === 'wishlist') {
+                if (req.body.referenceImageUrl && isBase64DataUri(req.body.referenceImageUrl)) {
+                    req.body.referenceImageUrl = await processSingleImage(req.body.referenceImageUrl, `wish_${id}_ref`);
+                }
+            }
 
-        if (table === 'notifications') {
-            const notif = req.body;
-            let title = 'NeoArchive';
-            let body = 'Новое уведомление';
-            if (notif.type === 'LIKE') { title = 'Новый лайк!'; body = `@${notif.actor} оценил ваш экспонат`; }
-            else if (notif.type === 'COMMENT') { title = 'Новый комментарий'; body = `@${notif.actor}: ${notif.targetPreview || '...'}`; }
-            else if (notif.type === 'FOLLOW') { title = 'Новый подписчик'; body = `@${notif.actor} подписался на вас`; }
-            else if (notif.type === 'TRADE_OFFER') { title = 'Предложение обмена'; body = `@${notif.actor} хочет обменяться`; }
-            if (notif.recipient !== notif.actor) sendPushToUser(notif.recipient, title, body, `/activity`);
+            await query(`INSERT INTO "${table}" (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
+            cache.flushPattern(`${table}:`);
+
+            if (table === 'notifications') {
+                const notif = req.body;
+                let title = 'NeoArchive';
+                let body = 'Новое уведомление';
+                if (notif.type === 'LIKE') { title = 'Новый лайк!'; body = `@${notif.actor} оценил ваш экспонат`; }
+                else if (notif.type === 'COMMENT') { title = 'Новый комментарий'; body = `@${notif.actor}: ${notif.targetPreview || '...'}`; }
+                else if (notif.type === 'FOLLOW') { title = 'Новый подписчик'; body = `@${notif.actor} подписался на вас`; }
+                else if (notif.type === 'TRADE_OFFER') { title = 'Предложение обмена'; body = `@${notif.actor} хочет обменяться`; }
+                if (notif.recipient !== notif.actor) sendPushToUser(notif.recipient, title, body, `/activity`);
+            }
+            res.json({ success: true, data: req.body });
+        } catch (e) {
+            console.error(`Error saving to ${table}:`, e);
+            res.status(500).json({ error: e.message });
         }
-        res.json({ success: true });
     });
 
     router.delete(`/${table}/:id`, async (req, res) => {

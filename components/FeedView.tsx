@@ -159,7 +159,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
         {/* 2. STORIES (Only on Artifacts Mode) */}
         {feedMode === 'ARTIFACTS' && stories.length > 0 && (
-            <div className="pl-4 max-w-5xl mx-auto w-full pt-2">
+            <div className="pl-4 max-w-[2400px] mx-auto w-full pt-2">
                 <h3 className="font-pixel text-[10px] opacity-50 mb-3 flex items-center gap-2 tracking-widest"><Zap size={12} className="text-yellow-500"/> ОБНОВЛЕНИЯ</h3>
                 <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pr-4">
                     {stories.map((story, i) => (
@@ -178,7 +178,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
         {/* 3. CONTROLS AREA */}
         <div className={`pt-2 pb-2 px-4 transition-all ${theme === 'dark' ? '' : isWinamp ? 'bg-[#191919] border-b border-[#505050]' : ''}`}>
-            <div className="max-w-5xl mx-auto w-full space-y-4">
+            <div className="max-w-[2400px] mx-auto w-full space-y-4">
                 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-4">
@@ -233,7 +233,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         </div>
 
         {/* 4. MAIN FEED CONTENT */}
-        <div className="px-4 max-w-5xl mx-auto w-full">
+        <div className="px-4 max-w-[2400px] mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
                     {/* Loading State / Empty State */}
@@ -248,7 +248,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleExhibits.map((item, index) => {
                                 try {
                                     return feedViewMode === 'GRID' ? (
@@ -288,7 +288,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {processedCollections.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">КОЛЛЕКЦИЙ НЕТ</div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
                             {visibleCollections.map(col => (
                                 <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={() => {}} />
                             ))}
@@ -383,7 +383,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                                 <h3 className="font-pixel text-xs text-yellow-500 uppercase tracking-wider">🏆 Священный Грааль</h3>
                                                                 <span className="text-[10px] opacity-50 font-mono">{grails.length}</span>
                                                             </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
                                                                 {grails.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
@@ -397,7 +397,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                                 <h3 className="font-pixel text-xs text-orange-400 uppercase tracking-wider">🎯 Активная Охота</h3>
                                                                 <span className="text-[10px] opacity-50 font-mono">{high.length}</span>
                                                             </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
                                                                 {high.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
@@ -411,7 +411,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                                 <h3 className="font-pixel text-xs text-blue-400 uppercase tracking-wider">🔍 Интересует</h3>
                                                                 <span className="text-[10px] opacity-50 font-mono">{medium.length}</span>
                                                             </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
                                                                 {medium.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
@@ -425,7 +425,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                                 <h3 className="font-pixel text-xs text-gray-400 uppercase tracking-wider">👁️ Наблюдаю</h3>
                                                                 <span className="text-[10px] opacity-50 font-mono">{low.length}</span>
                                                             </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1'}`}>
+                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
                                                                 {low.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
