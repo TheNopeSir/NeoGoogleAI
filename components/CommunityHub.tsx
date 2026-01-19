@@ -4,6 +4,7 @@ import { Trophy, TrendingUp, Users, RefreshCw, Flame } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
 import ExhibitCard from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
+import SEO from './SEO';
 
 interface CommunityHubProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -64,7 +65,11 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
         .sort((a,b) => b.score - a.score)
         .slice(0, 5);
 
-    const trendingExhibits = exhibits.sort((a,b) => (b.likes + b.views) - (a.likes + a.views)).slice(0, 6);
+    // Weighted trending: Likes matter 10x more than views for popularity
+    const trendingExhibits = exhibits
+        .sort((a,b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views))
+        .slice(0, 6);
+        
     const tradeExhibits = exhibits.filter(e => e.tradeStatus === 'FOR_SALE' || e.tradeStatus === 'FOR_TRADE');
 
     const renderTabButton = (id: typeof tab, icon: any, label: string) => (
@@ -83,6 +88,8 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
 
     return (
         <div className={`max-w-4xl mx-auto pb-32 animate-in fade-in ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
+            <SEO title="Сообщество | NeoArchive" />
+            
             {/* Header */}
             {isWinamp ? (
                 <WinampWindow title="COMMUNITY NETWORK">
