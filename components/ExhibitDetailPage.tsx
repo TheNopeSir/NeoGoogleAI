@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2, 
@@ -75,6 +76,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string, author: string } | null>(null);
+  const [showLikesModal, setShowLikesModal] = useState(false);
   
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
@@ -141,6 +143,9 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const nonEmptySpecs = Object.entries(specs).filter(([_, val]) => !!val);
   const isOwner = currentUser === exhibit.owner;
+
+  // Prioritize viewedBy.length if available
+  const viewsDisplay = exhibit.viewedBy?.length || exhibit.views;
 
   // Swipe logic for gallery
   const gallerySwipeHandlers = useSwipe({
@@ -369,6 +374,37 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
           />
       )}
 
+      {/* LIKES MODAL */}
+      {showLikesModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+              <div className={`w-full max-w-sm max-h-[80vh] flex flex-col rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050] text-[#00ff00]' : 'bg-dark-surface border-white/10 text-white'}`}>
+                  <div className="flex justify-between items-center p-4 border-b border-white/10">
+                      <h3 className="font-pixel text-xs font-bold uppercase">Оценили ({exhibit.likedBy?.length || 0})</h3>
+                      <button onClick={() => setShowLikesModal(false)} className="opacity-50 hover:opacity-100"><X size={18}/></button>
+                  </div>
+                  <div className="overflow-y-auto p-4 space-y-2">
+                      {exhibit.likedBy && exhibit.likedBy.length > 0 ? (
+                          exhibit.likedBy.map(username => {
+                              const userObj = users.find(u => u.username === username);
+                              return (
+                                  <div 
+                                    key={username} 
+                                    onClick={() => { setShowLikesModal(false); onAuthorClick(username); }}
+                                    className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer"
+                                  >
+                                      <img src={userObj?.avatarUrl || getUserAvatar(username)} className="w-8 h-8 rounded-full border border-white/10" />
+                                      <span className="font-mono text-sm font-bold">@{username}</span>
+                                  </div>
+                              )
+                          })
+                      ) : (
+                          <div className="text-center opacity-50 font-mono text-xs py-4">Список пуст</div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {isFullscreen && (
           <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
               <div className="absolute top-4 left-4 z-50 flex gap-4">
@@ -533,12 +569,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         <h1 className={`text-xl md:text-3xl font-bold font-pixel leading-tight ${isCursed ? 'text-red-500 italic' : (isWinamp ? 'text-[#00ff00]' : 'text-white')}`}>{exhibit.title}</h1>
                         
                         {/* Compact Stats Toolbar */}
-                        <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4">
-                            <button onClick={() => onLike(exhibit.id)} className={`flex items-center gap-1.5 hover:text-red-400 transition-colors ${isLiked ? 'text-red-500 font-bold' : ''}`}>
-                                <Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {exhibit.likes}
+                        <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4 select-none">
+                            <button onClick={() => setShowLikesModal(true)} className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer" title="Посмотреть кто оценил">
+                                <Heart size={16} className={isLiked ? "text-red-500 fill-current" : ""} /> 
+                                <span className={isLiked ? "text-red-500 font-bold" : ""}>{exhibit.likes}</span>
                             </button>
-                            <div className="flex items-center gap-1.5">
-                                <Eye size={16} /> {exhibit.views}
+                            <div className="flex items-center gap-1.5" title="Просмотры">
+                                <Eye size={16} /> {viewsDisplay}
                             </div>
                             <div className="flex-1"></div>
                             {isOwner && (

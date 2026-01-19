@@ -96,14 +96,15 @@ export const getArtifactTier = (item: Exhibit): TierType => {
     return 'COMMON';
 };
 
+// Enhanced Glows
 export const TIER_CONFIG: Record<TierType, any> = {
     COMMON: { name: 'COMMON', color: 'text-gray-500', bgColor: 'bg-gray-500/20', borderDark: 'border-dark-dim', badge: 'bg-gray-500 text-white', icon: User, shadow: '' },
-    UNCOMMON: { name: 'UNCOMMON', color: 'text-green-400', bgColor: 'bg-green-500/20', borderDark: 'border-green-500 shadow-[0_0_5px_rgba(74,222,128,0.3)]', badge: 'bg-green-600 text-white', icon: Circle, shadow: 'shadow-[0_0_5px_rgba(74,222,128,0.2)]' },
-    RARE: { name: 'RARE', color: 'text-cyan-500', bgColor: 'bg-cyan-500/20', borderDark: 'border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]', badge: 'bg-cyan-600 text-white', icon: Award, shadow: 'shadow-[0_0_10px_rgba(6,182,212,0.2)]', glow: true },
-    EPIC: { name: 'EPIC', color: 'text-purple-500', bgColor: 'bg-purple-500/20', borderDark: 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]', badge: 'bg-purple-600 text-white', icon: Flame, shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]', glow: true },
-    LEGENDARY: { name: 'LEGENDARY', color: 'text-yellow-500', bgColor: 'bg-yellow-500/20', borderDark: 'border-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.5)]', badge: 'bg-gradient-to-r from-yellow-600 to-red-600 text-white', icon: Zap, shadow: 'shadow-[0_0_30px_rgba(234,179,8,0.4)]', glow: true },
-    MYTHIC: { name: 'MYTHIC', color: 'text-pink-500', bgColor: 'bg-pink-500/20', borderDark: 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.6)]', badge: 'bg-gradient-to-r from-pink-600 to-purple-600 text-white', icon: Crown, shadow: 'shadow-[0_0_40px_rgba(236,72,153,0.5)]', glow: true },
-    CURSED: { name: 'CURSED', color: 'text-red-500', bgColor: 'bg-red-500/20', borderDark: 'border-red-600 shadow-[0_0_30px_rgba(239,68,68,0.7)] animate-pulse-slow', badge: 'bg-red-600 text-white font-black italic', icon: Ghost, shadow: 'shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-pulse' }
+    UNCOMMON: { name: 'UNCOMMON', color: 'text-green-400', bgColor: 'bg-green-500/20', borderDark: 'border-green-500 shadow-[0_0_10px_rgba(74,222,128,0.4)]', badge: 'bg-green-600 text-white', icon: Circle, shadow: 'shadow-[0_0_10px_rgba(74,222,128,0.3)]' },
+    RARE: { name: 'RARE', color: 'text-cyan-500', bgColor: 'bg-cyan-500/20', borderDark: 'border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.5)]', badge: 'bg-cyan-600 text-white', icon: Award, shadow: 'shadow-[0_0_20px_rgba(6,182,212,0.4)]', glow: true },
+    EPIC: { name: 'EPIC', color: 'text-purple-500', bgColor: 'bg-purple-500/20', borderDark: 'border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.6)]', badge: 'bg-purple-600 text-white', icon: Flame, shadow: 'shadow-[0_0_30px_rgba(168,85,247,0.5)]', glow: true },
+    LEGENDARY: { name: 'LEGENDARY', color: 'text-yellow-500', bgColor: 'bg-yellow-500/20', borderDark: 'border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.7)]', badge: 'bg-gradient-to-r from-yellow-600 to-red-600 text-white', icon: Zap, shadow: 'shadow-[0_0_40px_rgba(234,179,8,0.6)]', glow: true },
+    MYTHIC: { name: 'MYTHIC', color: 'text-pink-500', bgColor: 'bg-pink-500/20', borderDark: 'border-pink-500 shadow-[0_0_50px_rgba(236,72,153,0.8)]', badge: 'bg-gradient-to-r from-pink-600 to-purple-600 text-white', icon: Crown, shadow: 'shadow-[0_0_50px_rgba(236,72,153,0.7)]', glow: true },
+    CURSED: { name: 'CURSED', color: 'text-red-500', bgColor: 'bg-red-500/20', borderDark: 'border-red-600 shadow-[0_0_40px_rgba(239,68,68,0.8)] animate-pulse-slow', badge: 'bg-red-600 text-white font-black italic', icon: Ghost, shadow: 'shadow-[0_0_40px_rgba(220,38,38,0.7)] animate-pulse' }
 };
 
 export const calculateArtifactScore = (item: Exhibit, userPreferences?: Record<string, number>): number => {
