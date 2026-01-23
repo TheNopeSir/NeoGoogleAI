@@ -14,6 +14,7 @@ interface CommunityHubProps {
     onUserClick: (username: string) => void;
     onBack?: () => void;
     currentUser?: UserProfile | null;
+    onReact: (id: string) => void; // Added prop
 }
 
 // Winamp Helper wrapper moved outside
@@ -29,7 +30,7 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
     </div>
 );
 
-const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser }) => {
+const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser, onReact }) => {
     // Read initial tab from URL
     const getInitialTab = () => {
         const params = new URLSearchParams(window.location.search);
@@ -148,7 +149,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                                         theme={theme}
                                         onClick={onExhibitClick}
                                         currentUsername={currentUser?.username || ''}
-                                        onReact={() => {}}
+                                        onReact={() => onReact(item.id)}
                                         onAuthorClick={onUserClick}
                                     />
                                 ))}
@@ -177,7 +178,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                                             theme={theme}
                                             onClick={onExhibitClick}
                                             currentUsername={currentUser?.username || ''}
-                                            onReact={() => {}}
+                                            onReact={() => onReact(item.id)}
                                             onAuthorClick={onUserClick}
                                         />
                                         <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-bold rounded shadow-lg ${isWinamp ? 'bg-black text-[#00ff00] border border-[#00ff00]' : 'bg-black/80 text-white backdrop-blur-md'}`}>

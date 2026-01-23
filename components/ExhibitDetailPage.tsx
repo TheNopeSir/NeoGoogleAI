@@ -355,7 +355,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const recipientProfile = users.find(u => u.username === exhibit.owner);
 
   // Description truncation logic
-  const MAX_DESCRIPTION_LENGTH = 300;
+  const MAX_DESCRIPTION_LENGTH = 100; // Updated limit
   const isLongDescription = exhibit.description && exhibit.description.length > MAX_DESCRIPTION_LENGTH;
   const displayDescription = isLongDescription && !isDescriptionExpanded 
       ? exhibit.description.slice(0, MAX_DESCRIPTION_LENGTH) + '...'
@@ -520,13 +520,23 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     className={`relative aspect-square w-full overflow-hidden border transition-all duration-500 group ${isWinamp ? 'bg-black border-[#505050]' : (theme === 'dark' ? 'rounded-2xl border-white/10 bg-black' : 'rounded-2xl border-black/10 bg-white')} ${isCursed ? 'shadow-[0_0_30px_red]' : ''}`}
                     {...gallerySwipeHandlers}
                 >
+                    {/* Blurred Background Layer */}
+                    <img 
+                        src={slides[currentSlideIndex].type === 'image' ? slides[currentSlideIndex].url : ''} 
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none" 
+                    />
+
                     {slides[currentSlideIndex].type === 'image' ? (
-                        <div className="w-full h-full relative cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
-                            <img src={slides[currentSlideIndex].url} alt={exhibit.title} className="w-full h-full object-contain bg-black/50" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none opacity-50"/>
+                        <div className="w-full h-full relative cursor-zoom-in z-10" onClick={() => setIsFullscreen(true)}>
+                            <img src={slides[currentSlideIndex].url} alt={exhibit.title} className="w-full h-full object-contain" />
                         </div>
                     ) : (
-                        <iframe src={slides[currentSlideIndex].url} className="w-full h-full relative z-10" frameBorder="0" allowFullScreen></iframe>
+                        <div className="w-full h-full relative z-10">
+                            <iframe src={slides[currentSlideIndex].url} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+                            {/* Transparent click areas for swipe support over iframes */}
+                            <div className="absolute top-0 left-0 w-[15%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)}></div>
+                            <div className="absolute top-0 right-0 w-[15%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)}></div>
+                        </div>
                     )}
 
                     {slides.length > 1 && (
@@ -537,7 +547,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         </div>
                     )}
                     
-                    <button onClick={() => setIsFullscreen(true)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 size={16}/></button>
+                    <button onClick={() => setIsFullscreen(true)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"><Maximize2 size={16}/></button>
                 </div>
 
                 {!isOwner && (tradeStatus === 'FOR_TRADE' || tradeStatus === 'FOR_SALE' || tradeStatus === 'NONE' || !tradeStatus) && (
@@ -570,10 +580,32 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         
                         {/* Compact Stats Toolbar */}
                         <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4 select-none">
-                            <button onClick={() => setShowLikesModal(true)} className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer" title="Посмотреть кто оценил">
-                                <Heart size={16} className={isLiked ? "text-red-500 fill-current" : ""} /> 
-                                <span className={isLiked ? "text-red-500 font-bold" : ""}>{exhibit.likes}</span>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => onLike(exhibit.id)}
+                                    className={`transition-colors cursor-pointer ${isLiked ? 'text-red-500' : 'hover:text-white'}`}
+                                    title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
+                                >
+                                    <Heart size={20} className={isLiked ? "fill-current" : ""} />
+                                </button>
+                                
+                                {/* Likes List & Counter */}
+                                <div 
+                                    className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setShowLikesModal(true)}
+                                    title="Посмотреть кто оценил"
+                                >
+                                    {exhibit.likedBy && exhibit.likedBy.length > 0 && (
+                                        <div className="flex -space-x-2 mr-1">
+                                            {exhibit.likedBy.slice(0, 3).map((u, i) => (
+                                                <img key={i} src={getUserAvatar(u)} className="w-5 h-5 rounded-full border border-black bg-black" />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <span className="font-bold">{exhibit.likes}</span>
+                                </div>
+                            </div>
+
                             <div className="flex items-center gap-1.5" title="Просмотры">
                                 <Eye size={16} /> {viewsDisplay}
                             </div>
@@ -604,9 +636,9 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
                     {/* Description */}
                     <div className="mb-6">
-                        <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
+                        <div className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                             {displayDescription}
-                        </p>
+                        </div>
                         {isLongDescription && (
                             <button 
                                 onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
