@@ -32,10 +32,10 @@ import MyCollection from './components/MyCollection';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction } from './types';
-import { getArtifactTier } from './constants';
+import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 
-const CACHE_VERSION = 'v5.1_FINAL_FIX';
+const CACHE_VERSION = 'v5.2_FIXES';
 
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');
@@ -89,13 +89,94 @@ export default function App() {
   const stories = useMemo(() => {
       if (!user) return [];
       const following = user.following || [];
-      const recentPosts = exhibits
-          .filter(e => following.includes(e.owner) && !e.isDraft)
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
-      const storyUsers = Array.from(new Set(recentPosts.map(e => e.owner))).slice(0, 10) as string[];
-      return storyUsers.map(u => ({ username: u, avatar: db.getUserAvatar(u), latestItem: recentPosts.find(e => e.owner === u) }));
+      // Get unique users from following list who have posted
+      // Sort exhibits by date desc first
+      const sortedExhibits = [...exhibits].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      const storyUsersMap = new Map<string, Exhibit>();
+      
+      sortedExhibits.forEach(e => {
+          if (following.includes(e.owner) && !e.isDraft) {
+              if (!storyUsersMap.has(e.owner)) {
+                  storyUsersMap.set(e.owner, e);
+              }
+          }
+      });
+
+      return Array.from(storyUsersMap.entries()).map(([username, item]) => ({
+          username,
+          avatar: db.getUserAvatar(username),
+          latestItem: item
+      })).slice(0, 15);
   }, [user, exhibits]);
+
+  // --- ACHIEVEMENTS CHECKER ---
+  const checkAchievements = useCallback(async (currentUser: UserProfile) => {
+      if (!currentUser) return;
+      let hasUpdates = false;
+      const newAchievements = [...(currentUser.achievements || [])];
+
+      // 1. UPLOADER (Count non-draft exhibits)
+      const uploadCount = exhibits.filter(e => e.owner === currentUser.username && !e.isDraft).length;
+      const uploaderBadge = newAchievements.find(a => a.id === 'UPLOADER') || { id: 'UPLOADER', current: 0, target: BADGE_CONFIG.UPLOADER.target, unlocked: false };
+      if (uploadCount !== uploaderBadge.current) {
+          uploaderBadge.current = uploadCount;
+          if (uploadCount >= uploaderBadge.target && !uploaderBadge.unlocked) uploaderBadge.unlocked = true;
+          hasUpdates = true;
+          // Ensure it's in the array
+          const idx = newAchievements.findIndex(a => a.id === 'UPLOADER');
+          if (idx === -1) newAchievements.push(uploaderBadge); else newAchievements[idx] = uploaderBadge;
+      }
+
+      // 2. INFLUENCER (Total Likes Received)
+      const totalLikes = exhibits
+          .filter(e => e.owner === currentUser.username)
+          .reduce((acc, curr) => acc + (curr.likes || 0), 0);
+      
+      const influencerBadge = newAchievements.find(a => a.id === 'INFLUENCER') || { id: 'INFLUENCER', current: 0, target: BADGE_CONFIG.INFLUENCER.target, unlocked: false };
+      if (totalLikes !== influencerBadge.current) {
+          influencerBadge.current = totalLikes;
+          if (totalLikes >= influencerBadge.target && !influencerBadge.unlocked) influencerBadge.unlocked = true;
+          hasUpdates = true;
+          const idx = newAchievements.findIndex(a => a.id === 'INFLUENCER');
+          if (idx === -1) newAchievements.push(influencerBadge); else newAchievements[idx] = influencerBadge;
+      }
+
+      // 3. CRITIC (Comments Made)
+      // This is expensive to calc from all exhibits, usually should be stored on user, but for now scan:
+      let commentsMade = 0;
+      exhibits.forEach(e => {
+          if (e.comments) {
+              commentsMade += e.comments.filter(c => c.author === currentUser.username).length;
+          }
+      });
+      const criticBadge = newAchievements.find(a => a.id === 'CRITIC') || { id: 'CRITIC', current: 0, target: BADGE_CONFIG.CRITIC.target, unlocked: false };
+      if (commentsMade !== criticBadge.current) {
+          criticBadge.current = commentsMade;
+          if (commentsMade >= criticBadge.target && !criticBadge.unlocked) criticBadge.unlocked = true;
+          hasUpdates = true;
+          const idx = newAchievements.findIndex(a => a.id === 'CRITIC');
+          if (idx === -1) newAchievements.push(criticBadge); else newAchievements[idx] = criticBadge;
+      }
+
+      // 4. COLLECTOR (Collections Created)
+      const collectionCount = collections.filter(c => c.owner === currentUser.username).length;
+      const collectorBadge = newAchievements.find(a => a.id === 'COLLECTOR') || { id: 'COLLECTOR', current: 0, target: BADGE_CONFIG.COLLECTOR.target, unlocked: false };
+      if (collectionCount !== collectorBadge.current) {
+          collectorBadge.current = collectionCount;
+          if (collectionCount >= collectorBadge.target && !collectorBadge.unlocked) collectorBadge.unlocked = true;
+          hasUpdates = true;
+          const idx = newAchievements.findIndex(a => a.id === 'COLLECTOR');
+          if (idx === -1) newAchievements.push(collectorBadge); else newAchievements[idx] = collectorBadge;
+      }
+
+      if (hasUpdates) {
+          const updatedUser = { ...currentUser, achievements: newAchievements };
+          setUser(updatedUser);
+          await db.updateUserProfile(updatedUser);
+      }
+  }, [exhibits, collections]);
 
   // --- ROUTING LOGIC ---
   const syncFromUrl = useCallback(async () => {
@@ -211,9 +292,13 @@ export default function App() {
     setIsOffline(db.isOffline());
     if (user) {
        const updatedUser = data.users.find(u => u.username === user.username);
-       if (updatedUser) setUser(updatedUser);
+       if (updatedUser) {
+           setUser(updatedUser);
+           // Trigger achievement check on data refresh
+           checkAchievements(updatedUser);
+       }
     }
-  }, [user]);
+  }, [user, checkAchievements]);
 
   useEffect(() => {
     const unsubscribe = db.subscribe(() => { refreshData(); });
@@ -314,6 +399,9 @@ export default function App() {
     if (!isLiked && item.owner !== user.username) {
         db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
     }
+    
+    // Check achievements after reaction (although mainly for owner, but acts as trigger)
+    refreshData();
   };
 
   if (isInitializing || showSplash) {
@@ -514,7 +602,7 @@ export default function App() {
 
             {view === 'COMMUNITY_HUB' && (
                 <div className="p-4 pb-24">
-                    <CommunityHub theme={theme} users={db.getFullDatabase().users} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} />
+                    <CommunityHub theme={theme} users={db.getFullDatabase().users} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} onReact={handleReaction} />
                 </div>
             )}
 
