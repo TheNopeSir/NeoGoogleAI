@@ -588,6 +588,23 @@ const createCrud = (router, table) => {
 
 ['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'].forEach(t => createCrud(api, t));
 
+// Special Route for marking notifications read
+api.post('/notifications/read-all', async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: "Username required" });
+    try {
+        // Update JSONB data field: set isRead to true for all notifications for this recipient
+        await query(`
+            UPDATE notifications 
+            SET data = jsonb_set(data, '{isRead}', 'true'::jsonb), updated_at = NOW()
+            WHERE data->>'recipient' = $1 AND (data->>'isRead')::boolean = false
+        `, [username]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Special Exhibits Handler (POST)
 api.post('/exhibits', async (req, res) => {
     try {

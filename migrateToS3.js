@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { processImage, isBase64DataUri, getImagesDir } from './imageProcessor.js';
+import { processExhibitImages, processSingleImage, isBase64DataUri, getImagesDir } from './imageProcessor.js';
 
 // Fix for "self-signed certificate in certificate chain" error
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -31,206 +31,175 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-async function migrateToS3() {
-    console.log('🚀 Starting ROBUST migration to S3...\n');
+async function migrateExhibits() {
+    console.log('\n📦 --- PROCESSING EXHIBITS ---');
+    const result = await pool.query('SELECT id, data FROM exhibits');
+    console.log(`Found ${result.rows.length} exhibits.`);
 
-    try {
-        // Get all exhibits
-        const exhibitsResult = await pool.query('SELECT id, data FROM exhibits');
-        console.log(`📦 Found ${exhibitsResult.rows.length} exhibits to process\n`);
+    let updated = 0;
 
-        let processedCount = 0;
-        let skippedCount = 0;
-        let errorCount = 0;
-        let s3SuccessCount = 0;
-        let fallbackCount = 0;
+    for (const row of result.rows) {
+        const { id, data } = row;
+        if (!data.imageUrls || !Array.isArray(data.imageUrls) || data.imageUrls.length === 0) continue;
 
-        for (const row of exhibitsResult.rows) {
-            const exhibitId = row.id;
-            const data = row.data;
-            let needsUpdate = false;
+        let needsUpdate = false;
+        
+        // Check if any image is Base64 or Legacy Path
+        const hasBase64 = data.imageUrls.some(img => {
+            if (typeof img === 'string') return isBase64DataUri(img) || img.includes('/api/images/');
+            if (typeof img === 'object') return isBase64DataUri(img.medium) || (img.medium && img.medium.includes('/api/images/'));
+            return false;
+        });
 
-            // Check if this exhibit has images
-            if (!data.imageUrls || !Array.isArray(data.imageUrls) || data.imageUrls.length === 0) {
-                continue;
-            }
-
-            // Optimization: check if ALL images are already on S3 (contain s3 bucket name or endpoint)
-            const allS3 = data.imageUrls.every(img => {
-                const url = typeof img === 'object' ? img.medium : img;
-                return typeof url === 'string' && (url.includes('twcstorage') || url.includes('amazonaws') || url.includes(process.env.S3_BUCKET_NAME));
-            });
-
-            if (allS3) {
-                skippedCount++;
-                continue; // Skip logs for clean items
-            }
-
-            console.log(`📋 Processing exhibit: ${data.title || exhibitId}`);
-
-            const newImageUrls = [];
-
-            for (let i = 0; i < data.imageUrls.length; i++) {
-                const img = data.imageUrls[i];
-                let bufferToProcess = null;
-
-                // --- CASE 1: Raw Base64 string ---
-                if (isBase64DataUri(img)) {
-                    console.log(`   🔄 Image ${i + 1}: Found Base64 string, converting...`);
-                    bufferToProcess = img; // processImage handles base64 string
-                } 
-                // --- CASE 2: Legacy local file path (Relative or Absolute) ---
-                else if (typeof img === 'string' && (img.includes('/api/images/') || img.includes('uploads/'))) {
-                    console.log(`   🔄 Image ${i + 1}: Found legacy path, reading file...`);
-                    // Extract relative path
-                    let relPath = img;
-                    if (img.includes('/api/images/')) {
-                        relPath = img.split('/api/images/')[1];
-                    } else if (img.includes('uploads/')) {
-                        relPath = img.split('uploads/')[1];
-                    }
-                    
-                    if (relPath) {
-                        // Try typical locations
-                        const possiblePaths = [
-                            path.join(getImagesDir(), relPath),
-                            path.join(__dirname, 'uploads', relPath),
-                            path.join(__dirname, relPath)
-                        ];
-
-                        for (const p of possiblePaths) {
-                            if (fs.existsSync(p)) {
-                                try {
-                                    bufferToProcess = fs.readFileSync(p);
-                                    break;
-                                } catch (e) {
-                                    console.error(`   ❌ Error reading ${p}:`, e.message);
-                                }
-                            }
-                        }
-
-                        if (!bufferToProcess) {
-                            console.warn(`   ⚠️ File missing on disk (checked multiple paths for ${relPath})`);
-                            newImageUrls.push(img); // Keep broken link
-                            continue;
-                        }
-                    } else {
-                         newImageUrls.push(img);
-                         continue;
-                    }
-                }
-                // --- CASE 3: Object with nested Base64 strings ---
-                else if (typeof img === 'object' && (isBase64DataUri(img.large) || isBase64DataUri(img.medium) || isBase64DataUri(img.thumbnail))) {
-                     console.log(`   🔄 Image ${i + 1}: Found Object with Base64 data, extracting...`);
-                     // Prefer large, then medium, then thumbnail
-                     bufferToProcess = img.large || img.medium || img.thumbnail;
-                }
-                // --- CASE 4: Legacy Object with local paths ---
-                else if (typeof img === 'object' && img.medium && (img.medium.includes('/api/images/') || img.medium.includes('uploads/'))) {
-                     console.log(`   🔄 Image ${i + 1}: Found legacy object path, re-processing...`);
-                     const pathStr = img.medium;
-                     let relPath = pathStr.includes('/api/images/') ? pathStr.split('/api/images/')[1] : pathStr;
-                     
-                     const fullPath = path.join(getImagesDir(), relPath);
-                     if (fs.existsSync(fullPath)) {
-                         bufferToProcess = fs.readFileSync(fullPath);
-                     } else {
-                         // Try large?
-                         const pathStrL = img.large || '';
-                         const relPathL = pathStrL.includes('/api/images/') ? pathStrL.split('/api/images/')[1] : pathStrL;
-                         const fullPathL = relPathL ? path.join(getImagesDir(), relPathL) : null;
-                         
-                         if (fullPathL && fs.existsSync(fullPathL)) {
-                             bufferToProcess = fs.readFileSync(fullPathL);
-                         } else {
-                             console.warn(`   ⚠️ Source files missing for object, skipping.`);
-                             newImageUrls.push(img);
-                             continue;
-                         }
-                     }
-                }
-                // --- CASE 5: Already S3 ---
-                else if ((typeof img === 'string' && img.startsWith('http')) || (typeof img === 'object' && img.medium && img.medium.startsWith('http'))) {
-                     newImageUrls.push(img);
-                     continue;
-                }
-                 // --- CASE 6: Just a filename? ---
-                else if (typeof img === 'string' && !img.includes('/') && img.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
-                     console.log(`   🔄 Image ${i + 1}: Found filename, checking uploads...`);
-                     const fullPath = path.join(getImagesDir(), img);
-                     if (fs.existsSync(fullPath)) {
-                         bufferToProcess = fs.readFileSync(fullPath);
-                     } else {
-                         console.log(`   ❓ Image ${i + 1}: File ${img} not found locally.`);
-                         newImageUrls.push(img);
-                         continue;
-                     }
-                }
-                // --- DEFAULT ---
-                else {
-                    console.log(`   ❓ Image ${i + 1}: Unknown format (${typeof img}), keeping as is.`);
-                    if (typeof img === 'string') console.log(`      Value: ${img.substring(0, 50)}...`);
-                    else console.log(`      Value: ${JSON.stringify(img).substring(0, 50)}...`);
-                    newImageUrls.push(img);
-                    continue;
-                }
-
-                // If we found something to upload
-                if (bufferToProcess) {
-                    try {
-                        const processed = await processImage(bufferToProcess, exhibitId);
-                        newImageUrls.push(processed);
-                        needsUpdate = true;
-                        
-                        // Check result type
-                        const isS3 = processed.medium && processed.medium.startsWith('http');
-                        
-                        if (isS3) {
-                            console.log(`   ✅ Image ${i + 1}: Uploaded to S3 (${processed.medium})`);
-                            s3SuccessCount++;
-                        } else {
-                            console.log(`   ⚠️ Image ${i + 1}: S3 Error, saved as Base64 in DB (Fallback)`);
-                            fallbackCount++;
-                        }
-                    } catch (err) {
-                        console.error(`   ❌ Failed to process image ${i + 1}:`, err.message);
-                        newImageUrls.push(img); // Keep original if failed
-                        errorCount++;
-                    }
-                }
-            }
-
-            if (needsUpdate) {
-                data.imageUrls = newImageUrls;
+        if (hasBase64) {
+            console.log(`   🔄 Migrating exhibit: ${data.title || id}`);
+            try {
+                // processExhibitImages handles both raw strings and legacy objects, ensuring output is S3 objects
+                const newImages = await processExhibitImages(data.imageUrls, id);
                 
-                // Remove legacy fields
-                if (data.processedImages) delete data.processedImages;
-
-                await pool.query(
-                    'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
-                    [JSON.stringify(data), exhibitId]
-                );
+                // Validate that we actually got S3 links (simple check for http)
+                const isSuccess = newImages.some(img => img.medium && img.medium.startsWith('http'));
                 
-                processedCount++;
-                console.log(`   💾 Updated DB record for ${exhibitId}`);
-            } else {
-                skippedCount++;
+                if (isSuccess) {
+                    data.imageUrls = newImages;
+                    if (data.processedImages) delete data.processedImages; // Cleanup legacy
+
+                    await pool.query(
+                        'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(data), id]
+                    );
+                    updated++;
+                    console.log(`      ✅ Saved S3 URLs for ${id}`);
+                } else {
+                    console.log(`      ⚠️ Warning: Processing returned no HTTP links for ${id}`);
+                }
+            } catch (e) {
+                console.error(`      ❌ Failed to process exhibit ${id}:`, e.message);
             }
         }
+    }
+    console.log(`📦 Exhibits Updated: ${updated}`);
+}
 
-        console.log('\n\n📊 Migration Summary:');
-        console.log(`   ✅ Records Updated: ${processedCount}`);
-        console.log(`   ☁️  Successful S3 Uploads: ${s3SuccessCount}`);
-        console.log(`   ⚠️  Fallback to DB (S3 Failed): ${fallbackCount}`);
-        console.log(`   ⏭️  Records Skipped: ${skippedCount}`);
-        console.log(`   ❌ Critical Errors: ${errorCount}`);
-        console.log('\n✨ Migration complete!\n');
+async function migrateCollections() {
+    console.log('\nbh --- PROCESSING COLLECTIONS ---');
+    const result = await pool.query('SELECT id, data FROM collections');
+    console.log(`Found ${result.rows.length} collections.`);
 
-    } catch (error) {
-        console.error('❌ Fatal error:', error);
+    let updated = 0;
+
+    for (const row of result.rows) {
+        const { id, data } = row;
+        if (data.coverImage && isBase64DataUri(data.coverImage)) {
+            console.log(`   🔄 Migrating collection cover: ${data.title || id}`);
+            try {
+                const s3Url = await processSingleImage(data.coverImage, `col_${id}`);
+                if (s3Url && s3Url.startsWith('http')) {
+                    data.coverImage = s3Url;
+                    await pool.query(
+                        'UPDATE collections SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(data), id]
+                    );
+                    updated++;
+                    console.log(`      ✅ Updated collection ${id}`);
+                }
+            } catch (e) {
+                console.error(`      ❌ Failed collection ${id}:`, e.message);
+            }
+        }
+    }
+    console.log(`bh Collections Updated: ${updated}`);
+}
+
+async function migrateUsers() {
+    console.log('\n👤 --- PROCESSING USERS ---');
+    const result = await pool.query('SELECT username, data FROM users');
+    console.log(`Found ${result.rows.length} users.`);
+
+    let updated = 0;
+
+    for (const row of result.rows) {
+        const { username, data } = row;
+        let userModified = false;
+
+        if (data.avatarUrl && isBase64DataUri(data.avatarUrl)) {
+            console.log(`   🔄 Migrating avatar for: ${username}`);
+            try {
+                const s3Url = await processSingleImage(data.avatarUrl, `user_${username}_avatar`);
+                if (s3Url && s3Url.startsWith('http')) {
+                    data.avatarUrl = s3Url;
+                    userModified = true;
+                }
+            } catch (e) { console.error(`      ❌ Failed avatar ${username}`, e.message); }
+        }
+
+        if (data.coverUrl && isBase64DataUri(data.coverUrl)) {
+            console.log(`   🔄 Migrating cover for: ${username}`);
+            try {
+                const s3Url = await processSingleImage(data.coverUrl, `user_${username}_cover`);
+                if (s3Url && s3Url.startsWith('http')) {
+                    data.coverUrl = s3Url;
+                    userModified = true;
+                }
+            } catch (e) { console.error(`      ❌ Failed cover ${username}`, e.message); }
+        }
+
+        if (userModified) {
+            await pool.query(
+                'UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2',
+                [JSON.stringify(data), username]
+            );
+            updated++;
+            console.log(`      ✅ Updated user ${username}`);
+        }
+    }
+    console.log(`👤 Users Updated: ${updated}`);
+}
+
+async function migrateWishlist() {
+    console.log('\n✨ --- PROCESSING WISHLIST ---');
+    const result = await pool.query('SELECT id, data FROM wishlist');
+    console.log(`Found ${result.rows.length} wishlist items.`);
+
+    let updated = 0;
+
+    for (const row of result.rows) {
+        const { id, data } = row;
+        if (data.referenceImageUrl && isBase64DataUri(data.referenceImageUrl)) {
+            console.log(`   🔄 Migrating wishlist item: ${data.title || id}`);
+            try {
+                const s3Url = await processSingleImage(data.referenceImageUrl, `wish_${id}`);
+                if (s3Url && s3Url.startsWith('http')) {
+                    data.referenceImageUrl = s3Url;
+                    await pool.query(
+                        'UPDATE wishlist SET data = $1, updated_at = NOW() WHERE id = $2',
+                        [JSON.stringify(data), id]
+                    );
+                    updated++;
+                    console.log(`      ✅ Updated wishlist ${id}`);
+                }
+            } catch (e) {
+                console.error(`      ❌ Failed wishlist ${id}:`, e.message);
+            }
+        }
+    }
+    console.log(`✨ Wishlist Items Updated: ${updated}`);
+}
+
+async function runFullMigration() {
+    console.log('🚀 STARTING FULL S3 MIGRATION...\n');
+    
+    try {
+        await migrateExhibits();
+        await migrateCollections();
+        await migrateUsers();
+        await migrateWishlist();
+        console.log('\n🏁 ALL MIGRATIONS COMPLETE.');
+    } catch (e) {
+        console.error('\n💀 CRITICAL MIGRATION ERROR:', e);
     } finally {
         await pool.end();
     }
 }
 
-migrateToS3();
+runFullMigration();

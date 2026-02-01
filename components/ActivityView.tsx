@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet } from 'lucide-react';
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
-import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus } from '../services/storageService';
+import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface ActivityViewProps {
@@ -24,6 +24,9 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    const isLight = theme === 'light';
+    const isWinamp = theme === 'winamp';
+
     const myNotifs = useMemo(() => {
         let list = notifications.filter(n => n.recipient.toLowerCase() === currentUser.username.toLowerCase());
         if (filter === 'UNREAD') list = list.filter(n => !n.isRead);
@@ -43,6 +46,19 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const historyTrades = myTrades.filter(t => t.status !== 'PENDING');
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
+
+    const handleNotificationClick = (group: any) => {
+        // Mark all in this group as read
+        group.items.forEach((n: Notification) => {
+            if (!n.isRead) markSingleNotificationRead(n.id, currentUser.username);
+        });
+        // If it's a specific target, navigate
+        if (group.targets.length > 0) {
+            onExhibitClick(group.targets[0].id);
+        } else {
+            onAuthorClick(group.actor);
+        }
+    };
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -135,11 +151,19 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         const uniqueTargets = group.targets.filter((t: any) => t.id && t.title).slice(0, 3); // Show max 3 previews
 
         return (
-            <div key={group.id} className={`p-4 border-b transition-all flex gap-4 ${isUnread ? 'bg-green-900/10 border-green-500/30' : theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-transparent'}`}>
+            <div 
+                key={group.id} 
+                onClick={() => handleNotificationClick(group)}
+                className={`p-4 border-b transition-all flex gap-4 cursor-pointer 
+                    ${isUnread 
+                        ? (isLight ? 'bg-green-50 border-green-200' : 'bg-green-900/10 border-green-500/30') 
+                        : (isWinamp ? 'border-[#505050] bg-[#191919] hover:bg-[#252525]' : isLight ? 'bg-white border-gray-100 hover:bg-gray-50' : 'border-white/5 bg-transparent hover:bg-white/5')}`
+            }
+            >
                 <div className="pt-1">{getIconForType(first.type)}</div>
                 <div className="flex-1">
-                    <div className="text-sm font-mono mb-2">
-                        <span className="font-bold text-green-400 cursor-pointer hover:underline" onClick={() => onAuthorClick(group.actor)}>@{group.actor}</span> 
+                    <div className={`text-sm font-mono mb-2 ${isLight ? 'text-gray-800' : ''}`}>
+                        <span className="font-bold text-green-500 hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(group.actor); }}>@{group.actor}</span> 
                         <span className="opacity-70"> {actionText}</span>
                     </div>
                     
@@ -148,8 +172,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                             {uniqueTargets.map((t: any, idx: number) => (
                                 <div 
                                     key={idx}
-                                    onClick={() => onExhibitClick(t.id)}
-                                    className="text-xs font-bold font-pixel opacity-80 cursor-pointer hover:text-green-400 transition-colors border-l-2 border-white/20 pl-2 truncate"
+                                    className={`text-xs font-bold font-pixel opacity-80 transition-colors border-l-2 pl-2 truncate ${isLight ? 'border-gray-300 text-gray-700' : 'border-white/20 hover:text-green-400'}`}
                                 >
                                     "{t.title}"
                                 </div>
@@ -164,7 +187,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                         {formatTime(first.timestamp)}
                     </div>
                 </div>
-                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2"/>}
+                {isUnread && <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"/>}
             </div>
         );
     };
@@ -179,8 +202,8 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         const recipientItemsList = exhibits.filter(e => trade.recipientItems.includes(e.id));
 
         return (
-            <div key={trade.id} className={`p-4 rounded-xl border mb-3 ${theme === 'winamp' ? 'bg-[#191919] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
-                <div className="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
+            <div key={trade.id} className={`p-4 rounded-xl border mb-3 ${isWinamp ? 'bg-[#191919] border-[#505050]' : isLight ? 'bg-white border-gray-200 text-gray-800' : 'bg-white/5 border-white/10'}`}>
+                <div className={`flex justify-between items-center mb-3 pb-3 border-b ${isLight ? 'border-gray-200' : 'border-white/5'}`}>
                     <div className="flex items-center gap-2">
                         <RefreshCw size={14} className={trade.status === 'PENDING' ? 'text-blue-400' : trade.status === 'ACCEPTED' ? 'text-green-500' : 'text-gray-500'} />
                         <span className="font-pixel text-[10px] font-bold uppercase">{trade.status === 'PENDING' ? (isIncoming ? 'ВХОДЯЩИЙ ЗАПРОС' : 'ОЖИДАЕТ ОТВЕТА') : trade.status}</span>
@@ -193,11 +216,11 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     <div className="flex-1 text-center">
                         <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.sender}</div>
                         {trade.price && !trade.isWishlistFulfillment ? (
-                            <div className="text-green-400 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
                         ) : (
                             <div className="flex flex-wrap justify-center gap-1">
                                 {senderItemsList.length > 0 ? senderItemsList.map(item => (
-                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className="w-8 h-8 rounded border border-white/10 object-cover" title={item.title}/>
+                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className={`w-8 h-8 rounded border object-cover ${isLight ? 'border-gray-300' : 'border-white/10'}`} title={item.title}/>
                                 )) : <span className="text-[9px] opacity-30">Ничего</span>}
                             </div>
                         )}
@@ -209,11 +232,11 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     <div className="flex-1 text-center">
                         <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.recipient}</div>
                         {trade.price && trade.isWishlistFulfillment ? (
-                            <div className="text-green-400 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
                         ) : (
                             <div className="flex flex-wrap justify-center gap-1">
                                 {recipientItemsList.length > 0 ? recipientItemsList.map(item => (
-                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className="w-8 h-8 rounded border border-white/10 object-cover" title={item.title}/>
+                                    <img key={item.id} src={getImageUrl(item.imageUrls[0], 'thumbnail')} className={`w-8 h-8 rounded border object-cover ${isLight ? 'border-gray-300' : 'border-white/10'}`} title={item.title}/>
                                 )) : <span className="text-[9px] opacity-30">Ничего</span>}
                             </div>
                         )}
@@ -221,20 +244,20 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                 </div>
 
                 {trade.messages && trade.messages.length > 0 && (
-                    <div className="bg-black/20 p-2 rounded text-[10px] font-mono opacity-70 mb-3 italic">
+                    <div className={`p-2 rounded text-[10px] font-mono opacity-70 mb-3 italic ${isLight ? 'bg-gray-100 text-gray-700' : 'bg-black/20'}`}>
                         "{trade.messages[0].text}"
                     </div>
                 )}
 
                 {trade.status === 'PENDING' && isIncoming && (
                     <div className="flex gap-2">
-                        <button onClick={() => acceptTradeRequest(trade.id)} className="flex-1 py-2 bg-green-600 text-black font-bold text-[10px] rounded uppercase hover:bg-green-500">Принять</button>
+                        <button onClick={() => acceptTradeRequest(trade.id)} className="flex-1 py-2 bg-green-600 text-white font-bold text-[10px] rounded uppercase hover:bg-green-500">Принять</button>
                         <button onClick={() => updateTradeStatus(trade.id, 'DECLINED')} className="flex-1 py-2 border border-red-500 text-red-500 font-bold text-[10px] rounded uppercase hover:bg-red-500/10">Отклонить</button>
                     </div>
                 )}
 
                 {trade.status === 'PENDING' && !isIncoming && (
-                    <button onClick={() => updateTradeStatus(trade.id, 'CANCELLED')} className="w-full py-2 border border-white/10 text-white/50 font-bold text-[10px] rounded uppercase hover:bg-white/10 hover:text-white">Отменить запрос</button>
+                    <button onClick={() => updateTradeStatus(trade.id, 'CANCELLED')} className={`w-full py-2 border font-bold text-[10px] rounded uppercase ${isLight ? 'border-gray-300 text-gray-500 hover:bg-gray-100' : 'border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`}>Отменить запрос</button>
                 )}
             </div>
         );
@@ -244,10 +267,10 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     let lastDateLabel = '';
 
     return (
-        <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 ${theme === 'winamp' ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             
             {/* Header Tabs */}
-            <div className={`flex mb-6 border-b ${theme === 'winamp' ? 'border-[#505050]' : 'border-gray-500/30'}`}>
+            <div className={`flex mb-6 border-b ${isWinamp ? 'border-[#505050]' : isLight ? 'border-gray-200' : 'border-gray-500/30'}`}>
                 <button 
                     onClick={() => setActiveTab('NOTIFICATIONS')}
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'NOTIFICATIONS' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
@@ -266,7 +289,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'TRADES' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
                 >
                     <RefreshCw size={14} /> ОБМЕН
-                    {pendingIncomingTrades.length > 0 && <span className="bg-blue-500 text-black text-[8px] font-bold px-1 rounded-full">{pendingIncomingTrades.length}</span>}
+                    {pendingIncomingTrades.length > 0 && <span className="bg-blue-500 text-white text-[8px] font-bold px-1 rounded-full">{pendingIncomingTrades.length}</span>}
                 </button>
             </div>
 
@@ -274,16 +297,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                 <div>
                     <div className="flex justify-between items-center mb-4 px-2">
                         <div className="flex gap-2">
-                            <button onClick={() => setFilter('ALL')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'ALL' ? 'bg-white text-black border-white' : 'border-white/20 opacity-50'}`}>ВСЕ</button>
-                            <button onClick={() => setFilter('UNREAD')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'UNREAD' ? 'bg-green-500 text-black border-green-500' : 'border-white/20 opacity-50'}`}>НОВЫЕ</button>
+                            <button onClick={() => setFilter('ALL')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'ALL' ? (isLight ? 'bg-gray-200 border-gray-300 text-black' : 'bg-white text-black border-white') : 'border-white/20 opacity-50'}`}>ВСЕ</button>
+                            <button onClick={() => setFilter('UNREAD')} className={`text-[10px] px-3 py-1 rounded-full border ${filter === 'UNREAD' ? 'bg-green-500 text-white border-green-500' : 'border-white/20 opacity-50'}`}>НОВЫЕ</button>
                         </div>
                         <div className="flex gap-2">
                             {myNotifs.some(n => !n.isRead) && (
-                                <button onClick={handleMarkAllRead} className="text-[10px] text-green-500 hover:underline flex items-center gap-1">
-                                    <CheckCheck size={12}/>
+                                <button onClick={handleMarkAllRead} className="text-[10px] text-green-500 hover:underline flex items-center gap-1 font-bold">
+                                    <CheckCheck size={14}/> Прочитать все
                                 </button>
                             )}
-                            <button onClick={handleRefresh} className={`text-[10px] hover:text-white flex items-center gap-1 ${isRefreshing ? 'animate-spin opacity-100' : 'opacity-50'}`}>
+                            <button onClick={handleRefresh} className={`text-[10px] hover:text-green-500 flex items-center gap-1 ${isRefreshing ? 'animate-spin opacity-100' : 'opacity-50'}`}>
                                 <RefreshCw size={12}/>
                             </button>
                         </div>
@@ -292,7 +315,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     {groupedNotifications.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-pixel text-xs">НЕТ УВЕДОМЛЕНИЙ</div>
                     ) : (
-                        <div className={`rounded-xl overflow-hidden border ${theme === 'winamp' ? 'border-[#505050] bg-black' : 'border-white/10 bg-white/5'}`}>
+                        <div className={`rounded-xl overflow-hidden border ${isWinamp ? 'border-[#505050] bg-black' : isLight ? 'bg-white border-gray-200' : 'border-white/10 bg-white/5'}`}>
                             {groupedNotifications.map(group => {
                                 const dateLabel = getTimeLabel(group.timestamp);
                                 const showDate = dateLabel !== lastDateLabel;
@@ -301,7 +324,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                 return (
                                     <React.Fragment key={group.id}>
                                         {showDate && (
-                                            <div className="bg-white/5 px-4 py-2 text-[10px] font-bold font-pixel uppercase tracking-widest text-white/50 border-b border-white/5">
+                                            <div className={`px-4 py-2 text-[10px] font-bold font-pixel uppercase tracking-widest border-b ${isLight ? 'bg-gray-50 text-gray-500 border-gray-200' : 'bg-white/5 text-white/50 border-white/5'}`}>
                                                 {dateLabel}
                                             </div>
                                         )}
@@ -336,15 +359,15 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                     <div 
                                         key={partner} 
                                         onClick={() => onChatClick(partner)}
-                                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'winamp' ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
+                                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${isWinamp ? 'border-[#505050] bg-[#191919]' : isLight ? 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
                                     >
-                                        <img src={getUserAvatar(partner)} className="w-10 h-10 rounded-full border border-white/20" />
+                                        <img src={getUserAvatar(partner)} className={`w-10 h-10 rounded-full border ${isLight ? 'border-gray-300' : 'border-white/20'}`} />
                                         <div className="flex-1">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-400' : ''}`}>@{partner}</span>
+                                                <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-500' : ''}`}>@{partner}</span>
                                                 <span className="text-[9px] opacity-40 font-mono">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
                                             </div>
-                                            <div className={`text-xs font-mono truncate ${hasUnread ? 'text-white' : 'opacity-60'}`}>
+                                            <div className={`text-xs font-mono truncate ${hasUnread ? (isLight ? 'text-gray-900 font-bold' : 'text-white') : 'opacity-60'}`}>
                                                 {lastMsg.sender.toLowerCase() === currentUser.username.toLowerCase() && <span className="opacity-50">Вы: </span>}
                                                 {lastMsg.text}
                                             </div>

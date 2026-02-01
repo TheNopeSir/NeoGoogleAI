@@ -704,15 +704,42 @@ export const clearLocalCache = async () => {
     window.location.reload();
 };
 
-export const markNotificationsRead = async (u:string) => {
+export const markNotificationsRead = async (username: string) => {
+    // 1. Update Local State (Immediate Feedback)
+    let hasUpdates = false;
     hotCache.notifications.forEach(n => { 
-        if(n.recipient === u && !n.isRead) {
+        if(n.recipient === username && !n.isRead) {
             n.isRead = true;
             getDB().then(db => db.put('notifications', n));
+            hasUpdates = true;
         }
     });
-    notifyListeners();
+    
+    if (hasUpdates) {
+        notifyListeners();
+        // 2. Persist to Server (Prevent Reversion)
+        try {
+            await apiCall('/notifications/read-all', 'POST', { username });
+        } catch (e) {
+            console.error("Failed to sync read status to server:", e);
+        }
+    }
 };
+
+export const markSingleNotificationRead = async (id: string, username: string) => {
+    const notif = hotCache.notifications.find(n => n.id === id);
+    if (notif && !notif.isRead) {
+        notif.isRead = true;
+        getDB().then(db => db.put('notifications', notif));
+        notifyListeners();
+        // Sync single update via generic API
+        try {
+            await apiCall('/notifications', 'POST', notif);
+        } catch (e) {
+            console.error("Failed to sync single notification read status:", e);
+        }
+    }
+}
 
 export const toggleFollow = async (me:string, them:string) => {
     const myUser = hotCache.users.find(u => u.username === me);
