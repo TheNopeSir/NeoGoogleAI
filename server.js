@@ -143,9 +143,23 @@ const dbName = process.env.DB_NAME || 'default_db';
 const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
 
 const pool = new Pool({
-    user: dbUser, password: dbPass, host: dbHost, port: 5432, database: dbName,
+    user: dbUser, 
+    password: dbPass, 
+    host: dbHost, 
+    port: 5432, 
+    database: dbName,
     ssl: { rejectUnauthorized: false },
-    max: 20
+    max: 20,
+    // Настройки для предотвращения падения при idle timeout
+    idleTimeoutMillis: 30000, // Закрывать соединение через 30 сек простоя (раньше чем сервер)
+    connectionTimeoutMillis: 5000, // Таймаут на подключение
+    keepAlive: true
+});
+
+// КРИТИЧЕСКИ ВАЖНО: Обработка ошибок пула для предотвращения падения Node.js
+pool.on('error', (err, client) => {
+    console.error('❌ [DB] Unexpected error on idle client:', err.message);
+    // Не завершаем процесс, пул сам пересоздаст соединение при необходимости
 });
 
 const mapRow = (row) => {
