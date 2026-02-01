@@ -35,6 +35,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
 
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
+  const isLight = theme === 'light';
 
   // Получаем первое изображение для отображения с помощью утилиты
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
@@ -90,8 +91,8 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                                 <MessageSquare size={10} /> {commentCount}
                             </div>
                             <button 
-                                onClick={(e) => { e.stopPropagation(); onReact(); }}
-                                className="flex items-center gap-1 hover:text-[#FFD700]"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
+                                className="flex items-center gap-1 hover:text-[#FFD700] relative z-10 p-1 -m-1"
                                 title="Лайки"
                             >
                                 <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
@@ -150,32 +151,32 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
       </div>
 
       <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
-        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : ''}`}>{item.title}</h3>}
+        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</h3>}
         
-        <div className={`mt-auto font-mono text-[10px] ${isXP ? 'text-black opacity-80' : 'opacity-60'}`}>
+        <div className={`mt-auto font-mono text-[10px] ${isXP || isLight ? 'text-black opacity-80' : 'opacity-60'}`}>
             <span className="truncate uppercase">{item.condition || item.quality}</span>
         </div>
         
         {/* Footer with Stacked User/Stats */}
-        <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full">
-                <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
-                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP ? 'text-black' : ''}`}>@{item.owner}</span>
+        <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/10'}`}>
+            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-10">
+                <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/20'}`} />
+                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP || isLight ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
             
             <div className="flex items-center justify-between w-full">
-                <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Просмотры">
+                <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Просмотры">
                     <Eye size={12} /> <span>{uniqueViews}</span>
                 </div>
                 
                 <div className="flex items-center gap-3">
-                    <div className={`flex items-center gap-1 text-[10px] ${isXP ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
+                    <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
                         <MessageSquare size={12} /> <span>{commentCount}</span>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
                         <button 
-                            onClick={(e) => { e.stopPropagation(); onReact(); }}
-                            className={`flex items-center gap-1 text-[10px] transition-colors ${isLiked ? 'text-red-500' : (isXP ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
+                            className={`flex items-center gap-1 text-[10px] transition-colors relative z-20 p-1 -m-1 ${isLiked ? 'text-red-500' : (isXP || isLight ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
                             title="Лайки"
                         >
                             <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>

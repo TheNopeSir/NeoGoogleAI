@@ -42,6 +42,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
     const [tab, setTab] = useState<'TRENDS' | 'TRADE'>(getInitialTab);
     
     const isWinamp = theme === 'winamp';
+    const isLight = theme === 'light';
 
     // Sync tab changes to URL
     useEffect(() => {
@@ -88,7 +89,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
     );
 
     return (
-        <div className={`max-w-4xl mx-auto pb-32 animate-in fade-in ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
+        <div className={`max-w-4xl mx-auto pb-32 animate-in fade-in ${isWinamp ? 'font-winamp text-wa-green' : isLight ? 'text-gray-900' : 'text-gray-200'}`}>
             <SEO title="Сообщество | NeoArchive" />
             
             {/* Header */}
@@ -98,14 +99,14 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                     <p className="text-[12px] opacity-80">Активные узлы: {users.length}</p>
                 </WinampWindow>
             ) : (
-                <div className="p-6 mb-6 border-b border-white/10">
+                <div className={`p-6 mb-6 border-b ${isLight ? 'border-gray-200' : 'border-white/10'}`}>
                     <h1 className="text-2xl font-pixel font-bold flex items-center gap-3"><Users size={28} /> СООБЩЕСТВО</h1>
                     <p className="text-xs opacity-60 mt-1 font-mono">Центр обмена и рейтинги коллекционеров.</p>
                 </div>
             )}
 
             {/* Navigation */}
-            <div className={`flex mb-8 sticky top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
+            <div className={`flex mb-8 sticky top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isLight ? 'bg-white/90 border-b border-gray-200 backdrop-blur-md' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
                 {renderTabButton('TRENDS', TrendingUp, 'ТРЕНДЫ')}
                 {renderTabButton('TRADE', RefreshCw, 'ОБМЕН')}
             </div>
@@ -115,7 +116,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
                 {tab === 'TRENDS' && (
                     <div className="space-y-8 animate-in slide-in-from-right-4">
                         {/* Top Collectors */}
-                        <div className={`p-4 rounded-2xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : 'bg-gradient-to-r from-yellow-900/10 to-transparent border-yellow-500/20'}`}>
+                        <div className={`p-4 rounded-2xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : isLight ? 'bg-yellow-50 border-yellow-200' : 'bg-gradient-to-r from-yellow-900/10 to-transparent border-yellow-500/20'}`}>
                             <h3 className={`text-xs mb-4 flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-wa-gold font-winamp' : 'text-yellow-500 font-pixel'}`}><Trophy size={14}/> ТОП КОЛЛЕКЦИОНЕРЫ</h3>
                             <div 
                                 className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide"
@@ -160,7 +161,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ theme, users = [], exhibits
 
                 {tab === 'TRADE' && (
                     <div className="animate-in slide-in-from-right-4">
-                        <div className={`mb-6 p-4 border rounded-xl text-center ${isWinamp ? 'border-[#505050] bg-[#292929]' : 'border-blue-500/30 bg-blue-500/5'}`}>
+                        <div className={`mb-6 p-4 border rounded-xl text-center ${isWinamp ? 'border-[#505050] bg-[#292929]' : isLight ? 'bg-blue-50 border-blue-200 text-blue-900' : 'border-blue-500/30 bg-blue-500/5'}`}>
                             <h3 className="text-sm mb-1 font-bold">ТОРГОВАЯ ПЛОЩАДКА</h3>
                             <p className="text-[10px] opacity-60">
                                 У нас нет гаранта. Все сделки проводятся напрямую между пользователями.<br/>
