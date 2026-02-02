@@ -1,0 +1,14 @@
+{
+  "appId": "ru.neoarchive.client",
+  "appName": "NeoArchive",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

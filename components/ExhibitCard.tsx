@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Heart, Eye, MessageSquare } from 'lucide-react';
 import { Exhibit } from '../types';
@@ -86,17 +85,19 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     {/* Stats Line */}
                     <div className="flex justify-between items-center text-[10px]">
                         <span className="text-[#00A000]">{item.views} kbps</span>
-                        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
                                 <MessageSquare size={10} /> {commentCount}
                             </div>
-                            <button 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
-                                className="flex items-center gap-1 hover:text-[#FFD700] relative z-10 p-1 -m-1"
-                                title="Лайки"
-                            >
-                                <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
-                            </button>
+                            <div onClick={(e) => e.stopPropagation()} className="relative z-30">
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
+                                    className="flex items-center gap-1 hover:text-[#FFD700] p-1 -m-1"
+                                    title="Лайки"
+                                >
+                                    <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,7 +160,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
         
         {/* Footer with Stacked User/Stats */}
         <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-10">
+            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20">
                 <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/20'}`} />
                 <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP || isLight ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
@@ -173,10 +174,11 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
                         <MessageSquare size={12} /> <span>{commentCount}</span>
                     </div>
-                    <div onClick={(e) => e.stopPropagation()}>
+                    {/* Increased Hit Area and Z-Index for Like Button */}
+                    <div onClick={(e) => e.stopPropagation()} className="relative z-30">
                         <button 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
-                            className={`flex items-center gap-1 text-[10px] transition-colors relative z-20 p-1 -m-1 ${isLiked ? 'text-red-500' : (isXP || isLight ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
+                            className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 ${isLiked ? 'text-red-500' : (isXP || isLight ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
                             title="Лайки"
                         >
                             <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
