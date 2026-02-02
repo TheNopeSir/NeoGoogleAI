@@ -1,4 +1,3 @@
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
 
@@ -44,7 +43,13 @@ interface NeoArchiveDB extends DBSchema {
 const DB_NAME = 'NeoArchive_V3_Turbo';
 const DB_VERSION = 2; 
 const SESSION_USER_KEY = 'neo_active_user';
-const API_BASE = '/api';
+
+// --- API CONFIGURATION FOR MOBILE & WEB ---
+// В веб-версии используется прокси '/api'.
+// В мобильной версии (APK) нужно указать полный URL сервера (VITE_API_URL), 
+// так как приложение работает на localhost телефона, а сервер — в интернете.
+const API_BASE = (import.meta as any).env.VITE_API_URL || '/api';
+
 const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL'; 
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
@@ -148,14 +153,17 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
             };
             if (body) options.body = JSON.stringify(body);
 
-            let fullPath = `${API_BASE}${endpoint}`;
-
+            // Construct full URL using API_BASE which can be absolute for mobile
+            const fullPath = endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : `${API_BASE}/${endpoint}`;
+            
+            // Add timestamp for GET requests to prevent caching
+            let finalUrl = fullPath;
             if (method === 'GET') {
                 const separator = fullPath.includes('?') ? '&' : '?';
-                fullPath += `${separator}_t=${Date.now()}`;
+                finalUrl += `${separator}_t=${Date.now()}`;
             }
 
-            const res = await fetch(fullPath, options);
+            const res = await fetch(finalUrl, options);
             clearTimeout(timeoutId);
 
             if (!res.ok) {

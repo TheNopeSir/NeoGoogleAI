@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
@@ -252,6 +251,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     ) : (
                         <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleExhibits.map((item, index) => {
+                                const isLiked = item.likedBy?.includes(user?.username || '') || false;
                                 try {
                                     return feedViewMode === 'GRID' ? (
                                         <ExhibitCard
@@ -268,7 +268,16 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" /></div>
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
-                                                <div className="flex justify-between"><span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span><div className="flex items-center gap-1 text-[10px] opacity-60"><Heart size={10}/> {item.likes}</div></div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); onReact(item.id); }} 
+                                                        className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors z-20 relative p-1 -m-1"
+                                                    >
+                                                        <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
+                                                        <span>{item.likes}</span>
+                                                    </button>
+                                                </div>
                                                 <h3 className="font-bold font-pixel text-sm mt-1 line-clamp-1">{item.title}</h3>
                                                 <p className="text-[10px] opacity-60 line-clamp-1 mt-1">{item.description}</p>
                                             </div>
