@@ -39,11 +39,19 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
   // Получаем первое изображение для отображения с помощью утилиты
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
-  // Dynamic Glow Style
-  const glowStyle = isHighTier && theme === 'dark' ? {
-      boxShadow: `0 0 15px ${config.badge.split(' ')[0].replace('bg-', 'var(--tw-colors-')})`, 
-      borderColor: config.color.replace('text-', '') // Approximation, reliance on tailwind classes is better below
-  } : {};
+  // Event Handlers to stop propagation
+  const handleLike = (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      onReact();
+  };
+
+  const handleAuthorClick = (e: React.MouseEvent, author: string) => {
+      e.stopPropagation();
+      onAuthorClick(author);
+  };
+
+  const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
   if (isWinamp) {
       return (
@@ -70,14 +78,12 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                     <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
                 </div>
 
-                {/* Specs removed */}
-
                 {/* Meta Info - Playlist Style */}
                 <div className="mt-auto pt-2 border-t border-[#505050] font-winamp text-wa-green leading-none">
                     {/* Username Line */}
                     <div 
                         className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white" 
-                        onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }}
+                        onClick={(e) => handleAuthorClick(e, item.owner)}
                     >
                         @{item.owner}
                     </div>
@@ -89,9 +95,15 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                             <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
                                 <MessageSquare size={10} /> {commentCount}
                             </div>
-                            <div onClick={(e) => e.stopPropagation()} className="relative z-30">
+                            <div 
+                                onClick={stopProp} 
+                                onMouseDown={stopProp}
+                                onTouchStart={stopProp}
+                                className="relative z-50 pointer-events-auto"
+                            >
                                 <button 
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
+                                    type="button"
+                                    onClick={handleLike}
                                     className="flex items-center gap-1 hover:text-[#FFD700] p-1 -m-1"
                                     title="Лайки"
                                 >
@@ -160,7 +172,7 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
         
         {/* Footer with Stacked User/Stats */}
         <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/10'}`}>
-            <div onClick={(e) => { e.stopPropagation(); onAuthorClick(item.owner); }} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20">
+            <div onClick={(e) => handleAuthorClick(e, item.owner)} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20">
                 <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/20'}`} />
                 <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP || isLight ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
@@ -175,9 +187,15 @@ const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, current
                         <MessageSquare size={12} /> <span>{commentCount}</span>
                     </div>
                     {/* Increased Hit Area and Z-Index for Like Button */}
-                    <div onClick={(e) => e.stopPropagation()} className="relative z-30">
+                    <div 
+                        onClick={stopProp} 
+                        onMouseDown={stopProp} 
+                        onTouchStart={stopProp}
+                        className="relative z-50 pointer-events-auto"
+                    >
                         <button 
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(); }}
+                            type="button"
+                            onClick={handleLike}
                             className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 ${isLiked ? 'text-red-500' : (isXP || isLight ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
                             title="Лайки"
                         >
