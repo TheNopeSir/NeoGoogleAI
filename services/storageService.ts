@@ -48,7 +48,21 @@ const SESSION_USER_KEY = 'neo_active_user';
 // В веб-версии используется прокси '/api'.
 // В мобильной версии (APK) нужно указать полный URL сервера (VITE_API_URL), 
 // так как приложение работает на localhost телефона, а сервер — в интернете.
-const API_BASE = (import.meta as any).env.VITE_API_URL || '/api';
+
+const getEnvVar = (key: string): string | undefined => {
+    try {
+        // @ts-ignore
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+            // @ts-ignore
+            return import.meta.env[key];
+        }
+    } catch (e) {
+        console.warn('Environment variable access failed', e);
+    }
+    return undefined;
+};
+
+const API_BASE = getEnvVar('VITE_API_URL') || '/api';
 
 const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL'; 
 
@@ -259,7 +273,7 @@ export const subscribeToPush = async (username: string) => {
         const registration = await navigator.serviceWorker.ready;
         
         // VAPID Public Key from ENV
-        const vapidPublicKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY;
+        const vapidPublicKey = getEnvVar('VITE_VAPID_PUBLIC_KEY');
         if (!vapidPublicKey) {
             console.error('VAPID Public Key missing');
             return false;
