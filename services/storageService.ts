@@ -45,10 +45,6 @@ const DB_VERSION = 2;
 const SESSION_USER_KEY = 'neo_active_user';
 
 // --- API CONFIGURATION FOR MOBILE & WEB ---
-// В веб-версии используется прокси '/api'.
-// В мобильной версии (APK) нужно указать полный URL сервера (VITE_API_URL), 
-// так как приложение работает на localhost телефона, а сервер — в интернете.
-
 const getEnvVar = (key: string): string | undefined => {
     try {
         // @ts-ignore
@@ -64,7 +60,7 @@ const getEnvVar = (key: string): string | undefined => {
 
 const API_BASE = getEnvVar('VITE_API_URL') || '/api';
 
-const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL'; 
+const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL_FIX_DUPE'; 
 
 // --- IN-MEMORY HOT CACHE (RAM) ---
 let hotCache = {
@@ -80,6 +76,22 @@ let hotCache = {
 };
 
 let dbPromise: Promise<IDBPDatabase<NeoArchiveDB>> | null = null;
+
+// --- HELPER: Merge Arrays Unique by ID ---
+const mergeUnique = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
+    const map = new Map<string, T>();
+    current.forEach(item => map.set(item.id, item));
+    incoming.forEach(item => map.set(item.id, item));
+    // Convert back to array
+    return Array.from(map.values());
+};
+
+const mergeUniqueUsers = (current: UserProfile[], incoming: UserProfile[]): UserProfile[] => {
+    const map = new Map<string, UserProfile>();
+    current.forEach(item => map.set(item.username, item));
+    incoming.forEach(item => map.set(item.username, item));
+    return Array.from(map.values());
+};
 
 // --- INITIALIZATION ---
 
@@ -223,12 +235,13 @@ const hydrateCritical = async () => {
 const hydrateContent = async () => {
     try {
         const db = await getDB();
+        // Load latest exhibits from IDB to show something immediately
         const tx = db.transaction('exhibits', 'readonly');
         const index = tx.store.index('by-date');
         let cursor = await index.openCursor(null, 'prev');
         const latestExhibits: Exhibit[] = [];
         let count = 0;
-        while (cursor && count < 30) {
+        while (cursor && count < 50) {
             latestExhibits.push(cursor.value);
             count++;
             cursor = await cursor.continue();
@@ -336,8 +349,8 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
     } catch (e) { console.warn("Could not read session from DB"); }
 
     if (activeUserUsername) {
-        await loadCriticalFeedData();
-        performBackgroundSync(activeUserUsername);
+        // Load data in background to not block UI
+        loadCriticalFeedData().then(() => performBackgroundSync(activeUserUsername!));
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
 
@@ -356,14 +369,20 @@ const deleteGeneric = async (id: string) => {
 
 const loadCriticalFeedData = async () => {
     try {
-        const limit = 30;
+        const limit = 50;
         const data = await apiCall(`/feed?limit=${limit}`);
         if (!Array.isArray(data)) return;
-        const serverIds = new Set(data.map((e: any) => e.id));
-        const oldItemsToKeep = hotCache.exhibits.filter(e => !serverIds.has(e.id));
-        const merged = [...data, ...oldItemsToKeep].sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        // Use mergeUnique to prevent duplicates
+        const merged = mergeUnique(hotCache.exhibits, data);
+        
+        // Sort by timestamp desc
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
         hotCache.exhibits = merged;
         notifyListeners();
+        
+        // Update IDB in background
         getDB().then(db => {
             const tx = db.transaction('exhibits', 'readwrite');
             data.forEach((item: any) => tx.store.put(item));
@@ -378,20 +397,32 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         try {
             const data = await apiCall(endpoint);
             if (!Array.isArray(data)) return;
+            
             if (cacheKey) {
                 if (cacheKey === 'exhibits') {
-                    const serverIds = new Set(data.map((e: any) => e.id));
-                    const oldItemsToKeep = hotCache.exhibits.filter(e => !serverIds.has(e.id));
-                    const merged = [...data, ...oldItemsToKeep].sort((a:any, b:any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                    // Strict deduplication for exhibits
+                    const merged = mergeUnique(hotCache.exhibits, data);
+                    merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                     hotCache.exhibits = merged;
+                } else if (cacheKey === 'collections') {
+                    // Dedupe collections
+                    const merged = mergeUnique(hotCache.collections, data);
+                    hotCache.collections = merged;
+                } else if (cacheKey === 'users') {
+                    // Dedupe users
+                    const merged = mergeUniqueUsers(hotCache.users, data);
+                    hotCache.users = merged;
                 } else {
+                    // For other lists, usually replacing is safer if full list is fetched
                     hotCache[cacheKey] = data as any;
                 }
             } else if (table === 'generic') {
                  if (genericTable === 'wishlist') hotCache.wishlist = data;
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
             }
+            
             notifyListeners();
+            
             const tx = db.transaction(table as any, 'readwrite');
             const store = tx.objectStore(table as any);
             if (table === 'generic' && genericTable) {
@@ -404,7 +435,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     };
 
     Promise.allSettled([
-        fetchAndApply('/feed?limit=30', 'exhibits', undefined, 'exhibits'),
+        fetchAndApply('/feed?limit=50', 'exhibits', undefined, 'exhibits'),
         fetchAndApply('/users', 'users', undefined, 'users'),
         fetchAndApply('/collections', 'collections', undefined, 'collections'),
         fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
@@ -444,8 +475,9 @@ export const loginUser = async (identifier: string, password: string): Promise<U
     const db = await getDB();
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
-    const idx = hotCache.users.findIndex(u => u.username === user.username);
-    if (idx !== -1) hotCache.users[idx] = user; else hotCache.users.push(user);
+    // Dedupe users list
+    hotCache.users = mergeUniqueUsers(hotCache.users, [user]);
+    
     notifyListeners();
     await loadCriticalFeedData();
     performBackgroundSync(user.username);
@@ -457,7 +489,7 @@ export const registerUser = async (username: string, password: string, tagline: 
     const db = await getDB();
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
-    hotCache.users.push(user);
+    hotCache.users = mergeUniqueUsers(hotCache.users, [user]);
     notifyListeners();
     await loadCriticalFeedData();
     performBackgroundSync(user.username);
@@ -475,7 +507,7 @@ export const loginViaTelegram = async (tgUser: any) => {
     const db = await getDB();
     await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
     await db.put('users', user);
-    hotCache.users.push(user);
+    hotCache.users = mergeUniqueUsers(hotCache.users, [user]);
     notifyListeners();
     performBackgroundSync(user.username);
     return user;
@@ -488,15 +520,19 @@ export const recoverPassword = async (email: string) => {
 export const getFullDatabase = () => ({ ...hotCache });
 
 export const saveExhibit = async (e: Exhibit) => {
-    hotCache.exhibits.unshift(e);
+    // Optimistic update
+    hotCache.exhibits = mergeUnique([e], hotCache.exhibits);
     notifyListeners();
+    
     const db = await getDB();
     await db.put('exhibits', e);
     const serverResponse = await apiCall('/exhibits', 'POST', e);
     if (serverResponse && serverResponse.imageUrls) {
         const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
-        const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
-        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
+        
+        // Update cache with server response (which contains image URLs)
+        hotCache.exhibits = hotCache.exhibits.map(item => item.id === e.id ? updatedExhibit : item);
+        
         await db.put('exhibits', updatedExhibit);
         notifyListeners();
     }
@@ -505,13 +541,16 @@ export const saveExhibit = async (e: Exhibit) => {
 export const updateExhibit = async (e: Exhibit) => {
     const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
     if (idx !== -1) hotCache.exhibits[idx] = e;
+    else hotCache.exhibits.unshift(e);
+    
     notifyListeners();
+    
     const db = await getDB();
     await db.put('exhibits', e);
     const serverResponse = await apiCall('/exhibits', 'POST', e);
     if (serverResponse && serverResponse.imageUrls) {
         const updatedExhibit = { ...e, imageUrls: serverResponse.imageUrls };
-        if (idx !== -1) hotCache.exhibits[idx] = updatedExhibit;
+        hotCache.exhibits = hotCache.exhibits.map(item => item.id === e.id ? updatedExhibit : item);
         await db.put('exhibits', updatedExhibit);
         notifyListeners();
     }
@@ -526,7 +565,7 @@ export const deleteExhibit = async (id: string) => {
 };
 
 export const saveCollection = async (c: Collection) => {
-    hotCache.collections.push(c);
+    hotCache.collections = mergeUnique([c], hotCache.collections);
     notifyListeners();
     const db = await getDB();
     await db.put('collections', c);
@@ -535,8 +574,7 @@ export const saveCollection = async (c: Collection) => {
         const res = await apiCall('/collections', 'POST', c);
         if (res && res.success && res.data) {
             const updated = res.data;
-            const idx = hotCache.collections.findIndex(col => col.id === c.id);
-            if (idx !== -1) hotCache.collections[idx] = updated;
+            hotCache.collections = hotCache.collections.map(col => col.id === c.id ? updated : col);
             await db.put('collections', updated);
             notifyListeners();
         }
@@ -569,8 +607,7 @@ export const deleteCollection = async (id: string) => {
 };
 
 export const updateUserProfile = async (u: UserProfile) => {
-    const idx = hotCache.users.findIndex(us => us.username === u.username);
-    if (idx !== -1) hotCache.users[idx] = u;
+    hotCache.users = mergeUniqueUsers([u], hotCache.users);
     notifyListeners();
     const db = await getDB();
     await db.put('users', u);
@@ -582,8 +619,7 @@ export const updateUserProfile = async (u: UserProfile) => {
             if (res.avatarUrl) updated.avatarUrl = res.avatarUrl;
             if (res.coverUrl) updated.coverUrl = res.coverUrl;
             
-            const idx2 = hotCache.users.findIndex(us => us.username === u.username);
-            if (idx2 !== -1) hotCache.users[idx2] = updated;
+            hotCache.users = hotCache.users.map(us => us.username === u.username ? updated : us);
             await db.put('users', updated);
             notifyListeners();
         }
@@ -666,7 +702,7 @@ export const getUserAvatar = (username: string): string => {
     if (!username) return 'https://ui-avatars.com/api/?name=NA&background=000&color=fff';
     const u = hotCache.users.find(u => u.username === username);
     if (u?.avatarUrl) return u.avatarUrl;
-    return `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&bold=true`;
+    return 'https://ui-avatars.com/api/?name=' + username + '&background=random&color=fff&bold=true';
 };
 
 export const fetchExhibitById = async (id: string) => {
@@ -677,8 +713,7 @@ export const fetchExhibitById = async (id: string) => {
         if(item) {
             const db = await getDB();
             await db.put('exhibits', item);
-            const idx = hotCache.exhibits.findIndex(e => e.id === id);
-            if (idx !== -1) hotCache.exhibits[idx] = item; else hotCache.exhibits.push(item);
+            hotCache.exhibits = mergeUnique(hotCache.exhibits, [item]);
         }
         return item;
     } catch { return null; }
@@ -690,7 +725,7 @@ export const fetchCollectionById = async (id: string) => {
         if(col) {
             const db = await getDB();
             await db.put('collections', col);
-            hotCache.collections.push(col);
+            hotCache.collections = mergeUnique(hotCache.collections, [col]);
         }
         return col;
     } catch { return null; }

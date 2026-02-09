@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Search, Grid, FolderPlus, Users, ArrowLeft } from 'lucide-react';
 import { Exhibit, Collection, UserProfile, ReactionType } from '../types';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import { getUserAvatar } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';

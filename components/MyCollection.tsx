@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import WishlistCard from './WishlistCard';
 

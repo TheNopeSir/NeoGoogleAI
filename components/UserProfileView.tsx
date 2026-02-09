@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
@@ -12,7 +11,7 @@ import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar, subscribeToPush, unsubscribeFromPush } from '../services/storageService';
 import WishlistCard from './WishlistCard';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import SEO from './SEO';
 
@@ -58,7 +57,7 @@ interface UserProfileViewProps {
     onOpenSocialList: (username: string, type: 'followers' | 'following') => void;
     onThemeChange?: (theme: 'dark' | 'light' | 'xp' | 'winamp') => void;
     onWishlistClick: (item: WishlistItem) => void;
-    allUsers: UserProfile[]; // ADDED: List of all users for real-time data
+    allUsers: UserProfile[]; 
 }
 
 const WinampWindow = ({ title, children, className = '' }: { title: string, children?: React.ReactNode, className?: string }) => (
@@ -82,7 +81,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     onSaveProfile, onProfileImageUpload, onProfileCoverUpload, guestbookInput, setGuestbookInput, guestbookInputRef, profileTab, setProfileTab, refreshData,
     onOpenSocialList, onThemeChange, onWishlistClick, allUsers
 }) => {
-    // UPDATED: Get profile user from allUsers to ensure reactivity
     const profileUser = allUsers.find(u => u.username === viewedProfileUsername) || { 
         username: viewedProfileUsername, 
         email: 'ghost@matrix.net', 
@@ -96,7 +94,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         settings: {}
     } as UserProfile;
 
-    // UPDATED: Check subscription status from the *current* user object in allUsers (to be safe)
     const currentUserRealtime = allUsers.find(u => u.username === user.username) || user;
     const isCurrentUser = user?.username === viewedProfileUsername;
     const isSubscribed = currentUserRealtime?.following?.includes(viewedProfileUsername) || false;
@@ -125,11 +122,6 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const favoritedExhibits = exhibits.filter(e => e.likedBy?.includes(viewedProfileUsername));
     const profileGuestbook = guestbook.filter(g => g.targetUser.toLowerCase() === viewedProfileUsername.toLowerCase()).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const publishedExhibits = userExhibits.filter(e => !e.isDraft);
-
-    const showcaseItem = useMemo(() => {
-        if (publishedExhibits.length === 0) return null;
-        return [...publishedExhibits].sort((a, b) => (b.likes * 2 + b.views) - (a.likes * 2 + a.views))[0];
-    }, [publishedExhibits]);
 
     const handleDeleteEntry = async (id: string) => { if (confirm('Удалить запись?')) { await db.deleteGuestbookEntry(id); refreshData(); } };
     const generateSecurePassword = () => { const chars = "ABCabc123!@#"; let pass = ""; for(let i=0; i<12; i++) { pass += chars.charAt(Math.floor(Math.random() * chars.length)); } setEditPassword(pass); setShowPassword(true); };
@@ -268,6 +260,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                                 </div>
                                             </div>
                                         )}
+                                        {/* ... (Existing form fields) ... */}
                                         <div>
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 block">Статус / Слоган</label>
                                             <input value={editTagline} onChange={(e) => setEditTagline(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
@@ -346,7 +339,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </div>
                     {localProfileTab === 'ARTIFACTS' && (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-                            {publishedExhibits.map(item => <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={() => {}} />)}
+                            {publishedExhibits.map(item => <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={onAuthorClick} />)}
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center py-10 opacity-30 font-mono text-xs">Полка пуста</div>}
                         </div>
                     )}

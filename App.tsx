@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
@@ -35,7 +34,7 @@ import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, Gue
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 
-const CACHE_VERSION = 'v5.2_FIXES';
+const CACHE_VERSION = 'v5.3_FIXES';
 
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');
@@ -282,7 +281,16 @@ export default function App() {
 
   const refreshData = useCallback(() => {
     const data = db.getFullDatabase();
-    setExhibits(data.exhibits || []);
+    
+    // Slight optimization: only update state if data array length changed or specific flag
+    // But since it's a full refresh, React might re-render.
+    // The storage service now handles deduplication, so this array is clean.
+    setExhibits(prev => {
+        // Simple length check or reference check might be premature optimization, 
+        // relying on storage service data being fresh.
+        return data.exhibits || [];
+    });
+    
     setCollections(data.collections || []);
     setWishlist(data.wishlist || []);
     setNotifications(data.notifications || []);
@@ -290,11 +298,11 @@ export default function App() {
     setGuestbook(data.guestbook || []);
     setTradeRequests([...(data.tradeRequests || [])]);
     setIsOffline(db.isOffline());
+    
     if (user) {
        const updatedUser = data.users.find(u => u.username === user.username);
        if (updatedUser) {
            setUser(updatedUser);
-           // Trigger achievement check on data refresh
            checkAchievements(updatedUser);
        }
     }
@@ -400,8 +408,8 @@ export default function App() {
         db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
     }
     
-    // Check achievements after reaction (although mainly for owner, but acts as trigger)
-    refreshData();
+    // We don't need to call refreshData() manually here because db.updateExhibit already calls notifyListeners
+    // which triggers the subscription in useEffect -> refreshData.
   };
 
   if (isInitializing || showSplash) {
