@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { ArrowLeft, Share2, FolderOpen, Grid, User, Edit3, Trash2 } from 'lucide-react';
 import { Collection, Exhibit } from '../types';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
 
 interface CollectionDetailPageProps {

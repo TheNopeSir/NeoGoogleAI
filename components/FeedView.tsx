@@ -7,7 +7,7 @@ import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import { getFirstImageUrl } from '../utils/imageUtils';
 import WishlistCard from './WishlistCard';
 import CollectionCard from './CollectionCard';
@@ -71,7 +71,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   const [expandedWishlistUsers, setExpandedWishlistUsers] = useState<Set<string>>(new Set());
 
   // Infinite Scroll State
-  const [visibleCount, setVisibleCount] = useState(100); // Increased from 20 to 100 for better initial load
+  const [visibleCount, setVisibleCount] = useState(100); 
   const observerRef = useRef<HTMLDivElement>(null);
 
   // Reset subcategory when main category changes
@@ -84,7 +84,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   const processedExhibits = useMemo(() => {
       // 1. FILTERING
       let items = exhibits.filter(e => {
-          // EXCLUDE SELF & DRAFTS (Fixes Problem #3)
+          // EXCLUDE SELF & DRAFTS
           if (e.owner === user.username) return false;
           if (e.isDraft) return false;
 
@@ -145,6 +145,12 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleExhibits = processedExhibits.slice(0, visibleCount);
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
+
+  // Helper for nuclear event stopping
+  const stopProp = (e: React.SyntheticEvent) => {
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+  };
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in">
@@ -270,24 +276,38 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             <div>
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span>
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); onReact(item.id); }} 
-                                                        className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors z-20 relative p-1 -m-1"
+                                                    <div 
+                                                        onClick={stopProp} 
+                                                        onMouseDown={stopProp} 
+                                                        onTouchStart={stopProp}
+                                                        className="relative z-20"
                                                     >
-                                                        <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
-                                                        <span>{item.likes}</span>
-                                                    </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                e.nativeEvent.stopImmediatePropagation();
+                                                                e.preventDefault();
+                                                                onReact(item.id); 
+                                                            }} 
+                                                            className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1"
+                                                        >
+                                                            <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
+                                                            <span>{item.likes}</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <h3 className="font-bold font-pixel text-sm mt-1 line-clamp-1">{item.title}</h3>
                                                 <p className="text-[10px] opacity-60 line-clamp-1 mt-1">{item.description}</p>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-2"><span className="text-[10px] font-bold opacity-70">@{item.owner}</span></div>
+                                            <div className="flex items-center gap-2 mt-2" onClick={(e) => { e.stopPropagation(); onUserClick(item.owner); }}>
+                                                <span className="text-[10px] font-bold opacity-70 hover:underline hover:text-green-500">@{item.owner}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     );
                                 } catch (error) {
-                                    console.error(`[FeedView] Error rendering exhibit card #${index} (${item.id}):`, error);
-                                    return null; // Skip broken cards instead of breaking entire feed
+                                    return null; 
                                 }
                             })}
                         </div>
@@ -307,12 +327,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                     )}
                 </>
             ) : (
-                /* WISHLIST MODE - Grouped by Users */
+                /* WISHLIST MODE */
                 <>
                     {processedWishlist.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">ВИШЛИСТ ПУСТ</div>
                     ) : (() => {
-                        // Group wishlist by owner
+                        // ... Same as before ...
                         const wishlistByUser: { [username: string]: WishlistItem[] } = {};
                         processedWishlist.forEach(item => {
                             if (!wishlistByUser[item.owner]) {
@@ -338,10 +358,9 @@ const FeedView: React.FC<FeedViewProps> = ({
                         return (
                             <div className="space-y-3">
                                 {usernames.map(username => {
+                                    // ...
                                     const userItems = wishlistByUser[username];
                                     const isExpanded = expandedWishlistUsers.has(username);
-
-                                    // Group by priority
                                     const grails = userItems.filter(w => w.priority === 'GRAIL');
                                     const high = userItems.filter(w => w.priority === 'HIGH');
                                     const medium = userItems.filter(w => w.priority === 'MEDIUM');
@@ -349,7 +368,6 @@ const FeedView: React.FC<FeedViewProps> = ({
 
                                     return (
                                         <div key={username} className={`rounded-xl border overflow-hidden ${isWinamp ? 'border-[#505050] bg-[#191919]' : 'border-white/10 bg-white/5'}`}>
-                                            {/* User Header - Clickable */}
                                             <div
                                                 onClick={() => toggleUser(username)}
                                                 className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
@@ -383,64 +401,25 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 </div>
                                             </div>
 
-                                            {/* Expanded Wishlist Content */}
                                             {isExpanded && (
                                                 <div className="p-4 pt-0 space-y-6 border-t border-white/5">
-                                                    {/* GRAIL Items */}
-                                                    {grails.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 pb-2 border-b border-yellow-500/30">
-                                                                <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.8)]"></div>
-                                                                <h3 className="font-pixel text-xs text-yellow-500 uppercase tracking-wider">🏆 Священный Грааль</h3>
-                                                                <span className="text-[10px] opacity-50 font-mono">{grails.length}</span>
+                                                    {[
+                                                        { list: grails, color: 'text-yellow-500', title: '🏆 Священный Грааль', border: 'border-yellow-500/30', badge: 'bg-yellow-500' },
+                                                        { list: high, color: 'text-orange-400', title: '🎯 Активная Охота', border: 'border-orange-500/20', badge: 'bg-orange-500' },
+                                                        { list: medium, color: 'text-blue-400', title: '🔍 Интересует', border: 'border-blue-500/20', badge: 'bg-blue-500' },
+                                                        { list: low, color: 'text-gray-400', title: '👁️ Наблюдаю', border: 'border-gray-500/20', badge: 'bg-gray-500' }
+                                                    ].map((group, idx) => group.list.length > 0 && (
+                                                        <div key={idx} className="space-y-3">
+                                                            <div className={`flex items-center gap-3 pb-2 border-b ${group.border}`}>
+                                                                <div className={`w-2 h-2 rounded-full ${group.badge} ${group.badge === 'bg-yellow-500' ? 'animate-pulse' : ''}`}></div>
+                                                                <h3 className={`font-pixel text-xs ${group.color} uppercase tracking-wider`}>{group.title}</h3>
+                                                                <span className="text-[10px] opacity-50 font-mono">{group.list.length}</span>
                                                             </div>
                                                             <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                                                {grails.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
+                                                                {group.list.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
-                                                    )}
-
-                                                    {/* HIGH Priority */}
-                                                    {high.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 pb-2 border-b border-orange-500/20">
-                                                                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                                                <h3 className="font-pixel text-xs text-orange-400 uppercase tracking-wider">🎯 Активная Охота</h3>
-                                                                <span className="text-[10px] opacity-50 font-mono">{high.length}</span>
-                                                            </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                                                {high.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* MEDIUM Priority */}
-                                                    {medium.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 pb-2 border-b border-blue-500/20">
-                                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                                                <h3 className="font-pixel text-xs text-blue-400 uppercase tracking-wider">🔍 Интересует</h3>
-                                                                <span className="text-[10px] opacity-50 font-mono">{medium.length}</span>
-                                                            </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                                                {medium.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* LOW Priority */}
-                                                    {low.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 pb-2 border-b border-gray-500/20">
-                                                                <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                                                                <h3 className="font-pixel text-xs text-gray-400 uppercase tracking-wider">👁️ Наблюдаю</h3>
-                                                                <span className="text-[10px] opacity-50 font-mono">{low.length}</span>
-                                                            </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                                                {low.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
@@ -452,7 +431,6 @@ const FeedView: React.FC<FeedViewProps> = ({
                 </>
             )}
 
-            {/* Infinite Scroll Trigger */}
             <div ref={observerRef} className="h-20 flex items-center justify-center opacity-30">
                 {(visibleCount < (feedMode === 'ARTIFACTS' ? processedExhibits.length : feedMode === 'COLLECTIONS' ? processedCollections.length : processedWishlist.length)) && (
                     <div className="animate-pulse flex items-center gap-2 text-xs font-mono"><ArrowUpCircle size={16}/> ЗАГРУЗКА ДАННЫХ...</div>

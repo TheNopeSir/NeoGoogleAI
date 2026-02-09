@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Trophy, TrendingUp, Users, RefreshCw, Flame } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
 import SEO from './SEO';
 

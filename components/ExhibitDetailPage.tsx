@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2, 
@@ -8,7 +7,7 @@ import {
 import { Exhibit, Comment, UserProfile } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG, getSimilarArtifacts, CATEGORY_CONDITIONS } from '../constants';
 import { getUserAvatar } from '../services/storageService';
-import ExhibitCard from './ExhibitCard';
+import { ExhibitCard } from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
 import { getImageUrl } from '../utils/imageUtils';
