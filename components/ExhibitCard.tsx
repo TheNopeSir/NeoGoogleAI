@@ -190,6 +190,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                 </div>
             </div>
         </div>
+      </div>
     </div>
   );
 };
