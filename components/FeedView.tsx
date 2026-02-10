@@ -146,10 +146,14 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
 
-  // Aggressive Event Stopper
-  const stopAll = (e: React.SyntheticEvent) => {
-      e.stopPropagation();
-      e.nativeEvent.stopImmediatePropagation();
+  // Parent Click Handler for List Items
+  const handleListItemClick = (e: React.MouseEvent, item: Exhibit) => {
+      const target = e.target as HTMLElement;
+      // Check if clicked element is a button or inside a button/interactive element
+      if (target.closest('button') || target.closest('a') || target.closest('.interactive')) {
+          return;
+      }
+      onExhibitClick(item);
   };
 
   return (
@@ -270,25 +274,17 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             onAuthorClick={onUserClick}
                                         />
                                     ) : (
-                                    <div key={item.id} onClick={() => onExhibitClick(item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
+                                    <div key={item.id} onClick={(e) => handleListItemClick(e, item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
                                         <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" /></div>
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span>
-                                                    <div 
-                                                        className="relative z-20 pointer-events-auto"
-                                                        onClick={stopAll}
-                                                        onMouseDown={stopAll}
-                                                        onTouchStart={stopAll}
-                                                    >
+                                                    <div className="relative z-20">
                                                         <button 
                                                             type="button"
-                                                            onClick={(e) => {
-                                                                stopAll(e);
-                                                                onReact(item.id);
-                                                            }}
-                                                            className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1 cursor-pointer"
+                                                            onClick={() => onReact(item.id)} 
+                                                            className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1 cursor-pointer interactive"
                                                         >
                                                             <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
                                                             <span>{item.likes}</span>
@@ -298,12 +294,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 <h3 className="font-bold font-pixel text-sm mt-1 line-clamp-1">{item.title}</h3>
                                                 <p className="text-[10px] opacity-60 line-clamp-1 mt-1">{item.description}</p>
                                             </div>
-                                            <div 
-                                                className="flex items-center gap-2 mt-2 pointer-events-auto" 
-                                                onClick={(e) => { stopAll(e); onUserClick(item.owner); }}
-                                                onMouseDown={stopAll}
-                                                onTouchStart={stopAll}
-                                            >
+                                            <div className="flex items-center gap-2 mt-2 interactive" onClick={() => onUserClick(item.owner)}>
                                                 <span className="text-[10px] font-bold opacity-70 hover:underline hover:text-green-500">@{item.owner}</span>
                                             </div>
                                         </div>
@@ -395,9 +386,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={(e) => { stopAll(e); onUserClick(username); }}
-                                                        onMouseDown={stopAll}
-                                                        onTouchStart={stopAll}
+                                                        onClick={(e) => { e.stopPropagation(); onUserClick(username); }}
                                                         className="px-3 py-1 text-[10px] rounded border border-white/20 hover:bg-white/10 transition-colors"
                                                     >
                                                         ПРОФИЛЬ
