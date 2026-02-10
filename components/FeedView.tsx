@@ -146,8 +146,8 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
 
-  // Helper for nuclear event stopping
-  const stopProp = (e: React.SyntheticEvent) => {
+  // Aggressive Event Stopper
+  const stopAll = (e: React.SyntheticEvent) => {
       e.stopPropagation();
       e.nativeEvent.stopImmediatePropagation();
   };
@@ -277,20 +277,18 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span>
                                                     <div 
-                                                        onClick={stopProp} 
-                                                        onMouseDown={stopProp} 
-                                                        onTouchStart={stopProp}
-                                                        className="relative z-20"
+                                                        className="relative z-20 pointer-events-auto"
+                                                        onClick={stopAll}
+                                                        onMouseDown={stopAll}
+                                                        onTouchStart={stopAll}
                                                     >
                                                         <button 
                                                             type="button"
-                                                            onClick={(e) => { 
-                                                                e.stopPropagation(); 
-                                                                e.nativeEvent.stopImmediatePropagation();
-                                                                e.preventDefault();
-                                                                onReact(item.id); 
-                                                            }} 
-                                                            className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1"
+                                                            onClick={(e) => {
+                                                                stopAll(e);
+                                                                onReact(item.id);
+                                                            }}
+                                                            className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1 cursor-pointer"
                                                         >
                                                             <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
                                                             <span>{item.likes}</span>
@@ -300,7 +298,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 <h3 className="font-bold font-pixel text-sm mt-1 line-clamp-1">{item.title}</h3>
                                                 <p className="text-[10px] opacity-60 line-clamp-1 mt-1">{item.description}</p>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-2" onClick={(e) => { e.stopPropagation(); onUserClick(item.owner); }}>
+                                            <div 
+                                                className="flex items-center gap-2 mt-2 pointer-events-auto" 
+                                                onClick={(e) => { stopAll(e); onUserClick(item.owner); }}
+                                                onMouseDown={stopAll}
+                                                onTouchStart={stopAll}
+                                            >
                                                 <span className="text-[10px] font-bold opacity-70 hover:underline hover:text-green-500">@{item.owner}</span>
                                             </div>
                                         </div>
@@ -392,7 +395,9 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); onUserClick(username); }}
+                                                        onClick={(e) => { stopAll(e); onUserClick(username); }}
+                                                        onMouseDown={stopAll}
+                                                        onTouchStart={stopAll}
                                                         className="px-3 py-1 text-[10px] rounded border border-white/20 hover:bg-white/10 transition-colors"
                                                     >
                                                         ПРОФИЛЬ

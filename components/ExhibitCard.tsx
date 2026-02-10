@@ -23,7 +23,6 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
   const isHighTier = tier !== 'COMMON'; 
   const uniqueViews = item.viewedBy?.length || item.views;
 
-  // Robust Like Logic
   const isLiked = item.likedBy?.includes(currentUsername) || false;
   const likeCount = item.likes || 0;
   const commentCount = item.comments?.length || 0;
@@ -37,16 +36,20 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
 
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
-  // Nuclear Event Stopping
-  const handleLike = (e: React.MouseEvent | React.TouchEvent) => {
+  // AGGRESSIVE EVENT STOPPER
+  // Stops all phases of a click from bubbling to the parent card
+  const stopAll = (e: React.SyntheticEvent) => {
       e.stopPropagation();
-      e.preventDefault();
+      e.nativeEvent.stopImmediatePropagation();
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+      stopAll(e);
       onReact();
   };
 
   const handleAuthorClick = (e: React.MouseEvent, author: string) => {
-      e.stopPropagation();
-      e.preventDefault();
+      stopAll(e);
       onAuthorClick(author);
   };
 
@@ -74,8 +77,10 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
 
                 <div className="mt-auto pt-2 border-t border-[#505050] font-winamp text-wa-green leading-none">
                     <div 
-                        className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white" 
+                        className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white inline-block" 
                         onClick={(e) => handleAuthorClick(e, item.owner)}
+                        onMouseDown={stopAll}
+                        onTouchStart={stopAll}
                     >
                         @{item.owner}
                     </div>
@@ -86,11 +91,17 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                             <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
                                 <MessageSquare size={10} /> {commentCount}
                             </div>
-                            <div className="relative z-50 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            
+                            {/* Winamp Like Button */}
+                            <div
+                                onClick={stopAll}
+                                onMouseDown={stopAll}
+                                onTouchStart={stopAll}
+                            >
                                 <button 
                                     type="button"
                                     onClick={handleLike}
-                                    className="flex items-center gap-1 hover:text-[#FFD700] p-1 -m-1"
+                                    className="flex items-center gap-1 hover:text-[#FFD700] p-1 -m-1 cursor-pointer"
                                     title="Лайки"
                                 >
                                     <Heart size={10} fill={isLiked ? "currentColor" : "none"}/> {likeCount}
@@ -155,7 +166,12 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
         </div>
         
         <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/10'}`}>
-            <div onClick={(e) => handleAuthorClick(e, item.owner)} className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20">
+            <div 
+                onClick={(e) => handleAuthorClick(e, item.owner)} 
+                onMouseDown={stopAll}
+                onTouchStart={stopAll}
+                className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20"
+            >
                 <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/20'}`} />
                 <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP || isLight ? 'text-black' : ''}`}>@{item.owner}</span>
             </div>
@@ -169,12 +185,14 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                     <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
                         <MessageSquare size={12} /> <span>{commentCount}</span>
                     </div>
-                    {/* ISOLATED BUTTON CONTAINER with z-index 50 and explicit click handling */}
+                    
+                    {/* BUTTON CONTAINER FIREWALL */}
+                    {/* Captures all event phases to prevent parent bubbling */}
                     <div 
                         className="relative z-50 pointer-events-auto"
-                        onClick={(e) => e.stopPropagation()} 
-                        onMouseDown={(e) => e.stopPropagation()} 
-                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={stopAll} 
+                        onMouseDown={stopAll}
+                        onTouchStart={stopAll}
                     >
                         <button 
                             type="button"
