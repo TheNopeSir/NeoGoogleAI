@@ -1,4 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { Capacitor } from '@capacitor/core';
 import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
 
 // ==========================================
@@ -58,7 +59,18 @@ const getEnvVar = (key: string): string | undefined => {
     return undefined;
 };
 
-const API_BASE = getEnvVar('VITE_API_URL') || '/api';
+// ⚠️ HARDCODED SERVER IP FOR ANDROID ⚠️
+// Если VITE_API_URL не задан в .env, используем этот IP.
+// 185.152.92.64 - это IP вашего сервера из конфигов. Порт 3002 из server.js.
+// Важно: На Android 'http' трафик должен быть разрешен в capacitor.config.json (cleartext: true)
+const REMOTE_SERVER_URL = 'http://185.152.92.64:3002/api';
+
+const isNative = Capacitor.isNativePlatform();
+
+// Если мы на телефоне - используем удаленный сервер. Если в браузере - относительный путь.
+const API_BASE = getEnvVar('VITE_API_URL') || (isNative ? REMOTE_SERVER_URL : '/api');
+
+console.log(`[Network] API Target: ${API_BASE} (Native: ${isNative})`);
 
 const FORCE_RESET_TOKEN = 'NEO_RESET_S3_MIGRATION_V3_FINAL_FIX_DUPE'; 
 
@@ -194,6 +206,10 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
 
             if (!res.ok) {
                 const errText = await res.text();
+                // Check if we got HTML instead of JSON (common 404 error)
+                if (errText.trim().startsWith('<')) {
+                    throw new Error(`Server Error ${res.status}: Endpoint not found (check API URL)`);
+                }
                 throw new Error(`API Error ${res.status}: ${errText.slice(0, 100)}`);
             }
             return await res.json();
