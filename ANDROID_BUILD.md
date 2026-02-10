@@ -1,57 +1,38 @@
 # Сборка Android APK для NeoArchive
 
-Чтобы создать APK файл, выполните следующие шаги.
-
-## 1. Подготовка окружения
-
+## 1. Подготовка
 Убедитесь, что у вас установлены:
 - Node.js (v18+)
-- Android Studio (последняя версия)
-- Java JDK 17
+- Android Studio
+- Java JDK 17+
 
-## 2. Установка зависимостей
-
-В корне проекта выполните:
-```bash
-npm install
-```
-
-## 3. Настройка адреса API
-
-Мобильное приложение не может обращаться к `localhost` вашего компьютера. Вы должны указать адрес вашего публичного API (сервера).
-
-Создайте или отредактируйте файл `.env.production` (или просто `.env`) и добавьте:
+## 2. Настройка сервера
+Мобильное приложение требует HTTPS соединение с сервером.
+В файле `.env` укажите публичный URL вашего API:
 
 ```env
 VITE_API_URL=https://api.neoarchive.ru/api
 ```
-*(Замените URL на ваш реальный адрес сервера, где запущен `server.js`)*
 
-## 4. Сборка веб-части
+## 3. Сборка APK
 
-Соберите фронтенд:
-```bash
-npm run build:full
-```
-
-## 5. Инициализация Android проекта
-
-Если вы делаете это впервые:
-```bash
-npx cap add android
-```
-
-## 6. Синхронизация и открытие Android Studio
+### Вариант А: Быстрая сборка через терминал
+Эта команда соберет проект и создаст `.apk` файл без открытия Android Studio.
 
 ```bash
-npx cap sync android
-npx cap open android
+npm run android:apk
 ```
 
-## 7. Сборка APK в Android Studio
+Файл будет находиться здесь:
+`android/app/build/outputs/apk/debug/app-debug.apk`
 
-1. Дождитесь индексации проекта в Android Studio.
-2. В меню выберите: **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
-3. После завершения, уведомление покажет путь к файлу `app-debug.apk`.
+### Вариант Б: Через Android Studio (для отладки/релиза)
+1. Запустите студию с проектом:
+   ```bash
+   npm run android:open
+   ```
+2. Дождитесь синхронизации Gradle.
+3. В меню выберите: **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
 
-Теперь этот файл можно установить на телефон.
+## 4. Релиз (Signed APK)
+Для публикации в Google Play используйте меню **Build > Generate Signed Bundle / APK** в Android Studio и следуйте инструкциям по созданию ключа подписи.
