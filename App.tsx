@@ -34,7 +34,7 @@ import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, Gue
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 
-const CACHE_VERSION = 'v5.3_FIXES';
+const CACHE_VERSION = 'v6.0_CLEAN_ID';
 
 export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light' | 'xp' | 'winamp'>('dark');

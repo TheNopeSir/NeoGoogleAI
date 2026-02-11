@@ -1,9 +1,9 @@
 {
-  "appId": "ru.neoarchive.client",
+  "appId": "ru.neoarchive.app",
   "appName": "NeoArchive",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https",
+    "androidScheme": "http",
     "cleartext": true
   },
   "plugins": {
