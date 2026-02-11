@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Mail, Lock, UserPlus, User, AlertCircle, CheckSquare, Square, Send, Wand2, Eye, EyeOff, Terminal, RefreshCw, Activity, ArrowRight, Check } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 
@@ -32,6 +32,8 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
 
   // New Password State
   const [newPassword, setNewPassword] = useState('');
+
+  const isNative = Capacitor.isNativePlatform();
 
   useEffect(() => {
     // Check initial params for verification flow
@@ -238,9 +240,17 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
                         <UserPlus size={24} /><span>РЕГ</span>
                     </button>
                 </div>
-                <button onClick={() => { setStep('TELEGRAM'); resetForm(); }} className="py-4 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
-                    <Send size={16} /> TELEGRAM
-                </button>
+                
+                {/* Hide Telegram on Native Apps because of domain validation issues */}
+                {!isNative ? (
+                    <button onClick={() => { setStep('TELEGRAM'); resetForm(); }} className="py-4 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
+                        <Send size={16} /> TELEGRAM
+                    </button>
+                ) : (
+                    <div className="text-[9px] text-center text-white/30 font-mono">
+                        Вход через Telegram доступен только в Web-версии
+                    </div>
+                )}
                 
                 {userCount !== null && (
                     <div className="mt-4 flex items-center justify-center gap-2 opacity-50">
