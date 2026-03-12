@@ -8,6 +8,9 @@ COPY package.json package-lock.json* ./
 # Устанавливаем зависимости
 RUN npm install
 
+# Устанавливаем бинарники sharp для Alpine Linux (musl libc)
+RUN npm install --os=linux --libc=musl --cpu=x64 sharp
+
 # Копируем исходный код проекта
 COPY . .
 
