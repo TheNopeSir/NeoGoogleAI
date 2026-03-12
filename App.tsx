@@ -323,9 +323,9 @@ export default function App() {
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
-          } else { 
-              await syncFromUrl();
-              setView('AUTH'); 
+          } else {
+              setView('AUTH');
+              window.history.replaceState({}, document.title, '/');
           }
       } catch (e) { setView('AUTH'); } 
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
