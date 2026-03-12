@@ -210,9 +210,11 @@ const ensureSchema = async () => {
     // Attempt to add 'id' to users for consistency (alias for username)
     try {
         await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS id TEXT`);
-        await query(`UPDATE users SET id = username WHERE id IS NULL`);
+        await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`);
+        await query(`UPDATE users SET id = username WHERE id IS NULL AND username IS NOT NULL`);
+        await query(`UPDATE users SET username = id WHERE username IS NULL AND id IS NOT NULL`);
     } catch (e) {
-        console.warn("[Schema] Could not alias username to id on users table (non-critical):", e.message);
+        console.warn("[Schema] Could not alias username/id on users table (non-critical):", e.message);
     }
 
     await query(`
@@ -234,13 +236,22 @@ const ensureSchema = async () => {
         );
     `);
 
-    await query(`DELETE FROM verification_codes WHERE created_at < NOW() - INTERVAL '24 HOURS'`);
+    try {
+        await query(`DELETE FROM verification_codes WHERE created_at < NOW() - INTERVAL '24 HOURS'`);
+    } catch (e) {
+        console.warn("[Schema] Could not clean up old verification codes:", e.message);
+    }
 };
 
-pool.connect().then(() => {
-    console.log(`✅ [DB] Connected`);
-    ensureSchema();
-});
+pool.connect()
+    .then(client => {
+        console.log(`✅ [DB] Connected`);
+        client.release();
+        ensureSchema().catch(e => console.error("❌ [Schema Error]:", e));
+    })
+    .catch(err => {
+        console.error("❌ [DB Connection Error]:", err);
+    });
 
 // ==========================================
 // API ROUTES
@@ -406,7 +417,10 @@ const sendPushToUser = async (username, title, body, url = '/') => {
         const promises = res.rows.map(row => {
             const subscription = { endpoint: row.endpoint, keys: { auth: row.auth, p256dh: row.p256dh } };
             return webpush.sendNotification(subscription, payload).catch(err => {
-                if (err.statusCode === 410) query('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint]);
+                if (err.statusCode === 410) {
+                    query('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint])
+                        .catch(e => console.error("Push cleanup error:", e));
+                }
             });
         });
         await Promise.all(promises);
@@ -538,9 +552,13 @@ const createCrud = (router, table) => {
     });
 
     router.get(`/${table}/:id`, async (req, res) => {
-        const r = await query(`SELECT * FROM "${table}" WHERE id = $1`, [req.params.id]);
-        if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
-        res.json(mapRow(r.rows[0]));
+        try {
+            const r = await query(`SELECT * FROM "${table}" WHERE id = $1`, [req.params.id]);
+            if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
+            res.json(mapRow(r.rows[0]));
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 
     router.post(`/${table}`, async (req, res) => {
@@ -581,8 +599,12 @@ const createCrud = (router, table) => {
     });
 
     router.delete(`/${table}/:id`, async (req, res) => {
-        await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
-        res.json({ success: true });
+        try {
+            await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 };
 
