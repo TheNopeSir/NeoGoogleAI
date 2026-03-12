@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const { Pool } = pg;
 
 const dbUser = process.env.DB_USER || 'gen_user';
-const dbHost = process.env.DB_HOST || '185.152.92.64';
+const dbHost = process.env.DB_HOST || '5.42.101.48';
 const dbName = process.env.DB_NAME || 'default_db';
 const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
 const dbPort = 5432;

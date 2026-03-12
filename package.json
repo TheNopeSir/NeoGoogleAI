@@ -7,7 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "vite --host",
+    "dev": "node server.js & vite --host",
     "build": "vite build",
     "type-check": "tsc --noEmit --skipLibCheck",
     "build:full": "npm run type-check && vite build",

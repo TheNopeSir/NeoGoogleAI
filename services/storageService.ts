@@ -61,9 +61,9 @@ const getEnvVar = (key: string): string | undefined => {
 
 // ⚠️ HARDCODED SERVER IP FOR ANDROID ⚠️
 // Если VITE_API_URL не задан в .env, используем этот IP.
-// 185.152.92.64 - это IP вашего сервера из конфигов. Порт 3002 из server.js.
+// 5.42.101.48 - это IP вашего сервера из конфигов. Порт 3002 из server.js.
 // Важно: На Android 'http' трафик должен быть разрешен в capacitor.config.json (cleartext: true)
-const REMOTE_SERVER_URL = 'http://185.152.92.64:3002/api';
+const REMOTE_SERVER_URL = 'http://5.42.101.48:3002/api';
 
 const isNative = Capacitor.isNativePlatform();
 
