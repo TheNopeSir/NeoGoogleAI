@@ -8,6 +8,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
+import nodemailer from 'nodemailer';
 import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri, processSingleImage } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 import webpush from 'web-push';
@@ -96,36 +97,25 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
 // ... (Email Logic) ...
-const EMAILJS_SERVICE_ID = 'service_s27hkib';
-const EMAILJS_TEMPLATE_WELCOME = 'template_w89ggy9';
-const EMAILJS_TEMPLATE_RESET = 'template_gsrqbjb';
-const EMAILJS_PUBLIC_KEY = 'HC4Ig9E7XEh6tdwyD';
-const EMAILJS_PRIVATE_KEY = 'vBo7MgHf6y-8zDR4dchvg';
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.timeweb.ru',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: {
+        user: process.env.SMTP_USER || 'morpheus@neoarchive.ru',
+        pass: process.env.SMTP_PASS || 'o#5n8^)=^fjj$U'
+    }
+});
 
-const sendMailWithRetry = async (mailOptions, templateId, extraParams = {}, retries = 3) => {
-    const payload = {
-        service_id: EMAILJS_SERVICE_ID,
-        template_id: templateId,
-        user_id: EMAILJS_PUBLIC_KEY,
-        accessToken: EMAILJS_PRIVATE_KEY, 
-        template_params: {
-            to_email: mailOptions.to, 
-            email: mailOptions.to,    
-            recipient: mailOptions.to,
-            user_email: mailOptions.to, 
-            subject: mailOptions.subject,
-            message: mailOptions.html, 
-            ...extraParams 
-        }
-    };
+const sendMailWithRetry = async (mailOptions, retries = 3) => {
     for (let i = 0; i < retries; i++) {
         try {
-            const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Origin': APP_URL, 'User-Agent': 'Mozilla/5.0' },
-                body: JSON.stringify(payload)
+            await transporter.sendMail({
+                from: `"NeoArchive" <${process.env.SMTP_USER || 'morpheus@neoarchive.ru'}>`,
+                to: mailOptions.to,
+                subject: mailOptions.subject,
+                html: mailOptions.html,
             });
-            if (!response.ok) throw new Error(`EmailJS API Error`);
             return true;
         } catch (err) {
             if (i === retries - 1) throw err;
@@ -334,7 +324,7 @@ api.post('/auth/recover', async (req, res) => {
                 to: email, 
                 subject: 'Сброс пароля NeoArchive', 
                 html: `Для сброса пароля перейдите по ссылке: ${resetLink}` 
-            }, EMAILJS_TEMPLATE_RESET, { reset_link: resetLink });
+            });
         } catch (e) {
             console.error("Email send failed:", e);
         }
