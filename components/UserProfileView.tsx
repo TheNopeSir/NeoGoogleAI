@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy, 
-    Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings, 
-    Search, Terminal, Sun, Package, Heart, Link as LinkIcon, 
+import {
+    ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy,
+    Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings,
+    Search, Terminal, Sun, Package, Heart, Link as LinkIcon,
     AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key, Bell,
-    BookOpen
+    BookOpen, Check
 } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
 import { STATUS_OPTIONS } from '../constants';
@@ -107,6 +107,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
     const [editEmail, setEditEmail] = useState(user.email);
     const [pushEnabled, setPushEnabled] = useState(false);
+    const [passwordRequestSent, setPasswordRequestSent] = useState(false);
+    const [emailRequestSent, setEmailRequestSent] = useState(false);
 
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -136,18 +138,49 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
     const handleSaveProfileExtended = async () => {
         if (!isCurrentUser) return;
-        const updated = { 
-            ...user, 
-            tagline: editTagline, 
-            bio: editBio, 
-            status: editStatus, 
+
+        // Save non-sensitive fields directly
+        const updated = {
+            ...user,
+            tagline: editTagline,
+            bio: editBio,
+            status: editStatus,
             telegram: editTelegram,
-            email: editEmail 
         };
-        if (editPassword) updated.password = editPassword;
         await db.updateUserProfile(updated);
-        setIsEditingProfile(false);
+
+        let hasPending = false;
+
+        // Password change → send confirmation email
+        if (editPassword) {
+            try {
+                await db.requestPasswordChange(user.username, editPassword);
+                setPasswordRequestSent(true);
+                hasPending = true;
+            } catch (err: any) {
+                alert('Ошибка при запросе смены пароля: ' + (err.message || 'Неизвестная ошибка'));
+                return;
+            }
+        }
+
+        // Email change → send confirmation email to new address
+        if (editEmail && editEmail !== user.email) {
+            try {
+                await db.requestEmailChange(user.username, editEmail);
+                setEmailRequestSent(true);
+                hasPending = true;
+            } catch (err: any) {
+                alert('Ошибка при запросе смены email: ' + (err.message || 'Неизвестная ошибка'));
+                return;
+            }
+        }
+
         setEditPassword('');
+
+        // Close form only if no confirmation emails were sent
+        if (!hasPending) {
+            setIsEditingProfile(false);
+        }
     };
 
     const handleGuestbookSubmit = () => {
@@ -285,8 +318,20 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         </div>
                                         <div className="flex gap-2 pt-2">
                                             <button onClick={handleSaveProfileExtended} className="flex-1 bg-green-600 text-white px-4 py-2 rounded font-bold text-xs uppercase">Сохранить</button>
-                                            <button onClick={() => setIsEditingProfile(false)} className="px-4 py-2 rounded border hover:bg-white/10 text-xs uppercase">Отмена</button>
+                                            <button onClick={() => { setIsEditingProfile(false); setPasswordRequestSent(false); setEmailRequestSent(false); }} className="px-4 py-2 rounded border hover:bg-white/10 text-xs uppercase">Отмена</button>
                                         </div>
+                                        {passwordRequestSent && (
+                                            <div className="flex items-start gap-2 bg-green-500/10 border border-green-500/40 p-3 rounded-lg text-xs">
+                                                <Check size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
+                                                <span className="opacity-90">Письмо с подтверждением смены <strong>пароля</strong> отправлено на вашу почту. Проверьте входящие.</span>
+                                            </div>
+                                        )}
+                                        {emailRequestSent && (
+                                            <div className="flex items-start gap-2 bg-green-500/10 border border-green-500/40 p-3 rounded-lg text-xs">
+                                                <Check size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
+                                                <span className="opacity-90">Письмо с подтверждением нового <strong>email</strong> отправлено на <strong>{editEmail}</strong>. Текущий email останется прежним до подтверждения.</span>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-3">

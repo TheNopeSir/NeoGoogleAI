@@ -1,24 +1,41 @@
-FROM node:20-alpine
+# ========================
+# Stage 1: Builder
+# Устанавливает все зависимости (включая devDeps) и собирает фронтенд
+# ========================
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Копируем файлы package.json и package-lock.json (если есть)
 COPY package.json package-lock.json* ./
-
-# Устанавливаем зависимости
-RUN npm install
+RUN npm ci
 
 # Устанавливаем бинарники sharp для Alpine Linux (musl libc)
 RUN npm install --os=linux --libc=musl --cpu=x64 sharp
 
-# Копируем исходный код проекта
 COPY . .
-
-# Собираем фронтенд (Vite build -> dist)
 RUN npm run build
 
-# Открываем порт 3002
+# ========================
+# Stage 2: Production
+# Только runtime-зависимости + собранный dist
+# ========================
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+# Устанавливаем бинарники sharp для Alpine Linux (musl libc)
+RUN npm install --os=linux --libc=musl --cpu=x64 sharp
+
+# Копируем серверный код
+COPY server.js adminAPI.js imageProcessor.js emailTemplates.js ./
+COPY services/s3Service.js ./services/
+
+# Копируем собранный фронтенд из builder-стадии
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3002
 
-# Запускаем сервер
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

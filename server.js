@@ -12,11 +12,16 @@ import nodemailer from 'nodemailer';
 import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri, processSingleImage } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 import webpush from 'web-push';
-
-// ==========================================
-// 🛡️ SECURITY OVERRIDE FOR CLOUD DBs
-// ==========================================
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
+import {
+    verificationTemplate,
+    welcomeTemplate,
+    resetPasswordTemplate,
+    changePasswordTemplate,
+    passwordChangedAlertTemplate,
+    changeEmailTemplate,
+} from './emailTemplates.js';
 
 dotenv.config();
 
@@ -96,14 +101,50 @@ app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
-// ... (Email Logic) ...
+// --- RATE LIMITING ---
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 минут
+    max: 10,
+    message: { error: 'Слишком много попыток. Попробуйте через 15 минут.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 час
+    max: 5,
+    message: { error: 'Слишком много регистраций с этого IP. Попробуйте позже.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// ==========================================
+// 📧 EMAIL (SMTP)
+// ==========================================
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
+const SMTP_SECURE = SMTP_PORT === 465; // port 465 → implicit TLS; 587 → STARTTLS
+
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.timeweb.ru',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: true,
+    host: process.env.SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
     auth: {
-        user: process.env.SMTP_USER || 'morpheus@neoarchive.ru',
-        pass: process.env.SMTP_PASS || 'o#5n8^)=^fjj$U'
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    },
+    // Некоторые хостинговые SMTP-серверы (в т.ч. Timeweb) используют
+    // самоподписанные или неполные цепочки сертификатов — отключаем
+    // проверку только для SMTP-соединения, не глобально.
+    tls: {
+        rejectUnauthorized: false
+    }
+});
+
+// Проверяем SMTP-соединение при старте сервера
+transporter.verify((err) => {
+    if (err) {
+        console.error('[SMTP] ❌ Не удалось подключиться к почтовому серверу:', err.message);
+    } else {
+        console.log(`[SMTP] ✅ Соединение установлено (${process.env.SMTP_HOST}:${SMTP_PORT})`);
     }
 });
 
@@ -111,13 +152,15 @@ const sendMailWithRetry = async (mailOptions, retries = 3) => {
     for (let i = 0; i < retries; i++) {
         try {
             await transporter.sendMail({
-                from: `"NeoArchive" <${process.env.SMTP_USER || 'morpheus@neoarchive.ru'}>`,
+                from: `"NeoArchive" <${process.env.SMTP_USER}>`,
                 to: mailOptions.to,
                 subject: mailOptions.subject,
                 html: mailOptions.html,
             });
+            console.log(`[SMTP] ✉️  Письмо отправлено на ${mailOptions.to} (${mailOptions.subject})`);
             return true;
         } catch (err) {
+            console.error(`[SMTP] Попытка ${i + 1}/${retries} — ошибка:`, err.message);
             if (i === retries - 1) throw err;
             await new Promise(res => setTimeout(res, 3000));
         }
@@ -127,10 +170,10 @@ const sendMailWithRetry = async (mailOptions, retries = 3) => {
 // ==========================================
 // 💽 DATABASE
 // ==========================================
-const dbUser = process.env.DB_USER || 'gen_user';
-const dbHost = process.env.DB_HOST || '5.42.101.48';
-const dbName = process.env.DB_NAME || 'default_db';
-const dbPass = process.env.DB_PASSWORD || '9H@DDCb.gQm.S}';
+const dbUser = process.env.DB_USER;
+const dbHost = process.env.DB_HOST;
+const dbName = process.env.DB_NAME;
+const dbPass = process.env.DB_PASSWORD;
 
 const pool = new Pool({
     user: dbUser, 
@@ -247,20 +290,30 @@ const api = express.Router();
 
 // --- AUTH ROUTES ---
 
-api.post('/auth/register', async (req, res) => {
+api.post('/auth/register', registerLimiter, async (req, res) => {
     try {
         const { username, password, tagline, email } = req.body;
         if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
-        // Use 'username' column, fallback to 'id' if 'username' not found (hybrid support)
-        const check = await query(`SELECT * FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
+        // Проверяем, не занят ли username/email уже в users
+        const check = await query(`SELECT username FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
         if (check.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
 
-        const newUser = {
+        // Также проверяем pending-регистрации в verification_codes
+        const pending = await query(
+            `SELECT code FROM verification_codes WHERE type = 'REGISTER' AND (payload->>'username' = $1 OR payload->>'email' = $2) AND created_at > NOW() - INTERVAL '24 HOURS'`,
+            [username, email]
+        );
+        if (pending.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const code = crypto.randomBytes(16).toString('hex');
+
+        const pendingUser = {
             username,
-            password, // В реальном продакшене здесь должен быть хеш
+            password: hashedPassword,
             email,
-            tagline,
+            tagline: tagline || 'Новый пользователь',
             joinedDate: new Date().toLocaleDateString('ru-RU'),
             following: [],
             followers: [],
@@ -269,34 +322,60 @@ api.post('/auth/register', async (req, res) => {
             isAdmin: shouldBeAdmin(username, email)
         };
 
-        // Insert using username
-        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
-        
-        // Also try to set ID if column exists
-        try { await query(`UPDATE users SET id = username WHERE username = $1`, [username]); } catch(e){}
+        await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'REGISTER', $2)`, [code, pendingUser]);
 
-        res.json(newUser);
+        const verifyLink = `${APP_URL}/?code=${code}&type=REGISTER`;
+        try {
+            await sendMailWithRetry({
+                to: email,
+                subject: 'Подтверждение регистрации — NeoArchive',
+                html: verificationTemplate(username, verifyLink)
+            });
+        } catch (e) {
+            console.error("Register email send failed:", e.message);
+            // Не блокируем регистрацию при ошибке отправки письма
+        }
+
+        res.json({ success: true });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
 
-api.post('/auth/login', async (req, res) => {
+api.post('/auth/login', authLimiter, async (req, res) => {
     try {
         const { identifier, password } = req.body;
-        
-        // Updated query to use 'username' column instead of 'id'
+
         const result = await query(`
-            SELECT * FROM users 
-            WHERE (username = $1 OR data->>'email' = $1) 
-            AND data->>'password' = $2
-        `, [identifier, password]);
-        
+            SELECT * FROM users WHERE username = $1 OR data->>'email' = $1
+        `, [identifier]);
+
         if (result.rows.length === 0) return res.status(401).json({ error: "Неверный логин или пароль" });
-        
+
         const user = mapRow(result.rows[0]);
-        
+        const storedPassword = user.password;
+
+        let passwordMatch = false;
+        const isBcrypt = storedPassword?.startsWith('$2b$') || storedPassword?.startsWith('$2a$');
+
+        if (isBcrypt) {
+            passwordMatch = await bcrypt.compare(password, storedPassword);
+        } else {
+            // Старый plaintext-пароль: проверяем и мигрируем на bcrypt
+            passwordMatch = (storedPassword === password);
+            if (passwordMatch) {
+                const newHash = await bcrypt.hash(password, 12);
+                user.password = newHash;
+                await query(
+                    `UPDATE users SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) WHERE username = $2`,
+                    [newHash, user.username]
+                );
+            }
+        }
+
+        if (!passwordMatch) return res.status(401).json({ error: "Неверный логин или пароль" });
+
         if (shouldBeAdmin(user.username, user.email) && !user.isAdmin) {
             user.isAdmin = true;
             await query(`UPDATE users SET data = $1 WHERE username = $2`, [user, user.username]);
@@ -309,7 +388,7 @@ api.post('/auth/login', async (req, res) => {
     }
 });
 
-api.post('/auth/recover', async (req, res) => {
+api.post('/auth/recover', authLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         const result = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
@@ -319,11 +398,12 @@ api.post('/auth/recover', async (req, res) => {
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { email }]);
 
         const resetLink = `${APP_URL}/?code=${code}&type=RESET`;
+        const username = mapRow(result.rows[0]).username;
         try {
-            await sendMailWithRetry({ 
-                to: email, 
-                subject: 'Сброс пароля NeoArchive', 
-                html: `Для сброса пароля перейдите по ссылке: ${resetLink}` 
+            await sendMailWithRetry({
+                to: email,
+                subject: 'Сброс пароля — NeoArchive',
+                html: resetPasswordTemplate(username, resetLink)
             });
         } catch (e) {
             console.error("Email send failed:", e);
@@ -364,7 +444,42 @@ api.post('/auth/telegram', async (req, res) => {
 });
 
 api.post('/auth/verify-email', async (req, res) => {
-    res.json({ success: true });
+    try {
+        const { code } = req.body;
+        if (!code) return res.status(400).json({ error: "Код не указан" });
+
+        const codeRes = await query(
+            `SELECT * FROM verification_codes WHERE code = $1 AND type = 'REGISTER' AND created_at > NOW() - INTERVAL '24 HOURS'`,
+            [code]
+        );
+        if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
+
+        const newUser = codeRes.rows[0].payload;
+        const username = newUser.username;
+
+        // Проверяем ещё раз на случай гонки
+        const check = await query(`SELECT username FROM users WHERE username = $1 OR data->>'email' = $2`, [username, newUser.email]);
+        if (check.rows.length > 0) {
+            await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+            return res.status(409).json({ error: "Аккаунт уже существует. Попробуйте войти." });
+        }
+
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        try { await query(`UPDATE users SET id = username WHERE username = $1`, [username]); } catch(e){}
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+
+        // Приветственное письмо
+        sendMailWithRetry({
+            to: newUser.email,
+            subject: `Добро пожаловать в NeoArchive, @${username}!`,
+            html: welcomeTemplate(username)
+        }).catch(e => console.error("Welcome email failed:", e.message));
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Verify email error:", e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 api.post('/auth/complete-reset', async (req, res) => {
@@ -374,11 +489,151 @@ api.post('/auth/complete-reset', async (req, res) => {
         if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
         
         const email = codeRes.rows[0].payload.email;
-        await query(`UPDATE users SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) WHERE data->>'email' = $2`, [newPassword, email]);
+        const userRes = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
+        const username = userRes.rows.length > 0 ? mapRow(userRes.rows[0]).username : '';
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        await query(`UPDATE users SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) WHERE data->>'email' = $2`, [hashedPassword, email]);
         await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
-        
+
+        // Уведомление об изменении пароля
+        sendMailWithRetry({
+            to: email,
+            subject: 'Пароль изменён — NeoArchive',
+            html: passwordChangedAlertTemplate(username)
+        }).catch(e => console.error("Password alert email failed:", e.message));
+
         res.json({ success: true });
     } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- СМЕНА ПАРОЛЯ ИЗ ПРОФИЛЯ (с подтверждением по email) ---
+api.post('/auth/change-password', authLimiter, async (req, res) => {
+    try {
+        const { username, newPassword } = req.body;
+        if (!username || !newPassword) return res.status(400).json({ error: "Данные не указаны" });
+
+        const userRes = await query(`SELECT * FROM users WHERE username = $1`, [username]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
+        const user = mapRow(userRes.rows[0]);
+
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        const code = crypto.randomBytes(16).toString('hex');
+
+        await query(
+            `INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'CHANGE_PASSWORD', $2)`,
+            [code, { username, hashedPassword }]
+        );
+
+        const confirmLink = `${APP_URL}/?code=${code}&type=CHANGE_PASSWORD`;
+        await sendMailWithRetry({
+            to: user.email,
+            subject: 'Подтвердите смену пароля — NeoArchive',
+            html: changePasswordTemplate(username, confirmLink)
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Change password request error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/confirm-password-change', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return res.status(400).json({ error: "Код не указан" });
+
+        const codeRes = await query(
+            `SELECT * FROM verification_codes WHERE code = $1 AND type = 'CHANGE_PASSWORD' AND created_at > NOW() - INTERVAL '2 HOURS'`,
+            [code]
+        );
+        if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
+
+        const { username, hashedPassword } = codeRes.rows[0].payload;
+        await query(
+            `UPDATE users SET data = jsonb_set(data, '{password}', to_jsonb($1::text)) WHERE username = $2`,
+            [hashedPassword, username]
+        );
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+
+        // Уведомление об успешной смене пароля
+        const userRes = await query(`SELECT data->>'email' AS email FROM users WHERE username = $1`, [username]);
+        if (userRes.rows.length > 0) {
+            sendMailWithRetry({
+                to: userRes.rows[0].email,
+                subject: 'Пароль изменён — NeoArchive',
+                html: passwordChangedAlertTemplate(username)
+            }).catch(e => console.error("Password alert email failed:", e.message));
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Confirm password change error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- СМЕНА EMAIL ИЗ ПРОФИЛЯ (с подтверждением по новому адресу) ---
+api.post('/auth/change-email', authLimiter, async (req, res) => {
+    try {
+        const { username, newEmail } = req.body;
+        if (!username || !newEmail) return res.status(400).json({ error: "Данные не указаны" });
+
+        // Проверяем, не занят ли новый email
+        const check = await query(`SELECT username FROM users WHERE data->>'email' = $1 AND username != $2`, [newEmail, username]);
+        if (check.rows.length > 0) return res.status(409).json({ error: "Email уже используется другим аккаунтом" });
+
+        const code = crypto.randomBytes(16).toString('hex');
+        await query(
+            `INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'CHANGE_EMAIL', $2)`,
+            [code, { username, newEmail }]
+        );
+
+        const confirmLink = `${APP_URL}/?code=${code}&type=CHANGE_EMAIL`;
+        await sendMailWithRetry({
+            to: newEmail,
+            subject: 'Подтвердите новый email — NeoArchive',
+            html: changeEmailTemplate(username, newEmail, confirmLink)
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Change email request error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.post('/auth/confirm-email-change', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return res.status(400).json({ error: "Код не указан" });
+
+        const codeRes = await query(
+            `SELECT * FROM verification_codes WHERE code = $1 AND type = 'CHANGE_EMAIL' AND created_at > NOW() - INTERVAL '24 HOURS'`,
+            [code]
+        );
+        if (codeRes.rows.length === 0) return res.status(400).json({ error: "Неверный или устаревший код" });
+
+        const { username, newEmail } = codeRes.rows[0].payload;
+
+        // Финальная проверка на занятость
+        const conflict = await query(`SELECT username FROM users WHERE data->>'email' = $1 AND username != $2`, [newEmail, username]);
+        if (conflict.rows.length > 0) {
+            await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+            return res.status(409).json({ error: "Email уже занят другим аккаунтом" });
+        }
+
+        await query(
+            `UPDATE users SET data = jsonb_set(data, '{email}', to_jsonb($1::text)) WHERE username = $2`,
+            [newEmail, username]
+        );
+        await query(`DELETE FROM verification_codes WHERE code = $1`, [code]);
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Confirm email change error:", e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -389,6 +644,17 @@ api.post('/push/subscribe', async (req, res) => {
     if (!username || !subscription) return res.status(400).json({ error: "Missing data" });
     try {
         await query(`INSERT INTO push_subscriptions (username, endpoint, auth, p256dh) VALUES ($1, $2, $3, $4) ON CONFLICT (endpoint) DO UPDATE SET username = $1, created_at = NOW()`, [username, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+api.delete('/push/subscribe', async (req, res) => {
+    const { endpoint } = req.body;
+    if (!endpoint) return res.status(400).json({ error: "Missing endpoint" });
+    try {
+        await query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -427,8 +693,9 @@ api.get('/health', async (req, res) => {
 // --- FEED & USERS ---
 api.get('/feed', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 100;
-        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1', [limit]);
+        const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+        const offset = parseInt(req.query.offset) || 0;
+        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -451,7 +718,9 @@ api.get('/sync', async (req, res) => {
 // USERS CRUD (Fixed to use username)
 api.get('/users', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM users LIMIT 100');
+        const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+        const offset = parseInt(req.query.offset) || 0;
+        const result = await query('SELECT * FROM users ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -482,7 +751,9 @@ api.post('/users', async (req, res) => {
 // Exhibits GET/DELETE (POST is separate)
 api.get('/exhibits', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT 100');
+        const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+        const offset = parseInt(req.query.offset) || 0;
+        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -501,6 +772,11 @@ api.get('/exhibits/:id', async (req, res) => {
 
 api.delete('/exhibits/:id', async (req, res) => {
     try {
+        const { username } = req.query;
+        if (username) {
+            const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
+            if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
+        }
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (e) {
@@ -587,6 +863,11 @@ const createCrud = (router, table) => {
 
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
+            const { username } = req.query;
+            if (username && (table === 'collections' || table === 'wishlist')) {
+                const check = await query(`SELECT id FROM "${table}" WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
+                if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
+            }
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
             res.json({ success: true });
         } catch (e) {

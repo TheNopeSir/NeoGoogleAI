@@ -8,7 +8,7 @@ interface MatrixLoginProps {
   theme: 'dark' | 'light';
   onLogin: (user: UserProfile, remember: boolean) => void;
   initialCode?: string | null;
-  initialType?: 'REGISTER' | 'RESET' | null;
+  initialType?: 'REGISTER' | 'RESET' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL' | null;
 }
 
 type AuthStep = 'ENTRY' | 'LOGIN' | 'REGISTER' | 'TELEGRAM' | 'RECOVERY' | 'VERIFYING' | 'NEW_PASSWORD';
@@ -35,6 +35,27 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
 
   const isNative = Capacitor.isNativePlatform();
 
+  const handleConfirmAction = async (code: string, endpoint: string, successMsg: string) => {
+      setStep('VERIFYING');
+      setIsLoading(true);
+      try {
+          const response = await fetch(`/api${endpoint}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code })
+          });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          setInfoMessage(successMsg);
+          setStep('LOGIN');
+      } catch (err: any) {
+          setError("ОШИБКА: " + err.message);
+          setStep('ENTRY');
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
   useEffect(() => {
     // Check initial params for verification flow
     if (initialCode && initialType) {
@@ -42,6 +63,10 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             handleVerifyRegistration(initialCode);
         } else if (initialType === 'RESET') {
             setStep('NEW_PASSWORD');
+        } else if (initialType === 'CHANGE_PASSWORD') {
+            handleConfirmAction(initialCode, '/auth/confirm-password-change', 'ПАРОЛЬ УСПЕШНО ИЗМЕНЁН. ВОЙДИТЕ В АККАУНТ.');
+        } else if (initialType === 'CHANGE_EMAIL') {
+            handleConfirmAction(initialCode, '/auth/confirm-email-change', 'EMAIL УСПЕШНО ИЗМЕНЁН. ВОЙДИТЕ В АККАУНТ.');
         }
     } else {
         // Only fetch stats if not verifying
@@ -55,7 +80,6 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             })
             .catch(() => {
                 // Silently ignore errors to avoid console noise for users
-                // console.debug("Server stats unavailable");
             });
     }
   }, [initialCode, initialType]);

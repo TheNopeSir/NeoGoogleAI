@@ -61,7 +61,7 @@ export default function App() {
 
   // Verification Logic
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
-  const [verificationType, setVerificationType] = useState<'REGISTER' | 'RESET' | null>(null);
+  const [verificationType, setVerificationType] = useState<'REGISTER' | 'RESET' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL' | null>(null);
 
   // Feed State
   const [selectedCategory, setSelectedCategory] = useState<string>('ВСЕ');

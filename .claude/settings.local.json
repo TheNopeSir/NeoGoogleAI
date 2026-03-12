@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm audit:*)",
       "Bash(npm ls:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

@@ -328,8 +328,8 @@ export const unsubscribeFromPush = async () => {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
+            await apiCall('/push/subscribe', 'DELETE', { endpoint: subscription.endpoint });
             await subscription.unsubscribe();
-            // TODO: Notify server to remove sub
         }
         return true;
     } catch (e) { return false; }
@@ -486,6 +486,14 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     }
 };
 
+const getActiveUsername = async (): Promise<string | null> => {
+    try {
+        const db = await getDB();
+        const session = await db.get('system', SESSION_USER_KEY);
+        return session?.value || null;
+    } catch { return null; }
+};
+
 export const loginUser = async (identifier: string, password: string): Promise<UserProfile> => {
     const user = await apiCall('/auth/login', 'POST', { identifier, password });
     const db = await getDB();
@@ -529,8 +537,18 @@ export const loginViaTelegram = async (tgUser: any) => {
     return user;
 };
 
-export const recoverPassword = async (email: string) => { 
-    return await apiCall('/auth/recover', 'POST', { email }); 
+export const recoverPassword = async (email: string) => {
+    return await apiCall('/auth/recover', 'POST', { email });
+};
+
+/** Запрос смены пароля — отправляет письмо с подтверждением на текущий email пользователя */
+export const requestPasswordChange = async (username: string, newPassword: string): Promise<void> => {
+    await apiCall('/auth/change-password', 'POST', { username, newPassword });
+};
+
+/** Запрос смены email — отправляет письмо с подтверждением на НОВЫЙ адрес */
+export const requestEmailChange = async (username: string, newEmail: string): Promise<void> => {
+    await apiCall('/auth/change-email', 'POST', { username, newEmail });
 };
 
 export const getFullDatabase = () => ({ ...hotCache });
@@ -577,7 +595,9 @@ export const deleteExhibit = async (id: string) => {
     notifyListeners();
     const db = await getDB();
     await db.delete('exhibits', id);
-    await apiCall(`/exhibits/${id}`, 'DELETE');
+    const username = await getActiveUsername();
+    const qs = username ? `?username=${encodeURIComponent(username)}` : '';
+    await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
 };
 
 export const saveCollection = async (c: Collection) => {
@@ -619,7 +639,9 @@ export const deleteCollection = async (id: string) => {
     notifyListeners();
     const db = await getDB();
     await db.delete('collections', id);
-    await apiCall(`/collections/${id}`, 'DELETE');
+    const username = await getActiveUsername();
+    const qs = username ? `?username=${encodeURIComponent(username)}` : '';
+    await apiCall(`/collections/${id}${qs}`, 'DELETE');
 };
 
 export const updateUserProfile = async (u: UserProfile) => {
