@@ -8,7 +8,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import fs from 'fs';
-import nodemailer from 'nodemailer';
+// nodemailer заменён на EmailJS REST API (SMTP заблокирован из Docker Timeweb)
 import { processExhibitImages, deleteExhibitImages, getImagesDir, processImage, isBase64DataUri, processSingleImage } from './imageProcessor.js';
 import { setupAdminAPI } from './adminAPI.js';
 import webpush from 'web-push';
@@ -120,50 +120,62 @@ const registerLimiter = rateLimit({
 });
 
 // ==========================================
-// 📧 EMAIL (SMTP)
+// 📧 EMAIL (EmailJS REST API)
+// SMTP заблокирован из Docker Timeweb — используем EmailJS как прокси.
+// EmailJS подключается к smtp.timeweb.ru со своих серверов,
+// а мы вызываем его REST API по HTTPS (порт 443, всегда открыт).
 // ==========================================
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
-const SMTP_SECURE = SMTP_PORT === 465; // port 465 → implicit TLS; 587 → STARTTLS
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATES = {
+    welcome: process.env.EMAILJS_TEMPLATE_WELCOME,   // регистрация, приветствие, смена email
+    reset:   process.env.EMAILJS_TEMPLATE_RESET,      // сброс/смена пароля, уведомления о пароле
+};
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    },
-    tls: {
-        rejectUnauthorized: false
-    },
-    // Таймауты — не ждать бесконечно, если SMTP недоступен из контейнера
-    connectionTimeout: 10000,  // 10 сек на TCP-соединение
-    greetingTimeout: 10000,    // 10 сек на приветствие SMTP
-    socketTimeout: 15000       // 15 сек на любую операцию
-});
+if (EMAILJS_SERVICE_ID && EMAILJS_PUBLIC_KEY) {
+    console.log(`[EMAIL] ✅ EmailJS настроен (service: ${EMAILJS_SERVICE_ID}, templates: welcome=${EMAILJS_TEMPLATES.welcome}, reset=${EMAILJS_TEMPLATES.reset})`);
+} else {
+    console.warn('[EMAIL] ⚠️  EmailJS не настроен — письма не будут отправляться. Добавьте EMAILJS_* переменные.');
+}
 
-// Проверяем SMTP-соединение при старте сервера
-transporter.verify((err) => {
-    if (err) {
-        console.error('[SMTP] ❌ Не удалось подключиться к почтовому серверу:', err.message);
-    } else {
-        console.log(`[SMTP] ✅ Соединение установлено (${process.env.SMTP_HOST}:${SMTP_PORT})`);
-    }
-});
-
+// type: 'welcome' | 'reset' — выбирает шаблон EmailJS
 const sendMailWithRetry = async (mailOptions, retries = 2) => {
+    const templateId = EMAILJS_TEMPLATES[mailOptions.type] || EMAILJS_TEMPLATES.welcome;
+
+    if (!EMAILJS_SERVICE_ID || !templateId || !EMAILJS_PUBLIC_KEY) {
+        console.warn('[EMAIL] Пропуск отправки — EmailJS не настроен:', mailOptions.subject);
+        return false;
+    }
+
     for (let i = 0; i < retries; i++) {
         try {
-            await transporter.sendMail({
-                from: `"NeoArchive" <${process.env.SMTP_USER}>`,
-                to: mailOptions.to,
-                subject: mailOptions.subject,
-                html: mailOptions.html,
+            const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service_id: EMAILJS_SERVICE_ID,
+                    template_id: templateId,
+                    user_id: EMAILJS_PUBLIC_KEY,
+                    accessToken: EMAILJS_PRIVATE_KEY,
+                    template_params: {
+                        to_email: mailOptions.to,
+                        subject: mailOptions.subject,
+                        html_content: mailOptions.html,
+                    }
+                }),
+                signal: AbortSignal.timeout(15000)
             });
-            console.log(`[SMTP] ✉️  Письмо отправлено → ${mailOptions.to} (${mailOptions.subject})`);
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`EmailJS ${response.status}: ${text}`);
+            }
+
+            console.log(`[EMAIL] ✉️  Отправлено → ${mailOptions.to} [${mailOptions.type}] (${mailOptions.subject})`);
             return true;
         } catch (err) {
-            console.error(`[SMTP] Попытка ${i + 1}/${retries} — ошибка:`, err.message);
+            console.error(`[EMAIL] Попытка ${i + 1}/${retries} — ошибка:`, err.message);
             if (i === retries - 1) throw err;
             await new Promise(res => setTimeout(res, 2000));
         }
@@ -344,10 +356,11 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
         const verifyLink = `${APP_URL}/?code=${code}&type=REGISTER`;
         // Fire-and-forget — не блокируем ответ пользователю
         sendMailWithRetry({
+            type: 'welcome',
             to: email,
             subject: 'Подтверждение регистрации — NeoArchive',
             html: verificationTemplate(username, verifyLink)
-        }).catch(e => console.error("[SMTP] Register email failed:", e.message));
+        }).catch(e => console.error("[EMAIL] Register email failed:", e.message));
 
         res.json({ success: true });
     } catch (e) {
@@ -414,10 +427,11 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
         const username = mapRow(result.rows[0]).username;
         // Fire-and-forget — код уже в БД
         sendMailWithRetry({
+            type: 'reset',
             to: email,
             subject: 'Сброс пароля — NeoArchive',
             html: resetPasswordTemplate(username, resetLink)
-        }).catch(e => console.error("[SMTP] Reset email failed:", e.message));
+        }).catch(e => console.error("[EMAIL] Reset email failed:", e.message));
 
         res.json({ success: true });
     } catch (e) {
@@ -481,10 +495,11 @@ api.post('/auth/verify-email', async (req, res) => {
 
         // Приветственное письмо
         sendMailWithRetry({
+            type: 'welcome',
             to: newUser.email,
             subject: `Добро пожаловать в NeoArchive, @${username}!`,
             html: welcomeTemplate(username)
-        }).catch(e => console.error("Welcome email failed:", e.message));
+        }).catch(e => console.error("[EMAIL] Welcome email failed:", e.message));
 
         res.json({ success: true });
     } catch (e) {
@@ -508,10 +523,11 @@ api.post('/auth/complete-reset', async (req, res) => {
 
         // Уведомление об изменении пароля
         sendMailWithRetry({
+            type: 'reset',
             to: email,
             subject: 'Пароль изменён — NeoArchive',
             html: passwordChangedAlertTemplate(username)
-        }).catch(e => console.error("Password alert email failed:", e.message));
+        }).catch(e => console.error("[EMAIL] Password alert email failed:", e.message));
 
         res.json({ success: true });
     } catch (e) {
@@ -539,6 +555,7 @@ api.post('/auth/change-password', authLimiter, async (req, res) => {
 
         const confirmLink = `${APP_URL}/?code=${code}&type=CHANGE_PASSWORD`;
         await sendMailWithRetry({
+            type: 'reset',
             to: user.email,
             subject: 'Подтвердите смену пароля — NeoArchive',
             html: changePasswordTemplate(username, confirmLink)
@@ -573,10 +590,11 @@ api.post('/auth/confirm-password-change', async (req, res) => {
         const userRes = await query(`SELECT data->>'email' AS email FROM users WHERE username = $1`, [username]);
         if (userRes.rows.length > 0) {
             sendMailWithRetry({
+                type: 'reset',
                 to: userRes.rows[0].email,
                 subject: 'Пароль изменён — NeoArchive',
                 html: passwordChangedAlertTemplate(username)
-            }).catch(e => console.error("Password alert email failed:", e.message));
+            }).catch(e => console.error("[EMAIL] Password alert email failed:", e.message));
         }
 
         res.json({ success: true });
@@ -604,6 +622,7 @@ api.post('/auth/change-email', authLimiter, async (req, res) => {
 
         const confirmLink = `${APP_URL}/?code=${code}&type=CHANGE_EMAIL`;
         await sendMailWithRetry({
+            type: 'welcome',
             to: newEmail,
             subject: 'Подтвердите новый email — NeoArchive',
             html: changeEmailTemplate(username, newEmail, confirmLink)
