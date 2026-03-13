@@ -324,16 +324,18 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
         const { username, password, tagline, email } = req.body;
         if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
 
-        // Проверяем, не занят ли username/email уже в users
-        const check = await query(`SELECT username FROM users WHERE username = $1 OR data->>'email' = $2`, [username, email]);
-        if (check.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
+        // Проверяем, не занят ли username/email уже в users (раздельно для точных ошибок)
+        const checkUser = await query(`SELECT username FROM users WHERE username = $1`, [username]);
+        if (checkUser.rows.length > 0) return res.status(409).json({ error: "Имя пользователя уже занято" });
 
-        // Также проверяем pending-регистрации в verification_codes
-        const pending = await query(
-            `SELECT code FROM verification_codes WHERE type = 'REGISTER' AND (payload->>'username' = $1 OR payload->>'email' = $2) AND created_at > NOW() - INTERVAL '24 HOURS'`,
+        const checkEmail = await query(`SELECT username FROM users WHERE data->>'email' = $1`, [email]);
+        if (checkEmail.rows.length > 0) return res.status(409).json({ error: "Email уже зарегистрирован. Попробуйте восстановить пароль." });
+
+        // Удаляем старые pending-регистрации для этого username/email (позволяем перерегистрацию)
+        await query(
+            `DELETE FROM verification_codes WHERE type = 'REGISTER' AND (payload->>'username' = $1 OR payload->>'email' = $2)`,
             [username, email]
         );
-        if (pending.rows.length > 0) return res.status(409).json({ error: "Имя пользователя или Email заняты" });
 
         const hashedPassword = await bcrypt.hash(password, 12);
         const code = crypto.randomBytes(16).toString('hex');
