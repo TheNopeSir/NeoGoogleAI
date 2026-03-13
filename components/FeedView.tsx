@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
-  Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon
+  Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon,
+  ArrowUp, Loader2, Inbox
 } from 'lucide-react';
 import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
@@ -71,8 +72,17 @@ const FeedView: React.FC<FeedViewProps> = ({
   const [expandedWishlistUsers, setExpandedWishlistUsers] = useState<Set<string>>(new Set());
 
   // Infinite Scroll State
-  const [visibleCount, setVisibleCount] = useState(100); 
+  const [visibleCount, setVisibleCount] = useState(100);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-to-top button
+  const [scrollY, setScrollY] = useState(0);
+  useEffect(() => {
+    const handler = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   // Reset subcategory when main category changes
   useEffect(() => {
@@ -134,7 +144,11 @@ const FeedView: React.FC<FeedViewProps> = ({
   useEffect(() => {
       const observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
-              setVisibleCount(prev => prev + 20);
+              setIsLoadingMore(true);
+              setTimeout(() => {
+                  setVisibleCount(prev => prev + 20);
+                  setIsLoadingMore(false);
+              }, 300);
           }
       }, { threshold: 0.1 });
 
@@ -188,7 +202,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         )}
 
         {/* 3. CONTROLS AREA */}
-        <div className={`pt-2 pb-2 px-4 transition-all ${theme === 'dark' ? '' : isWinamp ? 'bg-[#191919] border-b border-[#505050]' : ''}`}>
+        <div className={`sticky top-0 z-20 backdrop-blur-md pt-2 pb-2 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/90 border-[#505050]' : theme === 'light' ? 'bg-white/80 border-black/10' : 'bg-zinc-950/85 border-white/5'}`}>
             <div className="max-w-[2400px] mx-auto w-full space-y-4">
                 
                 {/* Mode Toggle & Search */}
@@ -249,12 +263,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                 <>
                     {/* Loading State / Empty State */}
                     {exhibits.length === 0 ? (
-                        <div className="grid grid-cols-2 gap-4">
-                            {[1,2,3,4].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
+                        <div className={`grid gap-4 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
+                            {[1,2,3,4,5,6].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
                         </div>
                     ) : processedExhibits.length === 0 ? (
                         <div className="text-center py-20 opacity-50 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">
-                            <div className="mb-2 text-2xl">🏜️</div>
+                            <Inbox size={36} className="mx-auto mb-3 opacity-40" />
                             ЗДЕСЬ ПОКА ПУСТО<br/>
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
@@ -425,12 +439,23 @@ const FeedView: React.FC<FeedViewProps> = ({
                 </>
             )}
 
-            <div ref={observerRef} className="h-20 flex items-center justify-center opacity-30">
-                {(visibleCount < (feedMode === 'ARTIFACTS' ? processedExhibits.length : feedMode === 'COLLECTIONS' ? processedCollections.length : processedWishlist.length)) && (
-                    <div className="animate-pulse flex items-center gap-2 text-xs font-mono"><ArrowUpCircle size={16}/> ЗАГРУЗКА ДАННЫХ...</div>
+            <div ref={observerRef} className="h-16 flex items-center justify-center">
+                {isLoadingMore && (
+                    <Loader2 size={20} className="animate-spin text-white/30" />
                 )}
             </div>
         </div>
+
+        {/* Scroll-to-top button */}
+        {scrollY > 400 && (
+            <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className={`fixed bottom-24 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all md:bottom-8 ${isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black hover:bg-green-400'}`}
+                aria-label="Наверх"
+            >
+                <ArrowUp size={18} />
+            </button>
+        )}
     </div>
   );
 };

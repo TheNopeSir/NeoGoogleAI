@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
@@ -28,6 +29,7 @@ import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
+import LandingPage from './components/LandingPage';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction } from './types';
@@ -324,7 +326,7 @@ export default function App() {
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
           } else {
-              setView('AUTH');
+              setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
               window.history.replaceState({}, document.title, '/');
           }
       } catch (e) { setView('AUTH'); } 
@@ -418,6 +420,15 @@ export default function App() {
         <MatrixRain theme="dark" />
         <RetroLoader size="lg" text="INITIALIZING SYSTEM" />
       </div>
+    );
+  }
+
+  if (view === 'LANDING') {
+    return (
+      <LandingPage
+        onLogin={() => setView('AUTH')}
+        onRegister={() => setView('AUTH')}
+      />
     );
   }
 
