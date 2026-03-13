@@ -273,20 +273,34 @@ const ensureSchema = async () => {
     }
 };
 
+// DB-ready flag — routes will return 503 until DB is initialised
+let dbReady = false;
+
 pool.connect()
-    .then(client => {
+    .then(async client => {
         console.log(`✅ [DB] Connected`);
         client.release();
-        ensureSchema().catch(e => console.error("❌ [Schema Error]:", e));
+        await ensureSchema();
+        dbReady = true;
+        console.log(`✅ [DB] Schema ready`);
     })
     .catch(err => {
-        console.error("❌ [DB Connection Error]:", err);
+        console.error("❌ [DB Connection Error]:", err.message || err);
+        // Keep running so health-checks can report the error
     });
 
 // ==========================================
 // API ROUTES
 // ==========================================
 const api = express.Router();
+
+// Guard: return 503 for all API calls until DB schema is ready
+api.use((req, res, next) => {
+    if (!dbReady && req.path !== '/health') {
+        return res.status(503).json({ error: 'Сервер запускается, попробуйте через несколько секунд' });
+    }
+    next();
+});
 
 // --- AUTH ROUTES ---
 
@@ -339,7 +353,7 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -384,7 +398,7 @@ api.post('/auth/login', authLimiter, async (req, res) => {
         res.json(user);
     } catch (e) {
         console.error("Login Error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -410,7 +424,7 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
         }
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -439,7 +453,7 @@ api.post('/auth/telegram', async (req, res) => {
         await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
         res.json(newUser);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -478,7 +492,7 @@ api.post('/auth/verify-email', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Verify email error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -504,7 +518,7 @@ api.post('/auth/complete-reset', async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -536,7 +550,7 @@ api.post('/auth/change-password', authLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Change password request error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -571,7 +585,7 @@ api.post('/auth/confirm-password-change', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Confirm password change error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -601,7 +615,7 @@ api.post('/auth/change-email', authLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Change email request error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -634,7 +648,7 @@ api.post('/auth/confirm-email-change', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Confirm email change error:", e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -646,7 +660,7 @@ api.post('/push/subscribe', async (req, res) => {
         await query(`INSERT INTO push_subscriptions (username, endpoint, auth, p256dh) VALUES ($1, $2, $3, $4) ON CONFLICT (endpoint) DO UPDATE SET username = $1, created_at = NOW()`, [username, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -657,7 +671,7 @@ api.delete('/push/subscribe', async (req, res) => {
         await query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -682,12 +696,16 @@ const sendPushToUser = async (username, title, body, url = '/') => {
 
 // --- HEALTH & SYSTEM ---
 api.get('/health', async (req, res) => {
+    const health = { status: 'ok', dbReady, totalUsers: 0 };
     try {
         const result = await query('SELECT count(*) FROM users');
-        res.json({ status: 'ok', totalUsers: parseInt(result.rows[0].count) });
+        health.totalUsers = parseInt(result.rows[0].count);
     } catch (e) {
-        res.status(500).json({ status: 'error', error: e.message });
+        health.status = 'error';
+        health.dbError = e.message || String(e);
+        return res.status(500).json(health);
     }
+    res.json(health);
 });
 
 // --- FEED & USERS ---
@@ -698,7 +716,7 @@ api.get('/feed', async (req, res) => {
         const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -711,7 +729,7 @@ api.get('/sync', async (req, res) => {
             tradeRequests: tradeRequests.rows.map(mapRow)
         });
     } catch(e) {
-        res.status(500).json({error: e.message});
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -723,7 +741,7 @@ api.get('/users', async (req, res) => {
         const result = await query('SELECT * FROM users ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -744,7 +762,7 @@ api.post('/users', async (req, res) => {
         try { await query(`UPDATE users SET id = username WHERE username = $1`, [targetKey]); } catch(e){}
         res.json({ success: true, avatarUrl: req.body.avatarUrl, coverUrl: req.body.coverUrl });
     } catch(e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -756,7 +774,7 @@ api.get('/exhibits', async (req, res) => {
         const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -766,7 +784,7 @@ api.get('/exhibits/:id', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
         res.json(mapRow(result.rows[0]));
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -780,7 +798,7 @@ api.delete('/exhibits/:id', async (req, res) => {
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -811,7 +829,7 @@ const createCrud = (router, table) => {
             q += ` ORDER BY updated_at DESC LIMIT ${limit}`;
             const r = await query(q, params);
             res.json(r.rows.map(mapRow));
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' }); }
     });
 
     router.get(`/${table}/:id`, async (req, res) => {
@@ -820,7 +838,7 @@ const createCrud = (router, table) => {
             if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
             res.json(mapRow(r.rows[0]));
         } catch (e) {
-            res.status(500).json({ error: e.message });
+            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
         }
     });
 
@@ -857,7 +875,7 @@ const createCrud = (router, table) => {
             res.json({ success: true, data: req.body });
         } catch (e) {
             console.error(`Error saving to ${table}:`, e);
-            res.status(500).json({ error: e.message });
+            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
         }
     });
 
@@ -871,7 +889,7 @@ const createCrud = (router, table) => {
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
             res.json({ success: true });
         } catch (e) {
-            res.status(500).json({ error: e.message });
+            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
         }
     });
 };
@@ -891,7 +909,7 @@ api.post('/notifications/read-all', async (req, res) => {
         `, [username]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
     }
 });
 
@@ -908,7 +926,7 @@ api.post('/exhibits', async (req, res) => {
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
         res.json({ success: true, imageUrls: processedData.imageUrls });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' }); }
 });
 
 app.use('/api', api);
