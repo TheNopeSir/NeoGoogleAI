@@ -97,6 +97,8 @@ const cache = new ServerCache(60);
 const PORT = 3002;
 const app = express();
 app.disable('x-powered-by');
+// Timeweb использует nginx reverse proxy → доверяем первому proxy для корректной работы rate-limiter
+app.set('trust proxy', 1);
 app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
