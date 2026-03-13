@@ -508,16 +508,12 @@ export const loginUser = async (identifier: string, password: string): Promise<U
     return user;
 };
 
-export const registerUser = async (username: string, password: string, tagline: string, email: string): Promise<UserProfile> => {
-    const user = await apiCall('/auth/register', 'POST', { username, password, tagline, email });
-    const db = await getDB();
-    await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
-    await db.put('users', user);
-    hotCache.users = mergeUniqueUsers(hotCache.users, [user]);
-    notifyListeners();
-    await loadCriticalFeedData();
-    performBackgroundSync(user.username);
-    return user;
+export const registerUser = async (username: string, password: string, tagline: string, email: string): Promise<{ success: boolean }> => {
+    // Сервер создаёт pending-регистрацию и отправляет email с подтверждением.
+    // Аккаунт появится в БД только после перехода по ссылке из письма.
+    // Возвращает { success: true }, НЕ UserProfile.
+    const result = await apiCall('/auth/register', 'POST', { username, password, tagline, email });
+    return result;
 };
 
 export const logoutUser = async () => {

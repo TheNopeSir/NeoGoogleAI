@@ -42,16 +42,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
     setIsLoading(true);
 
     try {
-        let user: UserProfile;
-        
         if (isRegister) {
-            user = await db.registerUser(username, password, tagline, email);
+            await db.registerUser(username, password, tagline, email);
+            setError('');
+            setIsRegister(false);
+            setPassword('');
+            // Показываем сообщение что нужно подтвердить email
+            setError('✅ ССЫЛКА ОТПРАВЛЕНА НА EMAIL. ПРОВЕРЬТЕ ПОЧТУ.');
         } else {
-            user = await db.loginUser(username, password);
+            const user = await db.loginUser(username, password);
+            onLogin(user, rememberMe);
         }
-        
-        onLogin(user, rememberMe);
-        
+
     } catch (err: any) {
         setError(err.message || "ОШИБКА АВТОРИЗАЦИИ");
     } finally {
