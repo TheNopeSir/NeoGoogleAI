@@ -38,6 +38,7 @@ RUN npm install --os=linux --libc=musl --cpu=x64 sharp
 RUN echo "[prod 3/3] Copying server files..."
 COPY server.js adminAPI.js imageProcessor.js emailTemplates.js ./
 COPY services/s3Service.js ./services/
+COPY .env .env
 
 # Копируем собранный фронтенд из builder-стадии
 COPY --from=builder /app/dist ./dist
