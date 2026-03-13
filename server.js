@@ -420,7 +420,19 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         const result = await query(`SELECT * FROM users WHERE data->>'email' = $1`, [email]);
-        if (result.rows.length === 0) return res.status(404).json({ error: "Email не найден" });
+        if (result.rows.length === 0) {
+            // Проверяем, может email застрял в pending-регистрации
+            const pending = await query(
+                `SELECT code FROM verification_codes WHERE type = 'REGISTER' AND payload->>'email' = $1`,
+                [email]
+            );
+            if (pending.rows.length > 0) {
+                // Удаляем старую pending-регистрацию, чтобы пользователь мог зарегистрироваться заново
+                await query(`DELETE FROM verification_codes WHERE type = 'REGISTER' AND payload->>'email' = $1`, [email]);
+                return res.status(404).json({ error: "Регистрация не была завершена. Мы очистили старую заявку — попробуйте зарегистрироваться заново." });
+            }
+            return res.status(404).json({ error: "Email не найден" });
+        }
 
         const code = crypto.randomBytes(16).toString('hex');
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'RESET', $2)`, [code, { email }]);
