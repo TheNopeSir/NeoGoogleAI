@@ -131,12 +131,13 @@ const transporter = nodemailer.createTransport({
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     },
-    // Некоторые хостинговые SMTP-серверы (в т.ч. Timeweb) используют
-    // самоподписанные или неполные цепочки сертификатов — отключаем
-    // проверку только для SMTP-соединения, не глобально.
     tls: {
         rejectUnauthorized: false
-    }
+    },
+    // Таймауты — не ждать бесконечно, если SMTP недоступен из контейнера
+    connectionTimeout: 10000,  // 10 сек на TCP-соединение
+    greetingTimeout: 10000,    // 10 сек на приветствие SMTP
+    socketTimeout: 15000       // 15 сек на любую операцию
 });
 
 // Проверяем SMTP-соединение при старте сервера
@@ -148,7 +149,7 @@ transporter.verify((err) => {
     }
 });
 
-const sendMailWithRetry = async (mailOptions, retries = 3) => {
+const sendMailWithRetry = async (mailOptions, retries = 2) => {
     for (let i = 0; i < retries; i++) {
         try {
             await transporter.sendMail({
@@ -157,12 +158,12 @@ const sendMailWithRetry = async (mailOptions, retries = 3) => {
                 subject: mailOptions.subject,
                 html: mailOptions.html,
             });
-            console.log(`[SMTP] ✉️  Письмо отправлено на ${mailOptions.to} (${mailOptions.subject})`);
+            console.log(`[SMTP] ✉️  Письмо отправлено → ${mailOptions.to} (${mailOptions.subject})`);
             return true;
         } catch (err) {
             console.error(`[SMTP] Попытка ${i + 1}/${retries} — ошибка:`, err.message);
             if (i === retries - 1) throw err;
-            await new Promise(res => setTimeout(res, 3000));
+            await new Promise(res => setTimeout(res, 2000));
         }
     }
 };
@@ -339,16 +340,12 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
         await query(`INSERT INTO verification_codes (code, type, payload) VALUES ($1, 'REGISTER', $2)`, [code, pendingUser]);
 
         const verifyLink = `${APP_URL}/?code=${code}&type=REGISTER`;
-        try {
-            await sendMailWithRetry({
-                to: email,
-                subject: 'Подтверждение регистрации — NeoArchive',
-                html: verificationTemplate(username, verifyLink)
-            });
-        } catch (e) {
-            console.error("Register email send failed:", e.message);
-            // Не блокируем регистрацию при ошибке отправки письма
-        }
+        // Fire-and-forget — не блокируем ответ пользователю
+        sendMailWithRetry({
+            to: email,
+            subject: 'Подтверждение регистрации — NeoArchive',
+            html: verificationTemplate(username, verifyLink)
+        }).catch(e => console.error("[SMTP] Register email failed:", e.message));
 
         res.json({ success: true });
     } catch (e) {
@@ -413,15 +410,13 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
 
         const resetLink = `${APP_URL}/?code=${code}&type=RESET`;
         const username = mapRow(result.rows[0]).username;
-        try {
-            await sendMailWithRetry({
-                to: email,
-                subject: 'Сброс пароля — NeoArchive',
-                html: resetPasswordTemplate(username, resetLink)
-            });
-        } catch (e) {
-            console.error("Email send failed:", e);
-        }
+        // Fire-and-forget — код уже в БД
+        sendMailWithRetry({
+            to: email,
+            subject: 'Сброс пароля — NeoArchive',
+            html: resetPasswordTemplate(username, resetLink)
+        }).catch(e => console.error("[SMTP] Reset email failed:", e.message));
+
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
