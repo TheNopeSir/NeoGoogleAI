@@ -414,6 +414,21 @@ export default function App() {
     // which triggers the subscription in useEffect -> refreshData.
   };
 
+  // Swipe navigation between main tab views (mobile only)
+  // Must be called before any early returns to satisfy Rules of Hooks
+  const SWIPE_TAB_ORDER: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'ACTIVITY', 'USER_PROFILE'];
+  const isMainTabView = SWIPE_TAB_ORDER.includes(view);
+  const swipeHandlers = useSwipe({
+      onSwipeLeft: () => {
+          const idx = SWIPE_TAB_ORDER.indexOf(view);
+          if (idx >= 0 && idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
+      },
+      onSwipeRight: () => {
+          const idx = SWIPE_TAB_ORDER.indexOf(view);
+          if (idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
+      },
+  });
+
   if (isInitializing || showSplash) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -510,23 +525,6 @@ export default function App() {
           default: return null;
       }
   };
-
-  // Swipe navigation between main tab views (mobile only)
-  const SWIPE_TAB_ORDER: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'ACTIVITY', 'USER_PROFILE'];
-  const isMainTabView = SWIPE_TAB_ORDER.includes(view);
-
-  const swipeHandlers = useSwipe({
-      onSwipeLeft: () => {
-          if (!isMainTabView) return;
-          const idx = SWIPE_TAB_ORDER.indexOf(view);
-          if (idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
-      },
-      onSwipeRight: () => {
-          if (!isMainTabView) return;
-          const idx = SWIPE_TAB_ORDER.indexOf(view);
-          if (idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
-      },
-  });
 
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
