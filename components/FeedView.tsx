@@ -171,7 +171,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   };
 
   return (
-    <div className="pb-24 space-y-4 animate-in fade-in">
+    <div className="pb-24 space-y-4 animate-in fade-in isolate">
         <SEO title="NeoArchive | Лента" />
         
         {/* 1. MOBILE HEADER */}
@@ -202,7 +202,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         )}
 
         {/* 3. CONTROLS AREA */}
-        <div className={`sticky top-0 z-20 backdrop-blur-md pt-2 pb-2 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/90 border-[#505050]' : theme === 'light' ? 'bg-white/80 border-black/10' : 'bg-zinc-950/85 border-white/5'}`}>
+        <div className={`sticky top-0 md:top-16 z-30 backdrop-blur-md pt-2 pb-2 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/90 border-[#505050]' : theme === 'light' ? 'bg-white/80 border-black/10' : 'bg-zinc-950/85 border-white/5'}`}>
             <div className="max-w-[2400px] mx-auto w-full space-y-4">
                 
                 {/* Mode Toggle & Search */}

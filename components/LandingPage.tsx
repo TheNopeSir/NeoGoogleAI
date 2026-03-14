@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Archive, ArrowLeftRight, Users, Sparkles, ArrowRight, ChevronDown } from 'lucide-react';
+import { Archive, ArrowLeftRight, Users, ArrowRight, ChevronDown } from 'lucide-react';
 import MatrixRain from './MatrixRain';
 import CRTOverlay from './CRTOverlay';
 import SEO from './SEO';
@@ -34,11 +34,6 @@ const FEATURES = [
     icon: Users,
     title: 'Сообщество',
     desc: 'Подписывайся на авторов, ставь реакции, веди переписку. Живая лента редкостей.',
-  },
-  {
-    icon: Sparkles,
-    title: 'AI-оценка',
-    desc: 'Gemini анализирует твои находки, предлагает категорию и описание автоматически.',
   },
 ];
 
@@ -120,7 +115,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           <h2 className="font-pixel text-center text-xl tracking-widest text-white/80 mb-2 uppercase">Возможности</h2>
           <div className="w-16 h-0.5 bg-green-500 mx-auto mb-14" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
