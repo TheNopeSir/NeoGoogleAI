@@ -1,29 +1,37 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Send, Terminal, Shield, MessageSquare } from 'lucide-react';
-import { UserProfile, Message } from '../types';
+import { UserProfile, Message, MessageReactionEmoji } from '../types';
 import { getUserAvatar } from '../services/storageService';
+import MessageReactionPicker from './MessageReactionPicker';
+import ReactionBar from './ReactionBar';
+import { renderTextWithMentions } from '../utils/textUtils';
 
 interface DirectChatProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
     currentUser: UserProfile;
     partnerUsername: string;
     messages: Message[];
+    users: UserProfile[];
     onBack: () => void;
     onSendMessage: (text: string) => void;
+    onReactToMessage: (messageId: string, emoji: MessageReactionEmoji) => void;
 }
 
-const DirectChat: React.FC<DirectChatProps> = ({ 
-    theme, currentUser, partnerUsername, messages, onBack, onSendMessage 
+const DirectChat: React.FC<DirectChatProps> = ({
+    theme, currentUser, partnerUsername, messages, users, onBack, onSendMessage, onReactToMessage
 }) => {
     const [input, setInput] = useState('');
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
+    const [reactionPickerState, setReactionPickerState] = useState<{ messageId: string; position: { x: number; y: number } } | null>(null);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // CRITICAL: Filter and sort uniquely to prevent double rendering
     const uniqueMessages = useMemo(() => {
         const map = new Map<string, Message>();
         messages.forEach(m => map.set(m.id, m));
-        return Array.from(map.values()).sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+        return Array.from(map.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     }, [messages]);
 
     useEffect(() => {
@@ -32,20 +40,73 @@ const DirectChat: React.FC<DirectChatProps> = ({
         }
     }, [uniqueMessages]);
 
+    // Mention autocomplete
+    useEffect(() => {
+        if (mentionQuery !== null) {
+            const query = mentionQuery.toLowerCase();
+            setFilteredUsers(
+                users
+                    .filter(u => u.username !== currentUser.username && u.username.toLowerCase().includes(query))
+                    .slice(0, 5)
+            );
+        } else {
+            setFilteredUsers([]);
+        }
+    }, [mentionQuery, users, currentUser.username]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const text = e.target.value;
+        setInput(text);
+        const lastWord = text.split(' ').pop();
+        if (lastWord && lastWord.startsWith('@')) setMentionQuery(lastWord.slice(1));
+        else setMentionQuery(null);
+    };
+
+    const selectMention = (username: string) => {
+        const words = input.split(' ');
+        words.pop();
+        setInput([...words, `@${username} `].join(' '));
+        setMentionQuery(null);
+    };
+
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim()) return;
         onSendMessage(input);
         setInput('');
+        setMentionQuery(null);
     };
-    
+
+    const openReactionPicker = (messageId: string, x: number, y: number) => {
+        setReactionPickerState({ messageId, position: { x, y } });
+    };
+
     const isWinamp = theme === 'winamp';
+    const isXP = theme === 'xp';
+    const isLight = theme === 'light';
+
+    const headerBg = isWinamp
+        ? 'bg-[#191919] border-[#505050]'
+        : isXP
+        ? 'bg-[#ECE9D8] border-[#ACA899]'
+        : isLight
+        ? 'bg-white border-gray-200'
+        : 'border-white/10 bg-white/5';
+
+    const inputBg = isWinamp
+        ? 'bg-black/40 border border-[#505050] text-[#00ff00] placeholder-gray-600'
+        : isXP
+        ? 'bg-white border border-[#ACA899] text-black'
+        : isLight
+        ? 'bg-gray-50 border border-gray-200 text-gray-900'
+        : 'bg-black/40 border border-white/10';
 
     return (
         <div className={`max-w-2xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
-            <div className={`flex items-center justify-between p-4 border-b rounded-t-3xl ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'border-white/10 bg-white/5'}`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between p-4 border-b rounded-t-3xl ${headerBg}`}>
                 <div className="flex items-center gap-4 min-w-0">
-                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}><ArrowLeft size={20}/></button>
+                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}><ArrowLeft size={20} /></button>
                     <div className="flex items-center gap-3 min-w-0">
                         <img src={getUserAvatar(partnerUsername)} className="w-10 h-10 rounded-full border border-green-500/30 flex-shrink-0 object-cover" />
                         <div className="min-w-0">
@@ -58,36 +119,100 @@ const DirectChat: React.FC<DirectChatProps> = ({
                 </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide no-scrollbar">
+            {/* Messages */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide no-scrollbar">
                 {uniqueMessages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
                         <MessageSquare size={48} />
                         <p className="font-pixel text-[10px] tracking-widest uppercase">НАЧНИТЕ ДИАЛОГ В СЕТИ</p>
                     </div>
                 ) : (
-                    uniqueMessages.map((msg) => {
+                    uniqueMessages.map(msg => {
                         const isMe = msg.sender === currentUser.username;
+                        const bubbleBg = isMe
+                            ? 'bg-green-500 text-black rounded-tr-none'
+                            : isWinamp
+                            ? 'bg-[#191919] border border-[#505050] text-[#00ff00] rounded-tl-none'
+                            : isXP
+                            ? 'bg-[#ECE9D8] border border-[#ACA899] text-black rounded-tl-none'
+                            : isLight
+                            ? 'bg-gray-100 text-gray-900 rounded-tl-none'
+                            : 'bg-white/10 text-white rounded-tl-none';
+
                         return (
-                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                                <div className={`max-w-[80%] p-4 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap ${isMe ? 'bg-green-500 text-black rounded-tr-none' : isWinamp ? 'bg-[#191919] border border-[#505050] text-[#00ff00] rounded-tl-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
-                                    {msg.text}
+                            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
+                                <div
+                                    className={`max-w-[80%] p-4 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
+                                    onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
+                                    onTouchStart={e => {
+                                        const touch = e.touches[0];
+                                        longPressTimerRef.current = setTimeout(() => {
+                                            openReactionPicker(msg.id, touch.clientX, touch.clientY);
+                                        }, 500);
+                                    }}
+                                    onTouchEnd={() => {
+                                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                    }}
+                                    onTouchMove={() => {
+                                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                    }}
+                                >
+                                    {renderTextWithMentions(msg.text, () => {}, users)}
                                     <div className={`text-[9px] mt-2 opacity-50 ${isMe ? 'text-black/60' : 'text-white/40'}`}>
                                         {msg.timestamp.split(',')[1] || msg.timestamp}
                                     </div>
                                 </div>
+                                {msg.reactions && msg.reactions.length > 0 && (
+                                    <div className="mt-1">
+                                        <ReactionBar
+                                            reactions={msg.reactions}
+                                            currentUsername={currentUser.username}
+                                            onReact={emoji => onReactToMessage(msg.id, emoji)}
+                                            isMe={isMe}
+                                            theme={theme}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         );
                     })
                 )}
             </div>
 
-            <form onSubmit={handleSend} className={`p-4 border-t rounded-b-3xl ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-white/5 border-white/10'}`}>
+            {/* Reaction picker overlay */}
+            {reactionPickerState && (
+                <MessageReactionPicker
+                    position={reactionPickerState.position}
+                    onReact={emoji => { onReactToMessage(reactionPickerState.messageId, emoji); setReactionPickerState(null); }}
+                    onClose={() => setReactionPickerState(null)}
+                    theme={theme}
+                />
+            )}
+
+            {/* Input form */}
+            <form onSubmit={handleSend} className={`p-4 border-t rounded-b-3xl relative ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#ACA899]' : isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
+                {/* Mention dropdown */}
+                {mentionQuery !== null && filteredUsers.length > 0 && (
+                    <div className={`absolute bottom-full mb-2 left-4 w-64 border rounded-xl overflow-hidden shadow-2xl z-50 ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#ACA899]' : 'bg-black border-white/10'}`}>
+                        {filteredUsers.map(u => (
+                            <button
+                                key={u.username}
+                                type="button"
+                                onClick={() => selectMention(u.username)}
+                                className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors"
+                            >
+                                <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
+                                <span className="font-bold text-[10px]">@{u.username}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
                 <div className="flex gap-2">
-                    <input 
+                    <input
                         value={input}
-                        onChange={e => setInput(e.target.value)}
-                        placeholder="ВВЕСТИ СООБЩЕНИЕ..." 
-                        className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${isWinamp ? 'bg-black/40 border border-[#505050] text-[#00ff00] placeholder-gray-600' : 'bg-black/40 border border-white/10'}`}
+                        onChange={handleInputChange}
+                        placeholder="ВВЕСТИ СООБЩЕНИЕ..."
+                        className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
                     />
                     <button type="submit" className="p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0">
                         <Send size={20} />

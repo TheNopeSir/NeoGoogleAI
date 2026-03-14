@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2, 
+import {
+  ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2,
   ArrowLeft, Eye, BookmarkPlus, Send, MessageCircle, CornerDownRight, Edit2, Link2, Sparkles, Video, Pin, RefreshCw,
-  Maximize2, ZoomIn, ZoomOut, Home, X, Info, Award, ChevronDown, ChevronUp
+  Maximize2, ZoomIn, ZoomOut, Home, X, Info, Award, ChevronDown, ChevronUp, Pencil, SmilePlus, LayoutGrid, SlidersHorizontal
 } from 'lucide-react';
 import { Exhibit, Comment, UserProfile } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG, getSimilarArtifacts, CATEGORY_CONDITIONS } from '../constants';
@@ -11,6 +11,8 @@ import { ExhibitCard } from './ExhibitCard';
 import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
 import { getImageUrl } from '../utils/imageUtils';
+import EmojiPicker from './EmojiPicker';
+import { renderTextWithMentions } from '../utils/textUtils';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -24,6 +26,7 @@ interface ExhibitDetailPageProps {
   onPostComment: (id: string, text: string, parentId?: string) => void;
   onCommentLike: (commentId: string) => void;
   onDeleteComment: (exhibitId: string, commentId: string) => void;
+  onEditComment?: (exhibitId: string, commentId: string, newText: string) => void;
   onAuthorClick: (author: string) => void;
   onFollow: (username: string) => void;
   onMessage: (username: string) => void;
@@ -55,20 +58,9 @@ const getEmbedUrl = (url: string) => {
     return embedUrl;
 };
 
-const renderTextWithMentions = (text: string, onUserClick: (u: string) => void) => {
-    if (!text) return "";
-    const parts = text.split(/(@\w+)/g);
-    return parts.map((part, i) => {
-        if (part.startsWith('@')) {
-            const username = part.slice(1);
-            return <span key={i} onClick={(e) => { e.stopPropagation(); onUserClick(username); }} className="text-blue-400 cursor-pointer hover:underline font-bold">{part}</span>;
-        }
-        return part;
-    });
-};
 
 const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
-  exhibit, theme, onBack, onShare, onFavorite, onLike, isFavorited, isLiked, onPostComment, onCommentLike, onDeleteComment, onAuthorClick, onFollow, onMessage, onDelete, onEdit, onAddToCollection, onExhibitClick, isFollowing, currentUser, currentUserProfile, isAdmin, users, allExhibits, highlightCommentId
+  exhibit, theme, onBack, onShare, onFavorite, onLike, isFavorited, isLiked, onPostComment, onCommentLike, onDeleteComment, onEditComment, onAuthorClick, onFollow, onMessage, onDelete, onEdit, onAddToCollection, onExhibitClick, isFollowing, currentUser, currentUserProfile, isAdmin, users, allExhibits, highlightCommentId
 }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [commentText, setCommentText] = useState('');
@@ -76,7 +68,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string, author: string } | null>(null);
   const [showLikesModal, setShowLikesModal] = useState(false);
-  
+
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
 
@@ -89,6 +81,15 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Gallery enhancements
+  const [galleryMode, setGalleryMode] = useState<'SLIDER' | 'GRID'>('SLIDER');
+
+  // Comment enhancements
+  const [commentSort, setCommentSort] = useState<'newest' | 'oldest' | 'popular'>('newest');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const isWinamp = theme === 'winamp';
 
@@ -179,7 +180,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   }, [slides.length, isDragging]);
 
   const commentTree = useMemo(() => {
-      const roots = comments.filter(c => !c.parentId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const roots = comments.filter(c => !c.parentId).sort((a, b) => {
+          if (commentSort === 'oldest') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+          if (commentSort === 'popular') return b.likes - a.likes;
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(); // newest
+      });
       const byParent = comments.reduce((acc, c) => {
           if (c.parentId) {
               if (!acc[c.parentId]) acc[c.parentId] = [];
@@ -193,7 +198,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       });
       
       return { roots, byParent };
-  }, [comments]);
+  }, [comments, commentSort]);
 
   useEffect(() => {
       if (highlightCommentId) {
@@ -315,11 +320,12 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       const isCommentLiked = c.likedBy && c.likedBy.includes(currentUser);
       const isAuthor = c.author === currentUser;
       const replies = commentTree.byParent[c.id] || [];
+      const isEditing = editingCommentId === c.id;
 
       return (
           <div key={c.id} className={`flex flex-col ${depth > 0 ? 'ml-4 md:ml-8 border-l-2 border-white/10 pl-4 mt-2' : 'mt-4'}`}>
-              <div 
-                id={`comment-${c.id}`} 
+              <div
+                id={`comment-${c.id}`}
                 className={`p-3 border transition-all ${isWinamp ? 'bg-black border-[#505050]' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
               >
                   <div className="flex justify-between items-start mb-1">
@@ -328,6 +334,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                           <div className="flex items-center gap-2">
                               <div onClick={() => onAuthorClick(c.author)} className="font-bold cursor-pointer text-green-500 font-pixel text-[10px] leading-none">@{c.author}</div>
                               <div className="text-[9px] opacity-30 font-mono leading-none">{c.timestamp}</div>
+                              {c.editedAt && <span className="text-[8px] opacity-25 font-mono italic">ред.</span>}
                           </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -337,6 +344,15 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                           <button onClick={() => handleReply(c)} className="text-gray-500 hover:text-white transition-colors" title="Ответить">
                               <CornerDownRight size={14} />
                           </button>
+                          {isAuthor && onEditComment && (
+                              <button
+                                  onClick={() => { setEditingCommentId(c.id); setEditingText(c.text); }}
+                                  className="text-gray-500 hover:text-blue-400 transition-colors"
+                                  title="Редактировать"
+                              >
+                                  <Pencil size={12} />
+                              </button>
+                          )}
                           {(isAuthor || isAdmin) && (
                               <button onClick={() => onDeleteComment(exhibit.id, c.id)} className="text-gray-500 hover:text-red-500 transition-colors" title="Удалить">
                                   <Trash2 size={14} />
@@ -344,7 +360,36 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                           )}
                       </div>
                   </div>
-                  <p className="font-mono text-xs opacity-80 pl-7 break-words leading-relaxed">{renderTextWithMentions(c.text, onAuthorClick)}</p>
+                  {isEditing ? (
+                      <div className="flex gap-2 mt-1 pl-7">
+                          <input
+                              value={editingText}
+                              onChange={e => setEditingText(e.target.value)}
+                              className="flex-1 bg-black/40 border border-green-500/50 px-2 py-1 font-mono text-xs rounded focus:outline-none focus:border-green-500 transition-colors"
+                              autoFocus
+                              onKeyDown={e => {
+                                  if (e.key === 'Enter' && editingText.trim()) {
+                                      onEditComment?.(exhibit.id, c.id, editingText.trim());
+                                      setEditingCommentId(null);
+                                  }
+                                  if (e.key === 'Escape') setEditingCommentId(null);
+                              }}
+                          />
+                          <button
+                              onClick={() => { onEditComment?.(exhibit.id, c.id, editingText.trim()); setEditingCommentId(null); }}
+                              className="text-green-500 hover:text-white text-[10px] font-bold px-2"
+                          >
+                              СОХР
+                          </button>
+                          <button onClick={() => setEditingCommentId(null)} className="text-gray-500 hover:text-red-500">
+                              <X size={12} />
+                          </button>
+                      </div>
+                  ) : (
+                      <p className="font-mono text-xs opacity-80 pl-7 break-words leading-relaxed">
+                          {renderTextWithMentions(c.text, onAuthorClick, users)}
+                      </p>
+                  )}
               </div>
               {replies.map(reply => renderCommentNode(reply, depth + 1))}
           </div>
@@ -468,14 +513,38 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                   </div>
               </div>
 
-              <div className="h-20 flex items-center justify-center gap-2 pb-4">
-                  {slides.map((_, idx) => (
-                      <button
-                          key={idx}
-                          onClick={() => setCurrentSlideIndex(idx)}
-                          className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`}
-                      />
-                  ))}
+              <div className="flex flex-col items-center gap-2 pb-4 pt-2">
+                  <div className="flex items-center gap-2">
+                      {slides.map((_, idx) => (
+                          <button
+                              key={idx}
+                              onClick={() => setCurrentSlideIndex(idx)}
+                              className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`}
+                          />
+                      ))}
+                  </div>
+                  {slides.length > 1 && (
+                      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide px-4">
+                          {slides.map((slide, idx) => (
+                              <button
+                                  key={idx}
+                                  onClick={() => setCurrentSlideIndex(idx)}
+                                  className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}
+                              >
+                                  {slide.type === 'image' ? (
+                                      <img src={slide.url} className="w-full h-full object-cover" />
+                                  ) : (
+                                      <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                                          <Video size={16} className="text-white/60" />
+                                      </div>
+                                  )}
+                              </button>
+                          ))}
+                      </div>
+                  )}
+                  <div className="text-white/40 text-[10px] font-mono">
+                      {currentSlideIndex + 1} / {slides.length}
+                  </div>
               </div>
           </div>
       )}
@@ -515,14 +584,60 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
             
             {/* LEFT COLUMN: MEDIA */}
             <div className="w-full lg:w-[45%] space-y-4 lg:sticky lg:top-20">
-                <div 
+                {/* Gallery mode toggle */}
+                {slides.length > 1 && (
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => setGalleryMode('SLIDER')}
+                            className={`flex-1 py-1.5 text-[9px] font-pixel uppercase border rounded-l-xl flex items-center justify-center gap-1 transition-all ${galleryMode === 'SLIDER' ? 'bg-green-500/20 border-green-500 text-green-400' : 'border-white/10 opacity-40 hover:opacity-70'}`}
+                        >
+                            <SlidersHorizontal size={10} /> СЛАЙДЕР
+                        </button>
+                        <button
+                            onClick={() => setGalleryMode('GRID')}
+                            className={`flex-1 py-1.5 text-[9px] font-pixel uppercase border rounded-r-xl flex items-center justify-center gap-1 transition-all ${galleryMode === 'GRID' ? 'bg-green-500/20 border-green-500 text-green-400' : 'border-white/10 opacity-40 hover:opacity-70'}`}
+                        >
+                            <LayoutGrid size={10} /> СЕТКА
+                        </button>
+                    </div>
+                )}
+
+                {galleryMode === 'GRID' && slides.length > 1 ? (
+                    <div className={`grid grid-cols-2 gap-1 w-full overflow-hidden border ${isWinamp ? 'border-[#505050] bg-black' : 'rounded-2xl border-white/10 bg-black'}`}>
+                        {slides.map((slide, idx) => (
+                            <div
+                                key={idx}
+                                className="aspect-square overflow-hidden cursor-pointer relative group"
+                                onClick={() => { setGalleryMode('SLIDER'); setCurrentSlideIndex(idx); }}
+                            >
+                                {slide.type === 'image' ? (
+                                    <img src={slide.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                ) : (
+                                    <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                                        <Video size={24} className="text-white/60" />
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-full">{idx + 1}</div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                <div
                     className={`relative aspect-square w-full overflow-hidden border transition-all duration-500 group ${isWinamp ? 'bg-black border-[#505050]' : (theme === 'dark' ? 'rounded-2xl border-white/10 bg-black' : 'rounded-2xl border-black/10 bg-white')} ${isCursed ? 'shadow-[0_0_30px_red]' : ''}`}
                     {...gallerySwipeHandlers}
                 >
+                    {/* Slide counter */}
+                    {slides.length > 1 && (
+                        <div className="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-mono px-2 py-0.5 rounded-full backdrop-blur-sm">
+                            {currentSlideIndex + 1}/{slides.length}
+                        </div>
+                    )}
+
                     {/* Blurred Background Layer */}
-                    <img 
-                        src={slides[currentSlideIndex].type === 'image' ? slides[currentSlideIndex].url : ''} 
-                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none" 
+                    <img
+                        src={slides[currentSlideIndex].type === 'image' ? slides[currentSlideIndex].url : ''}
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                     />
 
                     {slides[currentSlideIndex].type === 'image' ? (
@@ -545,9 +660,31 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             ))}
                         </div>
                     )}
-                    
+
                     <button onClick={() => setIsFullscreen(true)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"><Maximize2 size={16}/></button>
                 </div>
+                )}
+
+                {/* Thumbnail strip under slider */}
+                {galleryMode === 'SLIDER' && slides.length > 1 && (
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                        {slides.map((slide, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setCurrentSlideIndex(idx)}
+                                className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}
+                            >
+                                {slide.type === 'image' ? (
+                                    <img src={slide.url} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                                        <Video size={14} className="text-white/60" />
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {!isOwner && (tradeStatus === 'FOR_TRADE' || tradeStatus === 'FOR_SALE' || tradeStatus === 'NONE' || !tradeStatus) && (
                     <button 
@@ -695,13 +832,35 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
                 {/* Comments Section */}
                 <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-dark-surface border-white/5'}`}>
-                    <h3 className={`font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>
-                        <MessageSquare size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} /> 
-                        ОБСУЖДЕНИЕ ({comments.length})
-                    </h3>
-                    
+                    {/* Comments header with sort controls */}
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>
+                            <MessageSquare size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} />
+                            ОБСУЖДЕНИЕ
+                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-mono text-[10px] font-bold">
+                                {comments.length}
+                            </span>
+                        </h3>
+                        {comments.length > 0 && (
+                            <div className="flex gap-1">
+                                {(['newest', 'oldest', 'popular'] as const).map(sort => {
+                                    const labels = { newest: 'НОВЫЕ', oldest: 'СТАРЫЕ', popular: 'ТОП' };
+                                    return (
+                                        <button
+                                            key={sort}
+                                            onClick={() => setCommentSort(sort)}
+                                            className={`px-2 py-0.5 text-[8px] font-pixel uppercase rounded transition-all ${commentSort === sort ? 'bg-green-500/20 text-green-400 border border-green-500/40' : 'opacity-30 hover:opacity-60'}`}
+                                        >
+                                            {labels[sort]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
                     <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {comments.length === 0 ? ( <div className="text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed border-white/10 rounded-xl">ТИШИНА В ЭФИРЕ</div> ) : ( 
+                        {comments.length === 0 ? ( <div className="text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed border-white/10 rounded-xl">ТИШИНА В ЭФИРЕ</div> ) : (
                             commentTree.roots.map(rootComment => renderCommentNode(rootComment))
                         )}
                     </div>
@@ -710,7 +869,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         {mentionQuery !== null && filteredUsers.length > 0 && (
                             <div className="absolute bottom-full mb-2 left-0 w-64 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
                                 {filteredUsers.map(u => (
-                                    <button 
+                                    <button
                                         key={u.username}
                                         onClick={() => selectMention(u.username)}
                                         className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors"
@@ -730,33 +889,47 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><X size={12}/></button>
                             </div>
                         )}
-                        <div className="flex gap-2">
-                            <input 
+                        <div className="flex gap-2 relative">
+                            {showEmojiPicker && (
+                                <EmojiPicker
+                                    theme={theme}
+                                    onSelect={emoji => setCommentText(prev => prev + emoji)}
+                                    onClose={() => setShowEmojiPicker(false)}
+                                />
+                            )}
+                            <input
                                 id="comment-input"
-                                type="text" 
-                                value={commentText} 
-                                onChange={handleCommentChange} 
+                                type="text"
+                                value={commentText}
+                                onChange={handleCommentChange}
                                 placeholder={replyTo ? "Ваш ответ..." : "Написать комментарий..."}
-                                className={`flex-1 bg-black/40 border border-white/10 px-3 py-2.5 font-mono text-xs focus:outline-none focus:border-green-500 transition-colors rounded-lg ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`} 
-                                onKeyDown={(e) => { 
-                                    if(e.key === 'Enter' && commentText.trim()) { 
-                                        onPostComment(exhibit.id, commentText, replyTo?.id); 
-                                        setCommentText(''); 
+                                className={`flex-1 bg-black/40 border border-white/10 px-3 py-2.5 font-mono text-xs focus:outline-none focus:border-green-500 transition-colors rounded-lg ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && commentText.trim()) {
+                                        onPostComment(exhibit.id, commentText, replyTo?.id);
+                                        setCommentText('');
                                         setReplyTo(null);
                                         setMentionQuery(null);
-                                    } 
-                                }} 
+                                    }
+                                }}
                             />
-                            <button 
-                                onClick={() => { 
-                                    if(commentText.trim()) { 
-                                        onPostComment(exhibit.id, commentText, replyTo?.id); 
-                                        setCommentText(''); 
+                            <button
+                                onClick={() => setShowEmojiPicker(v => !v)}
+                                className={`p-2.5 rounded-lg border transition-all ${showEmojiPicker ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'border-white/10 text-gray-500 hover:text-white'}`}
+                                title="Эмодзи"
+                            >
+                                <SmilePlus size={16} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (commentText.trim()) {
+                                        onPostComment(exhibit.id, commentText, replyTo?.id);
+                                        setCommentText('');
                                         setReplyTo(null);
                                         setMentionQuery(null);
-                                    } 
-                                }} 
-                                className={`bg-green-500 text-black p-2.5 rounded-lg hover:scale-105 active:scale-95 transition-all`}
+                                    }
+                                }}
+                                className="bg-green-500 text-black p-2.5 rounded-lg hover:scale-105 active:scale-95 transition-all"
                             >
                                 <Send size={16} />
                             </button>

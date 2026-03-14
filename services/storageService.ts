@@ -720,6 +720,16 @@ export const saveMessage = async (m: Message) => {
     await apiCall('/messages', 'POST', m);
 };
 
+export const updateMessage = async (m: Message) => {
+    const idx = hotCache.messages.findIndex(x => x.id === m.id);
+    if (idx !== -1) hotCache.messages[idx] = m;
+    else hotCache.messages.push(m);
+    notifyListeners();
+    const dbInstance = await getDB();
+    await dbInstance.put('messages', m);
+    await apiCall('/messages', 'POST', m);
+};
+
 export const createGuild = async (g: Guild) => {
     hotCache.guilds.push(g);
     notifyListeners();

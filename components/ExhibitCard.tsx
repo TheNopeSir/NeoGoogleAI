@@ -52,6 +52,10 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
   const isWinamp = theme === 'winamp';
   const isLight = theme === 'light';
 
+  const lastComment = item.comments && item.comments.length > 0
+      ? [...item.comments].filter(c => !c.parentId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+      : null;
+
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
   const photoCount = item.imageUrls?.length || 0;
   const condition = item.condition || item.quality;
@@ -134,6 +138,12 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                 </button>
               </div>
             </div>
+            {lastComment && (
+              <div className="text-[8px] font-mono opacity-50 truncate border-t border-[#505050] pt-1.5 mt-1">
+                <span className="text-wa-green font-bold">@{lastComment.author}: </span>
+                {lastComment.text.slice(0, 35)}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -219,6 +229,12 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                 </button>
               </div>
             </div>
+            {lastComment && (
+              <div className="text-[8px] font-mono text-black/50 truncate border-t border-dashed border-gray-300 pt-1.5 mt-1">
+                <span className="text-[#0058EE] font-bold">@{lastComment.author}: </span>
+                {lastComment.text.slice(0, 35)}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -333,6 +349,14 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
             </button>
           </div>
         </div>
+
+        {/* Last comment preview */}
+        {lastComment && (
+          <div className={`text-[9px] font-mono truncate border-t pt-1.5 mt-0.5 ${isLight ? 'border-gray-100 text-gray-500' : 'border-white/5 text-white/40'}`}>
+            <span className="text-green-500 font-bold">@{lastComment.author}: </span>
+            {lastComment.text.slice(0, 40)}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,6 +7,14 @@ export interface Comment {
   timestamp: string;
   likes: number;
   likedBy: string[];
+  editedAt?: string; // ISO string if comment was edited
+}
+
+export type MessageReactionEmoji = '❤️' | '😂' | '😮' | '😢' | '👍' | '🔥' | '👀' | '💯';
+
+export interface MessageReaction {
+  emoji: MessageReactionEmoji;
+  users: string[];
 }
 
 export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';
@@ -107,6 +115,7 @@ export interface Message {
     text: string;
     timestamp: string;
     isRead: boolean;
+    reactions?: MessageReaction[];
 }
 
 export interface GuestbookEntry {
