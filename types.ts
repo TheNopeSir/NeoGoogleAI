@@ -1,4 +1,11 @@
 
+export type MessageReactionEmoji = '❤️' | '😂' | '😮' | '😢' | '👍' | '🔥' | '👀' | '💯';
+
+export interface MessageReaction {
+  emoji: MessageReactionEmoji;
+  users: string[];
+}
+
 export interface Comment {
   id: string;
   parentId?: string; // For replies
@@ -8,13 +15,7 @@ export interface Comment {
   likes: number;
   likedBy: string[];
   editedAt?: string; // ISO string if comment was edited
-}
-
-export type MessageReactionEmoji = '❤️' | '😂' | '😮' | '😢' | '👍' | '🔥' | '👀' | '💯';
-
-export interface MessageReaction {
-  emoji: MessageReactionEmoji;
-  users: string[];
+  reactions?: MessageReaction[]; // emoji reactions on the comment
 }
 
 export type TierType = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'CURSED';

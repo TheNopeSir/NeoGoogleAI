@@ -12,7 +12,10 @@ import TradeOfferModal from './TradeOfferModal';
 import useSwipe from '../hooks/useSwipe';
 import { getImageUrl } from '../utils/imageUtils';
 import EmojiPicker from './EmojiPicker';
+import MessageReactionPicker from './MessageReactionPicker';
+import ReactionBar from './ReactionBar';
 import { renderTextWithMentions } from '../utils/textUtils';
+import { MessageReactionEmoji } from '../types';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -27,6 +30,7 @@ interface ExhibitDetailPageProps {
   onCommentLike: (commentId: string) => void;
   onDeleteComment: (exhibitId: string, commentId: string) => void;
   onEditComment?: (exhibitId: string, commentId: string, newText: string) => void;
+  onCommentReact?: (exhibitId: string, commentId: string, emoji: MessageReactionEmoji) => void;
   onAuthorClick: (author: string) => void;
   onFollow: (username: string) => void;
   onMessage: (username: string) => void;
@@ -60,7 +64,7 @@ const getEmbedUrl = (url: string) => {
 
 
 const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
-  exhibit, theme, onBack, onShare, onFavorite, onLike, isFavorited, isLiked, onPostComment, onCommentLike, onDeleteComment, onEditComment, onAuthorClick, onFollow, onMessage, onDelete, onEdit, onAddToCollection, onExhibitClick, isFollowing, currentUser, currentUserProfile, isAdmin, users, allExhibits, highlightCommentId
+  exhibit, theme, onBack, onShare, onFavorite, onLike, isFavorited, isLiked, onPostComment, onCommentLike, onDeleteComment, onEditComment, onCommentReact, onAuthorClick, onFollow, onMessage, onDelete, onEdit, onAddToCollection, onExhibitClick, isFollowing, currentUser, currentUserProfile, isAdmin, users, allExhibits, highlightCommentId
 }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [commentText, setCommentText] = useState('');
@@ -90,6 +94,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [commentReactionPicker, setCommentReactionPicker] = useState<{ commentId: string; position: { x: number; y: number } } | null>(null);
+  const commentLongPressRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isWinamp = theme === 'winamp';
 
@@ -322,11 +328,27 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       const replies = commentTree.byParent[c.id] || [];
       const isEditing = editingCommentId === c.id;
 
+      const openCommentReactionPicker = (e: React.MouseEvent | React.TouchEvent, id: string) => {
+          let x: number, y: number;
+          if ('touches' in e) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+          else { x = (e as React.MouseEvent).clientX; y = (e as React.MouseEvent).clientY; }
+          setCommentReactionPicker({ commentId: id, position: { x, y } });
+      };
+
       return (
           <div key={c.id} className={`flex flex-col ${depth > 0 ? 'ml-4 md:ml-8 border-l-2 border-white/10 pl-4 mt-2' : 'mt-4'}`}>
               <div
                 id={`comment-${c.id}`}
-                className={`p-3 border transition-all ${isWinamp ? 'bg-black border-[#505050]' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
+                className={`p-3 border transition-all cursor-pointer select-none ${isWinamp ? 'bg-black border-[#505050]' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
+                onContextMenu={e => { e.preventDefault(); openCommentReactionPicker(e, c.id); }}
+                onTouchStart={e => {
+                    const touch = e.touches[0];
+                    commentLongPressRef.current = setTimeout(() => {
+                        setCommentReactionPicker({ commentId: c.id, position: { x: touch.clientX, y: touch.clientY } });
+                    }, 500);
+                }}
+                onTouchEnd={() => { if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current); }}
+                onTouchMove={() => { if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current); }}
               >
                   <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">
@@ -389,6 +411,18 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                       <p className="font-mono text-xs opacity-80 pl-7 break-words leading-relaxed">
                           {renderTextWithMentions(c.text, onAuthorClick, users)}
                       </p>
+                  )}
+                  {/* Reaction bar */}
+                  {c.reactions && c.reactions.length > 0 && (
+                      <div className="pl-7 mt-2">
+                          <ReactionBar
+                              reactions={c.reactions}
+                              currentUsername={currentUser}
+                              onReact={emoji => onCommentReact?.(exhibit.id, c.id, emoji)}
+                              isMe={false}
+                              theme={theme}
+                          />
+                      </div>
                   )}
               </div>
               {replies.map(reply => renderCommentNode(reply, depth + 1))}
@@ -938,6 +972,19 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 </div>
             </div>
         </div>
+
+        {/* Comment reaction picker */}
+        {commentReactionPicker && (
+            <MessageReactionPicker
+                position={commentReactionPicker.position}
+                onReact={emoji => {
+                    onCommentReact?.(exhibit.id, commentReactionPicker.commentId, emoji);
+                    setCommentReactionPicker(null);
+                }}
+                onClose={() => setCommentReactionPicker(null)}
+                theme={theme}
+            />
+        )}
 
         {similarArtifacts.length > 0 && (
                 <div className="mt-12 mb-8">
