@@ -8,8 +8,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
+// Use relative paths for Capacitor (mobile), absolute for web server
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === 'true';
+
 export default defineConfig({
-  base: './', // CRITICAL: Use relative paths for assets in mobile apps
+  base: isCapacitorBuild ? './' : '/',
   plugins: [
     react(),
     VitePWA({

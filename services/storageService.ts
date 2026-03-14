@@ -519,7 +519,7 @@ export const registerUser = async (username: string, password: string, tagline: 
 export const logoutUser = async () => {
     const db = await getDB();
     await db.delete('system', SESSION_USER_KEY);
-    window.location.reload();
+    window.location.href = '/';
 };
 
 export const loginViaTelegram = async (tgUser: any) => {
