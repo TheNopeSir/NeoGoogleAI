@@ -1,5 +1,5 @@
 
-import { TouchEvent, useState } from 'react';
+import { TouchEvent, useRef } from 'react';
 
 interface SwipeInput {
     onSwipeLeft?: () => void;
@@ -15,26 +15,27 @@ interface SwipeOutput {
 }
 
 const useSwipe = ({ onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown }: SwipeInput): SwipeOutput => {
-    const [touchStart, setTouchStart] = useState<{ x: number, y: number } | null>(null);
-    const [touchEnd, setTouchEnd] = useState<{ x: number, y: number } | null>(null);
+    // Using refs instead of state to avoid stale closure issues in touch handlers
+    const touchStart = useRef<{ x: number, y: number } | null>(null);
+    const touchEnd = useRef<{ x: number, y: number } | null>(null);
 
-    // Increased threshold to 75px to prevent accidental swipes while scrolling vertically
+    // Threshold: 75px prevents accidental swipes during vertical scroll
     const minSwipeDistance = 75;
 
     const onTouchStart = (e: TouchEvent<any>) => {
-        setTouchEnd(null);
-        setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+        touchEnd.current = null;
+        touchStart.current = { x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY };
     };
 
     const onTouchMove = (e: TouchEvent<any>) => {
-        setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+        touchEnd.current = { x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY };
     };
 
     const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
+        if (!touchStart.current || !touchEnd.current) return;
 
-        const distanceX = touchStart.x - touchEnd.x;
-        const distanceY = touchStart.y - touchEnd.y;
+        const distanceX = touchStart.current.x - touchEnd.current.x;
+        const distanceY = touchStart.current.y - touchEnd.current.y;
         const isLeftSwipe = distanceX > minSwipeDistance;
         const isRightSwipe = distanceX < -minSwipeDistance;
         const isUpSwipe = distanceY > minSwipeDistance;

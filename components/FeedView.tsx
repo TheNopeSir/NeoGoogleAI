@@ -185,16 +185,15 @@ const FeedView: React.FC<FeedViewProps> = ({
         {/* 2. STORIES (Only on Artifacts Mode) */}
         {feedMode === 'ARTIFACTS' && stories.length > 0 && (
             <div className="pl-4 max-w-[2400px] mx-auto w-full pt-2">
-                <h3 className="font-pixel text-[10px] opacity-50 mb-3 flex items-center gap-2 tracking-widest"><Zap size={12} className="text-yellow-500"/> ОБНОВЛЕНИЯ</h3>
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pr-4">
+                <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide pr-4">
                     {stories.map((story, i) => (
-                        <div key={i} onClick={() => story.latestItem && onExhibitClick(story.latestItem)} className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]">
-                            <div className="relative p-[2px] rounded-full bg-gradient-to-tr from-green-500 to-blue-500">
-                                <div className={`rounded-full p-[2px] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
-                                    <img src={story.avatar} className="w-14 h-14 rounded-full object-cover" />
+                        <div key={i} onClick={() => story.latestItem && onExhibitClick(story.latestItem)} className="flex flex-col items-center gap-2 cursor-pointer group min-w-[64px]">
+                            <div className="relative p-[2.5px] rounded-full bg-gradient-to-tr from-green-400 via-cyan-400 to-blue-500 shadow-md shadow-green-500/20">
+                                <div className={`rounded-full p-[2px] ${theme === 'dark' ? 'bg-zinc-950' : 'bg-white'}`}>
+                                    <img src={story.avatar} className="w-12 h-12 rounded-full object-cover group-hover:scale-105 transition-transform duration-200" />
                                 </div>
                             </div>
-                            <span className="text-[10px] font-bold truncate max-w-[70px]">@{story.username}</span>
+                            <span className="text-[9px] font-pixel opacity-60 group-hover:opacity-100 transition-opacity truncate max-w-[64px]">@{story.username}</span>
                         </div>
                     ))}
                 </div>
@@ -202,54 +201,62 @@ const FeedView: React.FC<FeedViewProps> = ({
         )}
 
         {/* 3. CONTROLS AREA */}
-        <div className={`sticky top-0 md:top-16 z-30 backdrop-blur-md pt-2 pb-2 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/90 border-[#505050]' : theme === 'light' ? 'bg-white/80 border-black/10' : 'bg-zinc-950/85 border-white/5'}`}>
-            <div className="max-w-[2400px] mx-auto w-full space-y-4">
-                
+        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : theme === 'light' ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
+            <div className="max-w-[2400px] mx-auto w-full space-y-3">
+
                 {/* Mode Toggle & Search */}
-                <div className="flex gap-4">
-                    <div className={`flex-1 flex p-1 rounded-xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
-                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow-lg') : 'opacity-50'}`}>
-                            <LayoutGrid size={14} /> ЛЕНТА
+                <div className="flex gap-3">
+                    {/* Segmented mode toggle with sliding pill */}
+                    <div className={`flex-1 flex relative p-1 rounded-2xl ${isWinamp ? 'bg-[#292929] border border-[#505050]' : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-black/[0.05]'}`}>
+                        {/* Sliding background indicator */}
+                        <div className={`absolute top-1 bottom-1 w-[calc(33.333%-2px)] rounded-xl transition-transform duration-200 ease-out ${
+                            isWinamp ? 'bg-[#00ff00]' :
+                            feedMode === 'ARTIFACTS' ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-md shadow-green-500/20' :
+                            feedMode === 'COLLECTIONS' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md shadow-blue-500/20' :
+                            'bg-gradient-to-r from-purple-500 to-violet-500 shadow-md shadow-purple-500/20'
+                        } ${feedMode === 'ARTIFACTS' ? 'translate-x-0.5' : feedMode === 'COLLECTIONS' ? 'translate-x-[calc(100%+1px)]' : 'translate-x-[calc(200%+1px)]'}`} />
+                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                            <LayoutGrid size={12} /> ЛЕНТА
                         </button>
-                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-blue-500 text-white shadow-lg') : 'opacity-50'}`}>
-                            <Folder size={14} /> КОЛЛЕКЦИИ
+                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                            <Folder size={12} /> АЛЬБОМЫ
                         </button>
-                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all ${feedMode === 'WISHLIST' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-purple-500 text-white shadow-lg') : 'opacity-50'}`}>
-                            <Radar size={14} /> ВИШЛИСТ
+                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                            <Radar size={12} /> ВИШЛИСТ
                         </button>
                     </div>
-                    <button onClick={() => onNavigate('SEARCH')} className={`px-4 rounded-xl border flex items-center justify-center ${isWinamp ? 'bg-black border-[#00ff00] text-[#00ff00]' : 'bg-white/5 border-white/10'}`}>
-                        <Search size={20} />
+                    <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : theme === 'dark' ? 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white' : 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black'}`}>
+                        <Search size={18} />
                     </button>
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto scrollbar-hide pb-2">
-                    <div className={`flex p-1 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
-                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ГЛАВНАЯ</button>
-                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black shadow') : 'opacity-50'}`}>ПОДПИСКИ</button>
+                <div className="flex items-center gap-2">
+                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-black/[0.05]'}`}>
+                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-white/15 text-white shadow-sm' : 'bg-black/10 text-black shadow-sm') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ГЛАВНАЯ</button>
+                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-white/15 text-white shadow-sm' : 'bg-black/10 text-black shadow-sm') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ПОДПИСКИ</button>
                     </div>
 
                     <div className="flex gap-1 shrink-0 ml-auto">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg ${feedViewMode === 'GRID' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><LayoutGrid size={16}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg ${feedViewMode === 'LIST' ? 'bg-white/10 text-green-500' : 'opacity-30'}`}><ListIcon size={16}/></button>
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (theme === 'dark' ? 'bg-white/10 text-green-400' : 'bg-black/10 text-green-600') : 'opacity-25 hover:opacity-50'}`}><LayoutGrid size={15}/></button>
+                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (theme === 'dark' ? 'bg-white/10 text-green-400' : 'bg-black/10 text-green-600') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
                     </div>
                 </div>
 
                 {/* Category Pills */}
                 <div className="space-y-2">
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === 'ВСЕ' ? 'bg-white text-black border-white' : 'border-current opacity-40 hover:opacity-100'}`}>ВСЕ</button>
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (theme === 'dark' ? 'bg-white text-black shadow-md' : 'bg-black text-white shadow-md') : (theme === 'dark' ? 'bg-white/[0.06] text-white/50 hover:text-white/80' : 'bg-black/[0.05] text-black/50 hover:text-black/80')}`}>ВСЕ</button>
                         {Object.values(DefaultCategory).map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black border-[#00ff00]' : 'bg-green-500 text-black border-green-500') : 'border-white/10 opacity-60 hover:opacity-100'}`}>{cat}</button>
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40' : 'bg-green-100 text-green-700 ring-1 ring-green-300') : (theme === 'dark' ? 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.07]' : 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]')}`}>{cat}</button>
                         ))}
                     </div>
                     {/* Subcategories */}
                     {selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] && (
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2">
-                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap border transition-all ${!selectedSubcategory ? 'bg-white/10 border-white' : 'border-transparent opacity-50'}`}>ВСЕ {selectedCategory}</button>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2 duration-150">
+                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ВСЕ</button>
                             {CATEGORY_SUBCATEGORIES[selectedCategory].map(sub => (
-                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap border transition-all ${selectedSubcategory === sub ? 'bg-white/10 border-white' : 'border-transparent opacity-50'}`}>{sub}</button>
+                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>{sub}</button>
                             ))}
                         </div>
                     )}

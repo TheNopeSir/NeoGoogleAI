@@ -511,6 +511,23 @@ export default function App() {
       }
   };
 
+  // Swipe navigation between main tab views (mobile only)
+  const SWIPE_TAB_ORDER: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'ACTIVITY', 'USER_PROFILE'];
+  const isMainTabView = SWIPE_TAB_ORDER.includes(view);
+
+  const swipeHandlers = useSwipe({
+      onSwipeLeft: () => {
+          if (!isMainTabView) return;
+          const idx = SWIPE_TAB_ORDER.indexOf(view);
+          if (idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
+      },
+      onSwipeRight: () => {
+          if (!isMainTabView) return;
+          const idx = SWIPE_TAB_ORDER.indexOf(view);
+          if (idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
+      },
+  });
+
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
         <SEO title="NeoArchive" />
@@ -576,7 +593,7 @@ export default function App() {
             </>
         )}
 
-        <div className="md:pt-16">
+        <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : {})}>
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
             )}

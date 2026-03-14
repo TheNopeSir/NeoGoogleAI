@@ -20,13 +20,13 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
   const config = TIER_CONFIG[tier];
   const Icon = config.icon;
   const isCursed = tier === 'CURSED';
-  const isHighTier = tier !== 'COMMON'; 
+  const isHighTier = tier !== 'COMMON';
   const uniqueViews = item.viewedBy?.length || item.views;
 
   const isLiked = item.likedBy?.includes(currentUsername) || false;
   const likeCount = item.likes || 0;
   const commentCount = item.comments?.length || 0;
-  
+
   const tradeStatus = item.tradeStatus || 'NONE';
   const tradeConfig = TRADE_STATUS_CONFIG[tradeStatus];
 
@@ -36,11 +36,8 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
 
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
 
-  // ROBUST CLICK HANDLING STRATEGY
-  // Instead of stopping propagation (which can fail), we check the target in the parent handler.
   const handleCardClick = (e: React.MouseEvent) => {
       const target = e.target as HTMLElement;
-      // If the click originated from a button, link, or explicitly marked interactive element, ignore it.
       if (target.closest('button') || target.closest('a') || target.closest('.interactive')) {
           return;
       }
@@ -48,7 +45,6 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
   };
 
   const handleLike = () => {
-      // No need for stopPropagation here as parent checks target
       onReact();
   };
 
@@ -56,9 +52,10 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
       onAuthorClick(author);
   };
 
+  // --- WINAMP THEME (unchanged) ---
   if (isWinamp) {
       return (
-        <div 
+        <div
             onClick={handleCardClick}
             className="group cursor-pointer flex flex-col h-full bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden relative"
         >
@@ -79,21 +76,21 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
                 </div>
 
                 <div className="mt-auto pt-2 border-t border-[#505050] font-winamp text-wa-green leading-none">
-                    <div 
-                        className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white inline-block interactive" 
+                    <div
+                        className="truncate text-[12px] mb-1.5 cursor-pointer hover:underline hover:text-white inline-block interactive"
                         onClick={() => handleAuthorClick(item.owner)}
                     >
                         @{item.owner}
                     </div>
-                    
+
                     <div className="flex justify-between items-center text-[10px]">
                         <span className="text-[#00A000]">{item.views} kbps</span>
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
                                 <MessageSquare size={10} /> {commentCount}
                             </div>
-                            
-                            <button 
+
+                            <button
                                 type="button"
                                 onClick={handleLike}
                                 className="flex items-center gap-1 hover:text-[#FFD700] p-1 -m-1 cursor-pointer interactive"
@@ -109,86 +106,153 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
       );
   }
 
+  // --- XP THEME (unchanged) ---
+  if (isXP) {
+      return (
+        <div
+            onClick={handleCardClick}
+            className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white ${isCursed || config.animated ? 'animate-pulse' : ''}`}
+        >
+            <div className="h-6 bg-gradient-to-r from-[#0058EE] to-[#3F8CF3] rounded-t-[4px] flex items-center justify-between px-2 shadow-sm">
+               <span className="text-white font-bold text-[10px] drop-shadow-md truncate font-sans">{item.title}</span>
+               <div className="flex gap-1">
+                   <div className="w-3 h-3 bg-[#D64434] rounded-[2px] border border-white/30 shadow-inner"></div>
+               </div>
+            </div>
+
+            <div className="relative aspect-square overflow-hidden bg-black/20">
+              <ProgressiveImage
+                  imageData={firstImage}
+                  alt={item.title}
+                  size="thumbnail"
+                  className="w-full h-full transition-all duration-500 group-hover:scale-110"
+              />
+              <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
+                  <Icon size={10} /> {config.name}
+              </div>
+              {tradeStatus !== 'NONE' && (
+                  <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+                      {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })}
+                      {tradeConfig.badge}
+                  </div>
+              )}
+            </div>
+
+            <div className="p-4 flex flex-col flex-1 bg-[#ECE9D8]">
+              <div className="mt-auto font-mono text-[10px] text-black opacity-80">
+                  <span className="truncate uppercase">{item.condition || item.quality}</span>
+              </div>
+
+              <div className="mt-2 pt-3 flex flex-col gap-2 border-t border-dashed border-gray-400">
+                  <div
+                      onClick={() => handleAuthorClick(item.owner)}
+                      className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20 interactive"
+                  >
+                      <img src={getUserAvatar(item.owner)} className="w-5 h-5 rounded-full border border-gray-400" />
+                      <span className="text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 text-black">@{item.owner}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-1 text-[10px] text-black/60" title="Просмотры">
+                          <Eye size={12} /> <span>{uniqueViews}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 text-[10px] text-black/60" title="Комментарии">
+                              <MessageSquare size={12} /> <span>{commentCount}</span>
+                          </div>
+                          <button
+                              type="button"
+                              onClick={handleLike}
+                              className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive ${isLiked ? 'text-red-500' : 'text-black/60 hover:text-red-500'}`}
+                          >
+                              <Heart size={12} fill={isLiked ? "currentColor" : "none"} />
+                              <span>{likeCount}</span>
+                          </button>
+                      </div>
+                  </div>
+              </div>
+            </div>
+        </div>
+      );
+  }
+
+  // --- DARK / LIGHT THEME — modern overlay card ---
   return (
     <div
       onClick={handleCardClick}
-      className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative
-        ${isXP
-          ? 'rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white'
-          : `rounded-2xl overflow-hidden border-2 ${theme === 'dark' ? `bg-dark-surface border-white/10 hover:border-green-500/50` : 'bg-white border-black/5 hover:border-black/20 shadow-lg'}`
+      className={`group cursor-pointer relative rounded-2xl overflow-hidden transition-all duration-300
+        ${isLight
+          ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
+          : `bg-dark-surface ring-1 ring-white/8 hover:ring-green-500/40 hover:shadow-lg hover:shadow-green-500/10 ${isHighTier ? config.borderDark : ''}`
         }
         ${isCursed || config.animated ? 'animate-pulse' : ''}
-        ${isHighTier && theme === 'dark' ? config.borderDark : ''}
       `}
     >
-      {isXP && (
-          <div className="h-6 bg-gradient-to-r from-[#0058EE] to-[#3F8CF3] rounded-t-[4px] flex items-center justify-between px-2 shadow-sm">
-             <span className="text-white font-bold text-[10px] drop-shadow-md truncate font-sans">{item.title}</span>
-             <div className="flex gap-1">
-                 <div className="w-3 h-3 bg-[#D64434] rounded-[2px] border border-white/30 shadow-inner"></div>
-             </div>
-          </div>
-      )}
-
-      <div className={`relative aspect-square overflow-hidden bg-black/20 ${!isXP ? 'rounded-t-2xl' : ''}`}>
+      {/* Full-bleed image */}
+      <div className="relative aspect-square overflow-hidden">
         <ProgressiveImage
             imageData={firstImage}
             alt={item.title}
             size="thumbnail"
-            className="w-full h-full transition-all duration-500 group-hover:scale-110"
+            className="w-full h-full transition-transform duration-500 group-hover:scale-105"
         />
 
-        {!isXP && <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/60 text-white border-white/10">{item.category}</div>}
-        
-        <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
-            <Icon size={10} /> {config.name}
+        {/* Gradient overlay */}
+        <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-black/70 via-black/20 to-transparent' : 'from-black/85 via-black/30 to-transparent'}`} />
+
+        {/* Top badges */}
+        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/50 text-white border-white/10">
+          {item.category}
+        </div>
+        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge}`}>
+            <Icon size={9} /> {config.name}
         </div>
 
+        {/* Trade badge */}
         {tradeStatus !== 'NONE' && (
-            <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
-                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })} 
+            <div className={`absolute bottom-[4.5rem] left-2 px-2 py-1 rounded-lg flex items-center gap-1 text-[9px] font-bold tracking-wide shadow-lg uppercase border bg-zinc-900/90 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 11, strokeWidth: 2.5 })}
                 {tradeConfig.badge}
             </div>
         )}
-      </div>
 
-      <div className={`p-4 flex flex-col flex-1 ${isXP ? 'bg-[#ECE9D8]' : ''}`}>
-        {!isXP && <h3 className={`text-sm font-bold font-pixel mb-3 line-clamp-2 leading-tight ${isCursed ? 'text-red-500' : isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</h3>}
-        
-        <div className={`mt-auto font-mono text-[10px] ${isXP || isLight ? 'text-black opacity-80' : 'opacity-60'}`}>
-            <span className="truncate uppercase">{item.condition || item.quality}</span>
-        </div>
-        
-        <div className={`mt-2 pt-3 flex flex-col gap-2 border-t border-dashed ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/10'}`}>
-            <div 
-                onClick={() => handleAuthorClick(item.owner)} 
-                className="flex items-center gap-2 group/author cursor-pointer w-full relative z-20 interactive"
+        {/* Bottom overlay content */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-1.5">
+          <h3 className="text-white font-bold font-pixel text-xs leading-tight line-clamp-2 drop-shadow-md">
+            {item.title}
+          </h3>
+
+          <div className="flex items-center justify-between">
+            <div
+              onClick={() => handleAuthorClick(item.owner)}
+              className="flex items-center gap-1.5 cursor-pointer interactive group/author"
             >
-                <img src={getUserAvatar(item.owner)} className={`w-5 h-5 rounded-full border ${isXP ? 'border-gray-400' : isLight ? 'border-black/10' : 'border-white/20'}`} />
-                <span className={`text-[10px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isXP || isLight ? 'text-black' : ''}`}>@{item.owner}</span>
+              <img
+                src={getUserAvatar(item.owner)}
+                className="w-4 h-4 rounded-full border border-white/30"
+              />
+              <span className="text-[9px] text-white/70 group-hover/author:text-white transition-colors font-pixel truncate max-w-[80px]">
+                @{item.owner}
+              </span>
             </div>
-            
-            <div className="flex items-center justify-between w-full">
-                <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Просмотры">
-                    <Eye size={12} /> <span>{uniqueViews}</span>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                    <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-black/60' : 'opacity-40'}`} title="Комментарии">
-                        <MessageSquare size={12} /> <span>{commentCount}</span>
-                    </div>
-                    
-                    <button 
-                        type="button"
-                        onClick={handleLike}
-                        className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive ${isLiked ? 'text-red-500' : (isXP || isLight ? 'text-black/60 hover:text-red-500' : 'opacity-40 hover:opacity-100 hover:text-red-500')}`}
-                        title={isLiked ? "Убрать лайк" : "Лайкнуть"}
-                    >
-                        <Heart size={12} fill={isLiked ? "currentColor" : "none"} /> 
-                        <span>{likeCount}</span>
-                    </button>
-                </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-[9px] text-white/50">
+                <Eye size={10} /> <span>{uniqueViews}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[9px] text-white/50">
+                <MessageSquare size={10} /> <span>{commentCount}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleLike}
+                className={`flex items-center gap-1 text-[9px] transition-colors p-1 -m-1 cursor-pointer interactive ${isLiked ? 'text-red-400' : 'text-white/50 hover:text-red-400'}`}
+              >
+                <Heart size={10} fill={isLiked ? "currentColor" : "none"} />
+                <span>{likeCount}</span>
+              </button>
             </div>
+          </div>
         </div>
       </div>
     </div>
