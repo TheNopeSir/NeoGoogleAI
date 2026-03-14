@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Archive, ArrowLeftRight, Users, ArrowRight, ChevronDown } from 'lucide-react';
+import { Archive, ArrowLeftRight, Users, ArrowRight, ChevronDown, Smartphone, Zap, WifiOff, Bell, Share, X } from 'lucide-react';
 import MatrixRain from './MatrixRain';
 import CRTOverlay from './CRTOverlay';
 import SEO from './SEO';
@@ -37,12 +37,23 @@ const FEATURES = [
   },
 ];
 
+const PWA_PERKS = [
+  { icon: WifiOff,  label: 'Работает офлайн',        desc: 'Лента и коллекция доступны без сети' },
+  { icon: Zap,      label: 'Мгновенный запуск',       desc: 'Открывается как нативное приложение' },
+  { icon: Bell,     label: 'Push-уведомления',        desc: 'Новые трейды и лайки — мгновенно' },
+];
+
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
   const [userCount, setUserCount] = useState<number | null>(null);
   const [visible, setVisible] = useState(false);
 
+  // PWA install state
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   useEffect(() => {
-    // Fade-in on mount
     const t = setTimeout(() => setVisible(true), 50);
     return () => clearTimeout(t);
   }, []);
@@ -54,12 +65,82 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       .catch(() => {});
   }, []);
 
+  // PWA install prompt setup
+  useEffect(() => {
+    // Already running as installed PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return;
+    }
+
+    // iOS detection (no beforeinstallprompt support)
+    setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase()));
+
+    const handler = (e: Event) => {
+      e.preventDefault(); // Prevent browser's default mini-banner
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // Listen for successful installation
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    });
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    }
+  };
+
+  const showInstallSection = !isInstalled;
+  const showBanner = installPrompt && !isInstalled && !bannerDismissed;
+
   return (
     <div className={`min-h-screen bg-black text-white overflow-x-hidden transition-opacity duration-700 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       <SEO title="NeoArchive — Цифровой архив коллекций" />
 
+      {/* ─── STICKY INSTALL BANNER (Chrome/Android/Desktop) ─── */}
+      {showBanner && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 px-4 py-3 bg-black/95 border-b border-green-500/25 backdrop-blur-md animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(74,222,128,0.4)]">
+              <span className="font-pixel text-black text-[10px] font-bold">NA</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-pixel text-[11px] text-white truncate">NeoArchive</p>
+              <p className="font-mono text-[10px] text-white/50 truncate">Установить как приложение</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleInstall}
+              className="px-4 py-1.5 bg-green-500 text-black font-pixel text-[10px] uppercase tracking-wide hover:bg-green-400 transition-colors shadow-[0_0_10px_rgba(74,222,128,0.3)]"
+            >
+              УСТАНОВИТЬ
+            </button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="p-1.5 text-white/30 hover:text-white/60 transition-colors"
+              aria-label="Закрыть"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── HERO ─── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
+      <section className={`relative min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden ${showBanner ? 'pt-14' : ''}`}>
         <MatrixRain theme="dark" />
         <CRTOverlay />
 
@@ -100,6 +181,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               ВОЙТИ
             </button>
           </div>
+
+          {/* Quick install hint in hero (if prompt ready) */}
+          {installPrompt && !isInstalled && (
+            <button
+              onClick={handleInstall}
+              className="flex items-center gap-2 mt-2 text-[11px] font-mono text-green-400/70 hover:text-green-400 transition-colors underline underline-offset-4"
+            >
+              <Smartphone size={12} />
+              Установить приложение бесплатно
+            </button>
+          )}
         </div>
 
         {/* Scroll hint */}
@@ -183,6 +275,92 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           </button>
         </div>
       </section>
+
+      {/* ─── PWA INSTALL SECTION ─── */}
+      {showInstallSection && (
+        <section className="py-24 px-4 bg-black relative overflow-hidden">
+          {/* Subtle green glow */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-green-500/5 rounded-full blur-3xl" />
+          </div>
+
+          <div className="max-w-4xl mx-auto relative z-10">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-green-500/30 bg-green-500/5 mb-6">
+                <Smartphone size={14} className="text-green-400" />
+                <span className="font-mono text-[11px] text-green-400 uppercase tracking-widest">Мобильное приложение</span>
+              </div>
+              <h2 className="font-pixel text-xl sm:text-2xl tracking-widest text-white mb-2 uppercase">
+                Установить на устройство
+              </h2>
+              <div className="w-16 h-0.5 bg-green-500 mx-auto mb-4" />
+              <p className="font-mono text-xs text-white/40 max-w-sm mx-auto">
+                NeoArchive — PWA-приложение. Работает как нативное, без магазинов приложений.
+              </p>
+            </div>
+
+            {/* Perks grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
+              {PWA_PERKS.map(({ icon: Icon, label, desc }) => (
+                <div key={label} className="flex items-start gap-4 p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:border-green-500/20 transition-all">
+                  <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                    <Icon size={17} className="text-green-400" />
+                  </div>
+                  <div>
+                    <p className="font-pixel text-xs text-white mb-1 uppercase tracking-wide">{label}</p>
+                    <p className="font-mono text-[11px] text-white/40 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Install action */}
+            {isIOS ? (
+              /* iOS: manual instruction */
+              <div className="max-w-sm mx-auto p-6 rounded-2xl border border-white/10 bg-white/[0.03] text-center">
+                <p className="font-pixel text-xs text-white/60 uppercase mb-5 tracking-wide">Установка на iOS</p>
+                <div className="space-y-4 text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Share size={15} className="text-white/50" />
+                    </div>
+                    <p className="font-mono text-xs text-white/60">Нажмите кнопку <span className="text-white">«Поделиться»</span> в Safari</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-pixel text-white/50 text-[10px]">+</div>
+                    <p className="font-mono text-xs text-white/60">Выберите <span className="text-white">«На экран «Домой»»</span></p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                      <span className="font-pixel text-green-400 text-[10px]">NA</span>
+                    </div>
+                    <p className="font-mono text-xs text-white/60">Готово — иконка <span className="text-white">NeoArchive</span> на рабочем столе</p>
+                  </div>
+                </div>
+              </div>
+            ) : installPrompt ? (
+              /* Chrome/Android/Desktop: native install button */
+              <div className="text-center">
+                <button
+                  onClick={handleInstall}
+                  className="inline-flex items-center gap-3 px-10 py-4 bg-green-500 text-black font-pixel text-xs uppercase tracking-widest hover:bg-green-400 transition-all shadow-[0_0_30px_rgba(74,222,128,0.35)] hover:shadow-[0_0_40px_rgba(74,222,128,0.55)]"
+                >
+                  <Smartphone size={16} />
+                  УСТАНОВИТЬ ПРИЛОЖЕНИЕ
+                </button>
+                <p className="font-mono text-[10px] text-white/25 mt-4">Работает на Android, Windows, macOS, Linux</p>
+              </div>
+            ) : (
+              /* Prompt not yet fired (e.g. Firefox, or already dismissed before) */
+              <div className="text-center">
+                <p className="font-mono text-xs text-white/30 max-w-xs mx-auto">
+                  Откройте сайт в Chrome или Edge и используйте кнопку установки в адресной строке
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ─── FOOTER ─── */}
       <footer className="py-8 px-4 border-t border-white/5 bg-black">

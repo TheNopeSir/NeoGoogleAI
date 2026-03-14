@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="90" ry="90" fill="#4ade80"/>
+  <!-- "NA" in bold black -->
+  <text
+    x="256"
+    y="348"
+    font-family="'Arial Black', 'Arial Bold', Impact, 'Helvetica Neue', Arial, sans-serif"
+    font-size="264"
+    font-weight="900"
+    text-anchor="middle"
+    fill="#000000"
+    letter-spacing="-6"
+  >NA</text>
+</svg>

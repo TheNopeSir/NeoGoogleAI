@@ -25,7 +25,7 @@ export default defineConfig({
         type: 'module',
       },
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['icon.svg', 'favicon-32.png', 'favicon-16.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable-icon-512.png'],
       manifest: {
         name: 'NeoArchive: Y2K Collection Manager',
         short_name: 'NeoArchive',
@@ -36,14 +36,20 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=192&font-size=0.5',
+            src: '/icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=512&font-size=0.5',
+            src: '/icon-512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: '/maskable-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
