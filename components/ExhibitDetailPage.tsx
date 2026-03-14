@@ -96,6 +96,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [commentReactionPicker, setCommentReactionPicker] = useState<{ commentId: string; position: { x: number; y: number } } | null>(null);
   const commentLongPressRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commentLongPressFiredRef = React.useRef(false);
 
   const isWinamp = theme === 'winamp';
 
@@ -343,12 +344,23 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 onContextMenu={e => { e.preventDefault(); openCommentReactionPicker(e, c.id); }}
                 onTouchStart={e => {
                     const touch = e.touches[0];
+                    commentLongPressFiredRef.current = false;
                     commentLongPressRef.current = setTimeout(() => {
+                        commentLongPressFiredRef.current = true;
                         setCommentReactionPicker({ commentId: c.id, position: { x: touch.clientX, y: touch.clientY } });
                     }, 500);
                 }}
-                onTouchEnd={() => { if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current); }}
-                onTouchMove={() => { if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current); }}
+                onTouchEnd={e => {
+                    if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current);
+                    if (commentLongPressFiredRef.current) {
+                        e.preventDefault();
+                        commentLongPressFiredRef.current = false;
+                    }
+                }}
+                onTouchMove={() => {
+                    if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current);
+                    commentLongPressFiredRef.current = false;
+                }}
               >
                   <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">

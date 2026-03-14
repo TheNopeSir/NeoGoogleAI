@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { MessageReactionEmoji } from '../types';
 
 const REACTION_EMOJIS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
@@ -11,6 +11,10 @@ interface MessageReactionPickerProps {
 }
 
 const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position, onReact, onClose, theme }) => {
+    // Timestamp when picker mounted — used to ignore the synthetic click
+    // that fires ~300ms after touchend following a long-press gesture.
+    const mountedAtRef = useRef(Date.now());
+
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
     const isLight = theme === 'light';
@@ -29,11 +33,21 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position,
     const left = Math.min(position.x, window.innerWidth - pickerWidth - 8);
     const top = Math.max(position.y - pickerHeight - 8, 8);
 
+    const handleBackdropClose = () => {
+        // On mobile, a long-press fires touchend which generates a synthetic click
+        // ~300ms later. That click lands on the freshly-rendered backdrop and
+        // instantly closes the picker. Ignore any close request within 500ms of mount.
+        if (Date.now() - mountedAtRef.current < 500) return;
+        onClose();
+    };
+
     return (
         <>
+            {/* Backdrop — catches taps outside the picker */}
             <div
                 className="fixed inset-0 z-[199]"
-                onClick={onClose}
+                onClick={handleBackdropClose}
+                onTouchEnd={e => { e.preventDefault(); handleBackdropClose(); }}
                 onContextMenu={e => { e.preventDefault(); onClose(); }}
             />
             <div

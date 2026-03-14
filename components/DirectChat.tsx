@@ -25,6 +25,10 @@ const DirectChat: React.FC<DirectChatProps> = ({
     const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
     const [reactionPickerState, setReactionPickerState] = useState<{ messageId: string; position: { x: number; y: number } } | null>(null);
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Tracks whether the current touch gesture completed a long-press.
+    // Used to call e.preventDefault() in onTouchEnd so the browser
+    // doesn't fire a synthetic click that lands on the picker's backdrop.
+    const longPressFiredRef = useRef(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // CRITICAL: Filter and sort uniquely to prevent double rendering
@@ -146,15 +150,23 @@ const DirectChat: React.FC<DirectChatProps> = ({
                                     onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
                                     onTouchStart={e => {
                                         const touch = e.touches[0];
+                                        longPressFiredRef.current = false;
                                         longPressTimerRef.current = setTimeout(() => {
+                                            longPressFiredRef.current = true;
                                             openReactionPicker(msg.id, touch.clientX, touch.clientY);
                                         }, 500);
                                     }}
-                                    onTouchEnd={() => {
+                                    onTouchEnd={e => {
                                         if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                        if (longPressFiredRef.current) {
+                                            // Prevent the synthetic click that would hit the backdrop
+                                            e.preventDefault();
+                                            longPressFiredRef.current = false;
+                                        }
                                     }}
                                     onTouchMove={() => {
                                         if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                        longPressFiredRef.current = false;
                                     }}
                                 >
                                     {renderTextWithMentions(msg.text, () => {}, users)}
