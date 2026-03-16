@@ -51,6 +51,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isYandex, setIsYandex] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
@@ -73,20 +74,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       return;
     }
 
-    // iOS detection (no beforeinstallprompt support)
-    setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase()));
+    const ua = navigator.userAgent.toLowerCase();
+    setIsIOS(/iphone|ipad|ipod/.test(ua));
+    setIsYandex(/yabrowser/.test(ua));
+
+    // beforeinstallprompt may have fired before React mounted —
+    // index.html captures it in window.__pwaPrompt
+    if ((window as any).__pwaPrompt) {
+      setInstallPrompt((window as any).__pwaPrompt);
+    }
 
     const handler = (e: Event) => {
-      e.preventDefault(); // Prevent browser's default mini-banner
+      e.preventDefault();
       setInstallPrompt(e);
+      (window as any).__pwaPrompt = e;
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+    // custom event dispatched by index.html when prompt is captured
+    window.addEventListener('pwa-prompt-ready', () => {
+      if ((window as any).__pwaPrompt) setInstallPrompt((window as any).__pwaPrompt);
+    });
 
-    // Listen for successful installation
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
       setInstallPrompt(null);
+      (window as any).__pwaPrompt = null;
     });
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -316,7 +329,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
 
             {/* Install action */}
             {isIOS ? (
-              /* iOS: manual instruction */
+              /* iOS Safari: share → Add to Home Screen */
               <div className="max-w-sm mx-auto p-6 rounded-2xl border border-white/10 bg-white/[0.03] text-center">
                 <p className="font-pixel text-xs text-white/60 uppercase mb-5 tracking-wide">Установка на iOS</p>
                 <div className="space-y-4 text-left">
@@ -339,7 +352,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 </div>
               </div>
             ) : installPrompt ? (
-              /* Chrome/Android/Desktop: native install button */
+              /* beforeinstallprompt available — native button (Chrome / Edge / Yandex when ready) */
               <div className="text-center">
                 <button
                   onClick={handleInstall}
@@ -350,12 +363,49 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 </button>
                 <p className="font-mono text-[10px] text-white/25 mt-4">Работает на Android, Windows, macOS, Linux</p>
               </div>
+            ) : isYandex ? (
+              /* Yandex Browser: manual steps */
+              <div className="max-w-sm mx-auto p-6 rounded-2xl border border-white/10 bg-white/[0.03] text-center">
+                <p className="font-pixel text-xs text-white/60 uppercase mb-5 tracking-wide">Установка в Яндекс Браузере</p>
+                <div className="space-y-4 text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-mono text-white/60 text-base leading-none">⋮</div>
+                    <p className="font-mono text-xs text-white/60">Нажмите <span className="text-white">«⋮»</span> — меню браузера</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Smartphone size={15} className="text-white/50" />
+                    </div>
+                    <p className="font-mono text-xs text-white/60">Выберите <span className="text-white">«Добавить на главный экран»</span> или <span className="text-white">«Установить приложение»</span></p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                      <span className="font-pixel text-green-400 text-[10px]">NA</span>
+                    </div>
+                    <p className="font-mono text-xs text-white/60">Подтвердите — иконка <span className="text-white">NeoArchive</span> появится на рабочем столе</p>
+                  </div>
+                </div>
+              </div>
             ) : (
-              /* Prompt not yet fired (e.g. Firefox, or already dismissed before) */
-              <div className="text-center">
-                <p className="font-mono text-xs text-white/30 max-w-xs mx-auto">
-                  Откройте сайт в Chrome или Edge и используйте кнопку установки в адресной строке
-                </p>
+              /* Chrome/Edge without prompt yet — address bar hint */
+              <div className="max-w-sm mx-auto p-6 rounded-2xl border border-white/10 bg-white/[0.03] text-center">
+                <p className="font-pixel text-xs text-white/60 uppercase mb-5 tracking-wide">Установка в Chrome / Edge</p>
+                <div className="space-y-4 text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-mono text-white/60 text-sm">↓</div>
+                    <p className="font-mono text-xs text-white/60">Найдите иконку <span className="text-white">«Установить»</span> в правой части адресной строки</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-mono text-white/60 text-base leading-none">⋮</div>
+                    <p className="font-mono text-xs text-white/60">Или откройте меню <span className="text-white">«⋮»</span> → <span className="text-white">«Установить NeoArchive»</span></p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Smartphone size={15} className="text-white/50" />
+                    </div>
+                    <p className="font-mono text-xs text-white/60">На Android: меню <span className="text-white">«⋮»</span> → <span className="text-white">«Добавить на главный экран»</span></p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

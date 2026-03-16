@@ -45,6 +45,15 @@
     <!-- Font Stack: Orbitron (Headers), Exo 2 (Body), VT323 (Winamp) -->
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Orbitron:wght@400..900&family=VT323&display=swap" rel="stylesheet">
     
+    <!-- PWA: capture beforeinstallprompt ASAP, before React mounts -->
+    <script>
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwaPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+      });
+    </script>
+
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
         (function(m,e,t,r,i,k,a){

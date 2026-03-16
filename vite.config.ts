@@ -33,7 +33,9 @@ export default defineConfig({
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
+        display_override: ['standalone', 'minimal-ui', 'browser'],
         orientation: 'portrait',
+        id: '/',
         icons: [
           {
             src: '/icon-192.png',
