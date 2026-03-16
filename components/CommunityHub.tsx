@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, TrendingUp, Users, RefreshCw, Flame, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles } from 'lucide-react';
+import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
 import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
@@ -54,7 +54,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
     const [tradeFilter, setTradeFilter] = useState<'ALL' | 'SALE' | 'TRADE' | 'GIFT'>('ALL');
     const [peopleSearch, setPeopleSearch] = useState('');
     const [peopleSort, setPeopleSort] = useState<'SCORE' | 'POSTS' | 'FOLLOWERS'>('SCORE');
-    const [selectedHotCategory, setSelectedHotCategory] = useState<string | null>(null);
 
     const isWinamp = theme === 'winamp';
     const isLight = theme === 'light';
@@ -117,18 +116,9 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
     const newExhibits = useMemo(() =>
         exhibits
             .filter(e => !e.isDraft && new Date(e.timestamp).getTime() > cutoff24h)
-            .filter(e => !selectedHotCategory || e.category === selectedHotCategory)
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             .slice(0, 6),
-        [exhibits, selectedHotCategory]);
-
-    const hotCategories = useMemo(() => {
-        const counts: Record<string, number> = {};
-        exhibits.filter(e => !e.isDraft).forEach(e => {
-            counts[e.category] = (counts[e.category] || 0) + 1;
-        });
-        return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
-    }, [exhibits]);
+        [exhibits]);
 
     const tradeExhibits = useMemo(() => {
         let pool = exhibits.filter(e => !e.isDraft && e.postType !== 'WANTED');
@@ -266,7 +256,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                     return (
                                         <div key={u.username} className="flex flex-col items-center gap-2 min-w-[88px]">
                                             <div
-                                                className="relative cursor-pointer group"
+                                                className="relative cursor-pointer group pb-1 pr-1"
                                                 onClick={() => onUserClick(u.username)}
                                             >
                                                 <img
@@ -307,32 +297,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         </div>
 
                         {/* Hot Categories */}
-                        {hotCategories.length > 0 && (
-                            <div>
-                                <h3 className={sectionLabel}><Flame size={14} className="text-orange-400" /> ГОРЯЧИЕ КАТЕГОРИИ</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {hotCategories.map(([cat, count]) => {
-                                        const isActive = selectedHotCategory === cat;
-                                        return (
-                                            <button
-                                                key={cat}
-                                                onClick={() => setSelectedHotCategory(prev => prev === cat ? null : cat)}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-pixel border transition-all cursor-pointer ${
-                                                    isActive
-                                                        ? (isWinamp ? 'bg-wa-gold text-black border-wa-gold' : isXP ? 'bg-blue-700 text-white border-blue-700' : isLight ? 'bg-orange-500 text-white border-orange-500' : 'bg-orange-500 text-black border-orange-500')
-                                                        : (isWinamp ? 'bg-[#292929] border-[#505050] text-wa-green hover:border-wa-gold' : isXP ? 'bg-[#ECE9D8] border-[#8592B5] text-blue-800 hover:border-blue-700' : isLight ? 'bg-orange-50 border-orange-200 text-orange-700 hover:border-orange-400' : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:border-orange-500/60')
-                                                }`}
-                                            >
-                                                <Flame size={10} className="opacity-70" />
-                                                {cat}
-                                                <span className={`text-[9px] font-mono opacity-60`}>{count}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
                         {/* Trending Exhibits */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
@@ -371,22 +335,9 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         </div>
 
                         {/* New Today */}
-                        {(newExhibits.length > 0 || selectedHotCategory) && (
+                        {newExhibits.length > 0 && (
                             <div>
-                                <h3 className={sectionLabel}>
-                                    <Sparkles size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ
-                                    {selectedHotCategory && (
-                                        <button
-                                            onClick={() => setSelectedHotCategory(null)}
-                                            className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 transition-all"
-                                        >
-                                            {selectedHotCategory} ×
-                                        </button>
-                                    )}
-                                </h3>
-                                {newExhibits.length === 0 && (
-                                    <p className="text-[9px] opacity-40 font-mono py-3">Нет новинок в этой категории за 24ч.</p>
-                                )}
+                                <h3 className={sectionLabel}><Sparkles size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ</h3>
                                 <div
                                     className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
                                     onTouchStart={e => e.stopPropagation()}
@@ -578,25 +529,37 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         </div>
 
                         {/* Trade Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {tradeExhibits.length === 0 ? (
                                 <div className="col-span-full text-center py-10 opacity-50 font-mono text-xs">{emptyTradeMessage}</div>
                             ) : (
-                                tradeExhibits.map(item => (
-                                    <div key={item.id} className="relative">
-                                        <ExhibitCard
-                                            item={item}
-                                            theme={theme}
-                                            onClick={onExhibitClick}
-                                            currentUsername={currentUser?.username || ''}
-                                            onReact={() => onReact(item.id)}
-                                            onAuthorClick={onUserClick}
-                                        />
-                                        <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-bold rounded shadow-lg backdrop-blur-md ${getTradeColor(item)}`}>
-                                            {getTradeLabel(item)}
+                                tradeExhibits.map(item => {
+                                    const img = typeof item.imageUrls?.[0] === 'string'
+                                        ? item.imageUrls[0]
+                                        : (item.imageUrls?.[0] as any)?.thumbnailUrl || (item.imageUrls?.[0] as any)?.url || '';
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => onExhibitClick(item)}
+                                            className="cursor-pointer group"
+                                        >
+                                            <div className={`relative aspect-square rounded-xl overflow-hidden border transition-all group-hover:scale-[1.02] ${isLight ? 'border-gray-200' : isXP ? 'border-[#8592B5]' : 'border-white/10'}`}>
+                                                {img ? (
+                                                    <img src={img} alt={item.title} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-gray-100' : 'bg-white/5'}`}>
+                                                        <Package size={28} className="opacity-20" />
+                                                    </div>
+                                                )}
+                                                <div className={`absolute bottom-0 inset-x-0 px-2 py-1.5 text-[11px] font-bold text-center ${getTradeColor(item)}`}>
+                                                    {getTradeLabel(item)}
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] font-mono opacity-80 mt-1.5 truncate">{item.title}</p>
+                                            <p className="text-[9px] opacity-40">@{item.owner}</p>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
