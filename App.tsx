@@ -328,16 +328,25 @@ export default function App() {
     const init = async () => {
       try {
           const activeUser = await db.initializeDatabase();
-          refreshData(); 
-          if (activeUser) { 
+          refreshData();
+          if (activeUser) {
               setUser(activeUser);
               if (activeUser.settings?.theme) setTheme(activeUser.settings.theme);
               await syncFromUrl();
           } else {
-              setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
-              window.history.replaceState({}, document.title, '/');
+              // Check for email verification/reset link BEFORE clearing URL
+              const searchParams = new URLSearchParams(window.location.search);
+              const code = searchParams.get('code');
+              const type = searchParams.get('type');
+              if (code && type) {
+                  // Email link — open AUTH with verification params
+                  await syncFromUrl();
+              } else {
+                  setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
+                  window.history.replaceState({}, document.title, '/');
+              }
           }
-      } catch (e) { setView('AUTH'); } 
+      } catch (e) { setView('AUTH'); }
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
     };
     init();
