@@ -182,23 +182,6 @@ const FeedView: React.FC<FeedViewProps> = ({
             </div>
         </header>
 
-        {/* 2. STORIES (Only on Artifacts Mode) */}
-        {feedMode === 'ARTIFACTS' && stories.length > 0 && (
-            <div className="pl-4 max-w-[2400px] mx-auto w-full pt-2">
-                <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide pr-4">
-                    {stories.map((story, i) => (
-                        <div key={i} onClick={() => story.latestItem && onExhibitClick(story.latestItem)} className="flex flex-col items-center gap-2 cursor-pointer group min-w-[64px]">
-                            <div className="relative p-[2.5px] rounded-full bg-gradient-to-tr from-green-400 via-cyan-400 to-blue-500 shadow-md shadow-green-500/20">
-                                <div className={`rounded-full p-[2px] ${theme === 'dark' ? 'bg-zinc-950' : 'bg-white'}`}>
-                                    <img src={story.avatar} className="w-12 h-12 rounded-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                                </div>
-                            </div>
-                            <span className="text-[9px] font-pixel opacity-60 group-hover:opacity-100 transition-opacity truncate max-w-[64px]">@{story.username}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
 
         {/* 3. CONTROLS AREA */}
         <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : theme === 'light' ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
