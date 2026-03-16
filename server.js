@@ -162,6 +162,7 @@ const sendMailWithRetry = async (mailOptions, retries = 2) => {
                         to_email: mailOptions.to,
                         subject: mailOptions.subject,
                         html_content: mailOptions.html,
+                        ...(mailOptions.params || {}),
                     }
                 }),
                 signal: AbortSignal.timeout(15000)
@@ -361,7 +362,8 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
             type: 'welcome',
             to: email,
             subject: 'Подтверждение регистрации — NeoArchive',
-            html: verificationTemplate(username, verifyLink)
+            html: verificationTemplate(username, verifyLink),
+            params: { username, verification_link: verifyLink },
         }).catch(e => console.error("[EMAIL] Register email failed:", e.message));
 
         res.json({ success: true });
@@ -444,7 +446,8 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
             type: 'reset',
             to: email,
             subject: 'Сброс пароля — NeoArchive',
-            html: resetPasswordTemplate(username, resetLink)
+            html: resetPasswordTemplate(username, resetLink),
+            params: { username, verification_link: resetLink },
         }).catch(e => console.error("[EMAIL] Reset email failed:", e.message));
 
         res.json({ success: true });
@@ -512,7 +515,8 @@ api.post('/auth/verify-email', async (req, res) => {
             type: 'welcome',
             to: newUser.email,
             subject: `Добро пожаловать в NeoArchive, @${username}!`,
-            html: welcomeTemplate(username)
+            html: welcomeTemplate(username),
+            params: { username, verification_link: '' },
         }).catch(e => console.error("[EMAIL] Welcome email failed:", e.message));
 
         res.json({ success: true });
@@ -540,7 +544,8 @@ api.post('/auth/complete-reset', async (req, res) => {
             type: 'reset',
             to: email,
             subject: 'Пароль изменён — NeoArchive',
-            html: passwordChangedAlertTemplate(username)
+            html: passwordChangedAlertTemplate(username),
+            params: { username, verification_link: '' },
         }).catch(e => console.error("[EMAIL] Password alert email failed:", e.message));
 
         res.json({ success: true });
@@ -572,7 +577,8 @@ api.post('/auth/change-password', authLimiter, async (req, res) => {
             type: 'reset',
             to: user.email,
             subject: 'Подтвердите смену пароля — NeoArchive',
-            html: changePasswordTemplate(username, confirmLink)
+            html: changePasswordTemplate(username, confirmLink),
+            params: { username, verification_link: confirmLink },
         });
 
         res.json({ success: true });
@@ -607,7 +613,8 @@ api.post('/auth/confirm-password-change', async (req, res) => {
                 type: 'reset',
                 to: userRes.rows[0].email,
                 subject: 'Пароль изменён — NeoArchive',
-                html: passwordChangedAlertTemplate(username)
+                html: passwordChangedAlertTemplate(username),
+                params: { username, verification_link: '' },
             }).catch(e => console.error("[EMAIL] Password alert email failed:", e.message));
         }
 
@@ -639,7 +646,8 @@ api.post('/auth/change-email', authLimiter, async (req, res) => {
             type: 'welcome',
             to: newEmail,
             subject: 'Подтвердите новый email — NeoArchive',
-            html: changeEmailTemplate(username, newEmail, confirmLink)
+            html: changeEmailTemplate(username, newEmail, confirmLink),
+            params: { username, verification_link: confirmLink },
         });
 
         res.json({ success: true });
