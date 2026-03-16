@@ -536,9 +536,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                 <div className="col-span-full text-center py-10 opacity-50 font-mono text-xs">{emptyTradeMessage}</div>
                             ) : (
                                 tradeExhibits.map(item => {
-                                    const img = typeof item.imageUrls?.[0] === 'string'
-                                        ? item.imageUrls[0]
-                                        : (item.imageUrls?.[0] as any)?.thumbnailUrl || (item.imageUrls?.[0] as any)?.url || '';
+                                    const img = getFirstImageUrl(item.imageUrls, 'thumbnail');
                                     return (
                                         <div
                                             key={item.id}
@@ -546,13 +544,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                             className="cursor-pointer group"
                                         >
                                             <div className={`relative aspect-square rounded-xl overflow-hidden border transition-all group-hover:scale-[1.02] ${isLight ? 'border-gray-200' : isXP ? 'border-[#8592B5]' : 'border-white/10'}`}>
-                                                {img ? (
-                                                    <img src={img} alt={item.title} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-gray-100' : 'bg-white/5'}`}>
-                                                        <Package size={28} className="opacity-20" />
-                                                    </div>
-                                                )}
+                                                <img src={img} alt={item.title} className="w-full h-full object-cover" />
                                                 <div className={`absolute bottom-0 inset-x-0 px-2 py-1.5 text-[11px] font-bold text-center ${getTradeColor(item)}`}>
                                                     {getTradeLabel(item)}
                                                 </div>
