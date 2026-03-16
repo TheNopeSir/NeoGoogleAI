@@ -98,9 +98,11 @@ export const verificationTemplate = (username, verifyLink) => wrap(`
   ${badge('✦', 'Подтверждение аккаунта')}
   <h1 class="text-main" style="margin:0 0 12px;font-size:24px;font-weight:700;color:${TEXT_MAIN};line-height:1.3;">Добро пожаловать,<br><span style="color:${BRAND_GREEN};">@${username}</span></h1>
   <p class="text-main" style="margin:0 0 8px;font-size:15px;color:${TEXT_MAIN};line-height:1.6;">Ваш аккаунт почти готов. Нажмите кнопку ниже, чтобы активировать его и начать работу с NeoArchive.</p>
-  <p class="text-muted" style="margin:0;font-size:13px;color:${TEXT_MUTED};">Ссылка действительна <strong>24 часа</strong>.</p>
+  <p class="text-muted" style="margin:0 0 16px;font-size:13px;color:${TEXT_MUTED};">Ссылка действительна <strong>24 часа</strong>.</p>
   ${btn('✓ Подтвердить аккаунт', verifyLink)}
-  ${fallbackLink(verifyLink)}
+  ${divider()}
+  <p style="margin:0 0 8px;font-size:13px;color:${TEXT_MUTED};text-align:center;">Если кнопка не работает, скопируйте и вставьте ссылку в браузер:</p>
+  <div style="background:#f4f4f5;border:1px solid ${BORDER_COLOR};border-radius:8px;padding:14px 16px;word-break:break-all;font-family:monospace;font-size:12px;color:${TEXT_MAIN};line-height:1.6;">${verifyLink}</div>
   ${divider()}
   <p class="text-muted" style="margin:0;font-size:12px;color:${TEXT_MUTED};text-align:center;">Если вы не регистрировались на NeoArchive — просто проигнорируйте это письмо.</p>
 `, `Активируйте аккаунт @${username} на NeoArchive`);

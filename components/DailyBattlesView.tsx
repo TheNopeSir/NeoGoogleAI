@@ -16,8 +16,22 @@ interface DailyBattlesViewProps {
 
 const MAIN_CATEGORIES = Object.keys(CATEGORY_SUBCATEGORIES);
 
+const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+
 function formatCountdown(endTime: string): string {
     const diff = new Date(endTime).getTime() - Date.now();
+    if (diff <= 0) return '00:00:00';
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    const s = Math.floor((diff % 60_000) / 1_000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function getNextCycleCountdown(): string {
+    const now = Date.now();
+    const periodStart = Math.floor(now / FOUR_DAYS_MS) * FOUR_DAYS_MS;
+    const nextPeriod = periodStart + FOUR_DAYS_MS;
+    const diff = nextPeriod - now;
     if (diff <= 0) return '00:00:00';
     const h = Math.floor(diff / 3_600_000);
     const m = Math.floor((diff % 3_600_000) / 60_000);
@@ -444,7 +458,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                 <div className="flex items-center gap-2">
                     <Swords size={16} className="text-orange-400" />
                     <h2 className="font-pixel text-sm tracking-widest">БИТВЫ</h2>
-                    <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">3 ДНЯ</span>
+                    <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">3Д + 1Д ПАУЗА</span>
                 </div>
                 <div className="text-[8px] font-mono opacity-25">
                     {new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -507,14 +521,30 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
             ) : (
                 <>
+                    {/* Pause banner — shown when bracket is fully completed */}
+                    {bracket.status === 'COMPLETED' && (
+                        <div className={`mb-4 p-3 rounded-2xl border flex items-center gap-3 ${
+                            isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : isDark ? 'bg-white/3 border-white/10' : 'bg-gray-100 border-gray-200'
+                        }`}>
+                            <Clock size={16} className="text-orange-400 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                                <div className="font-pixel text-[8px] text-orange-400 tracking-widest">ПАУЗА · СЛЕДУЮЩИЙ ЦИКЛ</div>
+                                <div className="font-mono text-sm text-orange-300" key={tickKey}>{getNextCycleCountdown()}</div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Champion banner */}
                     {bracket.winner && (
                         <div className="mb-4 p-3 rounded-2xl border flex items-center gap-3 bg-yellow-500/10 border-yellow-500/30">
                             <Trophy size={22} className="text-yellow-400 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <div className="font-pixel text-[8px] text-yellow-500">🏆 ЧЕМПИОН</div>
+                            <div className="min-w-0 flex-1">
+                                <div className="font-pixel text-[8px] text-yellow-500">🏆 ЧЕМПИОН · АЧИВКА ВЫДАНА</div>
                                 <div className="font-pixel text-xs font-bold truncate">
                                     {getExhibit(bracket.winner)?.title || '???'}
+                                </div>
+                                <div className="text-[7px] font-mono opacity-40">
+                                    @{getExhibit(bracket.winner)?.owner || '???'}
                                 </div>
                             </div>
                             <button

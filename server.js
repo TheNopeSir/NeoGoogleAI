@@ -1070,16 +1070,16 @@ api.get('/delivery/track/:trackingId', async (req, res) => {
 // ⚔️ DAILY BATTLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 3-day period bucket (stable across restarts)
-const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+// 4-day period bucket: 72h active battles + 24h pause (stable across restarts)
+const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 function getPeriodStart() {
-    const bucketStart = new Date(Math.floor(Date.now() / THREE_DAYS_MS) * THREE_DAYS_MS);
+    const bucketStart = new Date(Math.floor(Date.now() / FOUR_DAYS_MS) * FOUR_DAYS_MS);
     return bucketStart.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 // Keep getTodayUTC as alias for compatibility
 const getTodayUTC = getPeriodStart;
 
-// Semi-final duration: 36h; final duration: 36h → total 72h (3 days)
+// Semi-final duration: 36h; final duration: 36h → total 72h active; remaining 24h = pause
 const SEMI_DURATION_MS = 36 * 60 * 60 * 1000;
 const FINAL_DURATION_MS = 36 * 60 * 60 * 1000;
 
@@ -1256,6 +1256,39 @@ api.get('/battles', async (req, res) => {
         } else {
             const changed = finalizeBracket(bracket, now);
             if (changed) {
+                // Grant BATTLE_CHAMPION achievement to the winning exhibit's owner
+                if (bracket.status === 'COMPLETED' && bracket.winner && !bracket.achievementGranted) {
+                    try {
+                        const { rows: exhibitRows } = await query(
+                            `SELECT data->>'owner' AS owner FROM exhibits WHERE id = $1`,
+                            [bracket.winner]
+                        );
+                        const owner = exhibitRows[0]?.owner;
+                        if (owner) {
+                            const { rows: userRows } = await query(
+                                `SELECT data FROM users WHERE username = $1`, [owner]
+                            );
+                            if (userRows[0]) {
+                                const userData = userRows[0].data;
+                                const achievements = userData.achievements || [];
+                                const existing = achievements.find(a => a.id === 'BATTLE_CHAMPION');
+                                if (existing) {
+                                    existing.current = (existing.current || 1) + 1;
+                                } else {
+                                    achievements.push({ id: 'BATTLE_CHAMPION', current: 1, target: 1, unlocked: true });
+                                }
+                                userData.achievements = achievements;
+                                await query(
+                                    `UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
+                                    [userData, owner]
+                                );
+                            }
+                            bracket.achievementGranted = true;
+                        }
+                    } catch (e) {
+                        console.error('[BATTLE] Achievement grant error:', e.message);
+                    }
+                }
                 await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
             }
         }
