@@ -302,7 +302,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
         {/* 3. CONTROLS AREA */}
         <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
-            <div className="max-w-4xl mx-auto w-full space-y-3">
+            <div className="max-w-6xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-3">
@@ -418,7 +418,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         </div>
 
         {/* 4. MAIN FEED CONTENT */}
-        <div className="px-4 max-w-4xl mx-auto w-full">
+        <div className="px-4 max-w-6xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
                     {/* 🔥 ГОРЯЧЕЕ block */}
@@ -469,7 +469,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleExhibits.map((item) => {
                                 const isLiked = item.likedBy?.includes(user?.username || '') || false;
                                 try {
@@ -535,7 +535,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {processedCollections.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">КОЛЛЕКЦИЙ НЕТ</div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
+                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                             {visibleCollections.map(col => (
                                 <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={() => {}} />
                             ))}
@@ -621,7 +621,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                                 <h3 className={`font-pixel text-xs ${group.color} uppercase tracking-wider`}>{group.title}</h3>
                                                                 <span className="text-[10px] opacity-50 font-mono">{group.list.length}</span>
                                                             </div>
-                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2'}`}>
+                                                            <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                                                                 {group.list.map(item => <WishlistCard key={item.id} item={item} theme={theme} onClick={onWishlistClick} onUserClick={onUserClick} />)}
                                                             </div>
                                                         </div>
