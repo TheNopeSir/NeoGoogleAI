@@ -80,6 +80,7 @@ export interface Exhibit {
   tradeRequest?: string; // What they want in return
   relatedIds?: string[]; // IDs of connected items within user's collection
   lockedInTradeId?: string; // ID of the trade if item is locked
+  postType?: 'ARTIFACT' | 'WANTED'; // 'WANTED' = public "looking for" request
 }
 
 export interface Collection {

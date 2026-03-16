@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
+import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical, Search } from 'lucide-react';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
@@ -32,8 +32,10 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const [price, setPrice] = useState<string>(initialData?.price ? initialData.price.toString() : '');
   const [currency, setCurrency] = useState<'RUB' | 'USD' | 'ETH'>(initialData?.currency || 'RUB');
   const [tradeRequest, setTradeRequest] = useState(initialData?.tradeRequest || '');
+  const [postType, setPostType] = useState<'ARTIFACT' | 'WANTED'>(initialData?.postType || 'ARTIFACT');
 
   const isAdmin = currentUser?.isAdmin === true;
+  const isWanted = postType === 'WANTED';
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -96,7 +98,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
 
   const handleSubmit = (asDraft: boolean = false) => {
     if (!title) {
-      alert("Укажите название артефакта");
+      alert(isWanted ? "Укажите что вы ищете" : "Укажите название артефакта");
       return;
     }
     onSave({
@@ -106,18 +108,17 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
       category,
       subcategory,
       condition,
-      videoUrl,
-      // Images can be strings (base64/legacy urls) or objects (processed)
-      // The server will handle uploading base64 strings to S3
-      imageUrls: images.length > 0 ? images : ['https://placehold.co/600x400?text=NO+IMAGE'],
-      specs,
-      tradeStatus,
+      videoUrl: isWanted ? '' : videoUrl,
+      imageUrls: images.length > 0 ? images : ['https://placehold.co/600x400?text=WANTED'],
+      specs: isWanted ? {} : specs,
+      tradeStatus: isWanted ? 'NONE' : tradeStatus,
       price: price ? parseFloat(price) : undefined,
       currency,
-      tradeRequest,
-      relatedIds,
+      tradeRequest: isWanted ? '' : tradeRequest,
+      relatedIds: isWanted ? [] : relatedIds,
       isDraft: asDraft,
-      adminOwner: isAdmin && adminOwner ? adminOwner : undefined // Pass admin-selected owner
+      postType,
+      adminOwner: isAdmin && adminOwner ? adminOwner : undefined
     });
   };
 
@@ -129,12 +130,49 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
         <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
           <ArrowLeft size={14} /> ОТМЕНА
         </button>
-        <h2 className={`font-pixel text-lg ${isWinamp ? 'text-[#00ff00]' : ''}`}>{initialData ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ_АРТЕФАКТ'}</h2>
+        <h2 className={`font-pixel text-lg ${isWinamp ? 'text-[#00ff00]' : ''}`}>
+          {initialData ? 'РЕДАКТИРОВАНИЕ' : isWanted ? 'Я_ИЩУ' : 'НОВЫЙ_АРТЕФАКТ'}
+        </h2>
       </div>
 
+      {/* Post Type Toggle — only for new posts */}
+      {!initialData && (
+        <div className="flex gap-2 p-1 rounded-2xl w-fit" style={{ background: isWinamp ? '#111' : 'rgba(255,255,255,0.06)' }}>
+          <button
+            type="button"
+            onClick={() => setPostType('ARTIFACT')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-pixel font-bold transition-all ${
+              postType === 'ARTIFACT'
+                ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black')
+                : 'opacity-40 hover:opacity-70'
+            }`}
+          >
+            <Archive size={12} /> АРТЕФАКТ
+          </button>
+          <button
+            type="button"
+            onClick={() => setPostType('WANTED')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-pixel font-bold transition-all ${
+              postType === 'WANTED'
+                ? 'bg-amber-500 text-black'
+                : 'opacity-40 hover:opacity-70'
+            }`}
+          >
+            <Search size={12} /> Я ИЩУ
+          </button>
+        </div>
+      )}
+
+      {isWanted && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/8 text-amber-400 text-[10px] font-pixel">
+          <Search size={14} />
+          Публичный запрос — другие коллекционеры увидят, что вы ищете этот предмет
+        </div>
+      )}
+
       <div className="space-y-6">
-        {/* Media Preview / Upload */}
-        <div className="space-y-4">
+        {/* Media Preview / Upload — hidden for WANTED */}
+        {!isWanted && <div className="space-y-4">
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
             {images.map((img, idx) => (
               <div
@@ -220,31 +258,33 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
           <p className="text-[10px] font-mono opacity-40 text-center md:text-left">
              Загрузите до 5 фотографий. Перетаскивайте для изменения порядка. Первое фото — главное превью.
           </p>
-        </div>
+        </div>}
 
         {/* Basic Metadata */}
         <div className={`p-8 rounded-3xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : theme === 'dark' ? 'bg-dark-surface border-white/10' : 'bg-white border-black/10 shadow-xl'}`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Название экспоната</label>
-                <input 
-                  value={title} 
-                  onChange={e => setTitle(e.target.value)} 
-                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`} 
-                  placeholder="Введите название или модель..."
+                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">
+                  {isWanted ? 'Что вы ищете' : 'Название экспоната'}
+                </label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWanted ? 'focus:border-amber-500' : ''} ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                  placeholder={isWanted ? 'Ищу: Nokia N-Gage, Gameboy Color...' : 'Введите название или модель...'}
                 />
               </div>
 
-              <div>
+              {!isWanted && <div>
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><Video size={12}/> Ссылка на видео (YouTube/Rutube)</label>
-                  <input 
-                      value={videoUrl} 
-                      onChange={e => setVideoUrl(e.target.value)} 
+                  <input
+                      value={videoUrl}
+                      onChange={e => setVideoUrl(e.target.value)}
                       className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
                       placeholder="https://youtube.com/watch?v=..."
                   />
-              </div>
+              </div>}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -306,73 +346,101 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 </div>
               )}
 
-              {/* Trade Status Selection */}
-              <div>
+              {/* Trade Status Selection — or Max Price for WANTED */}
+              {isWanted ? (
+                <div>
+                  <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <DollarSign size={12}/> Максимальная цена (необязательно)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={price}
+                      onChange={e => setPrice(e.target.value)}
+                      placeholder="до..."
+                      className={`flex-1 bg-black/30 border border-amber-500/30 rounded-xl px-4 py-3 font-mono text-sm focus:border-amber-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                    />
+                    <select
+                      value={currency}
+                      onChange={e => setCurrency(e.target.value as any)}
+                      className={`bg-black/30 border border-amber-500/30 rounded-xl px-4 py-3 font-mono text-sm focus:border-amber-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                    >
+                      <option value="RUB">RUB</option>
+                      <option value="USD">USD</option>
+                      <option value="ETH">ETH</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div>
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><RefreshCw size={12}/> Статус (Торговый терминал)</label>
                   <div className="grid grid-cols-2 gap-2 mb-4">
-                      {Object.entries(TRADE_STATUS_CONFIG).filter(([k]) => k !== 'NONE').map(([k, cfg]) => {
-                          const statusKey = k as TradeStatus;
-                          const isSelected = tradeStatus === statusKey;
-                          return (
-                              <button 
-                                key={k}
-                                onClick={() => setTradeStatus(isSelected ? 'NONE' : statusKey)}
-                                className={`p-3 rounded-xl border text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-2 ${isSelected ? cfg.color : 'border-white/10 opacity-50 hover:opacity-100 hover:border-white/30'}`}
-                              >
-                                  {cfg.icon && React.createElement(cfg.icon, { size: 14 })}
-                                  {cfg.label}
-                              </button>
-                          );
-                      })}
+                    {Object.entries(TRADE_STATUS_CONFIG).filter(([k]) => k !== 'NONE').map(([k, cfg]) => {
+                      const statusKey = k as TradeStatus;
+                      const isSelected = tradeStatus === statusKey;
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => setTradeStatus(isSelected ? 'NONE' : statusKey)}
+                          className={`p-3 rounded-xl border text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-2 ${isSelected ? cfg.color : 'border-white/10 opacity-50 hover:opacity-100 hover:border-white/30'}`}
+                        >
+                          {cfg.icon && React.createElement(cfg.icon, { size: 14 })}
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
                   </div>
-
                   {tradeStatus === 'FOR_SALE' && (
-                      <div className="flex gap-2 animate-in slide-in-from-top-2">
-                          <input 
-                              type="number"
-                              value={price}
-                              onChange={e => setPrice(e.target.value)}
-                              placeholder="Цена..."
-                              className={`flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                          />
-                          <select 
-                              value={currency}
-                              onChange={e => setCurrency(e.target.value as any)}
-                              className={`bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                          >
-                              <option value="RUB">RUB</option>
-                              <option value="USD">USD</option>
-                              <option value="ETH">ETH</option>
-                          </select>
-                      </div>
+                    <div className="flex gap-2 animate-in slide-in-from-top-2">
+                      <input
+                        type="number"
+                        value={price}
+                        onChange={e => setPrice(e.target.value)}
+                        placeholder="Цена..."
+                        className={`flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                      />
+                      <select
+                        value={currency}
+                        onChange={e => setCurrency(e.target.value as any)}
+                        className={`bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                      >
+                        <option value="RUB">RUB</option>
+                        <option value="USD">USD</option>
+                        <option value="ETH">ETH</option>
+                      </select>
+                    </div>
                   )}
-
                   {tradeStatus === 'FOR_TRADE' && (
-                      <div className="animate-in slide-in-from-top-2">
-                          <input 
-                              value={tradeRequest}
-                              onChange={e => setTradeRequest(e.target.value)}
-                              placeholder="Что хотите взамен? (например: Nintendo 3DS)"
-                              className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                          />
-                      </div>
+                    <div className="animate-in slide-in-from-top-2">
+                      <input
+                        value={tradeRequest}
+                        onChange={e => setTradeRequest(e.target.value)}
+                        placeholder="Что хотите взамен? (например: Nintendo 3DS)"
+                        className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:border-green-500 outline-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                      />
+                    </div>
                   )}
-              </div>
+                </div>
+              )}
 
               <div>
-                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Описание и история</label>
-                <textarea 
-                  value={description} 
-                  onChange={e => setDescription(e.target.value)} 
+                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">
+                  {isWanted ? 'Описание запроса' : 'Описание и история'}
+                </label>
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
                   rows={6}
-                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none resize-none leading-relaxed ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
-                  placeholder="Опишите артефакт, его происхождение и значение для коллекции..."
+                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm outline-none resize-none leading-relaxed ${isWanted ? 'focus:border-amber-500' : 'focus:border-green-500'} ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                  placeholder={isWanted
+                    ? 'Опишите что именно ищете: желаемое состояние, комплектация, цвет...'
+                    : 'Опишите артефакт, его происхождение и значение для коллекции...'}
                 />
               </div>
             </div>
 
-            {/* Specifications & Linked Items */}
-            <div className="space-y-6">
+            {/* Specifications & Linked Items — hidden for WANTED */}
+            {!isWanted && <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="font-pixel text-[11px] opacity-70 tracking-widest uppercase flex items-center gap-2">
                   <Info size={14} className="text-blue-400" /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
@@ -382,8 +450,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 {(CATEGORY_SPECS_TEMPLATES[category] || ['Производитель', 'Год', 'Модель']).map(spec => (
                   <div key={spec}>
                     <label className="text-[9px] font-mono opacity-40 uppercase mb-1 block">{spec}</label>
-                    <input 
-                      value={specs[spec] || ''} 
+                    <input
+                      value={specs[spec] || ''}
                       onChange={e => setSpecs(prev => ({...prev, [spec]: e.target.value}))}
                       className={`w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 font-mono text-xs focus:border-green-500 outline-none transition-all ${isWinamp ? 'text-[#00ff00]' : ''}`}
                       placeholder={`Укажите ${spec}...`}
@@ -400,8 +468,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   <div className="max-h-48 overflow-y-auto grid grid-cols-1 gap-2 pr-2 custom-scrollbar">
                       {userArtifacts.filter(a => a.id !== initialData?.id).length === 0 && <div className="text-center opacity-30 text-[10px] py-4">Нет других предметов для связки</div>}
                       {userArtifacts.filter(a => a.id !== initialData?.id).map(art => (
-                          <div 
-                            key={art.id} 
+                          <div
+                            key={art.id}
                             onClick={() => toggleRelated(art.id)}
                             className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all ${relatedIds.includes(art.id) ? 'bg-green-500/10 border-green-500 text-green-500' : 'border-white/10 hover:bg-white/5'}`}
                           >
@@ -414,7 +482,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                       ))}
                   </div>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
 

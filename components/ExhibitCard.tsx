@@ -1,6 +1,7 @@
-import React from 'react';
-import { Heart, Eye, MessageSquare, Camera, Tag } from 'lucide-react';
-import { Exhibit } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X } from 'lucide-react';
+import { Exhibit, WishlistPriority, Collection } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
 import ProgressiveImage from './ProgressiveImage';
@@ -13,6 +14,9 @@ interface ExhibitCardProps {
   currentUsername: string;
   onReact: () => void;
   onAuthorClick: (author: string) => void;
+  userCollections?: Collection[];
+  onAddToCollection?: (exhibitId: string, collectionId: string) => void;
+  onAddToWishlist?: (exhibit: Exhibit, priority: WishlistPriority) => void;
 }
 
 const formatRelativeTime = (timestamp: string): string => {
@@ -33,7 +37,10 @@ const formatPrice = (price: number, currency?: string): string => {
   return `${price}`;
 };
 
-export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, currentUsername, onReact, onAuthorClick }) => {
+export const ExhibitCard: React.FC<ExhibitCardProps> = ({
+  item, theme, onClick, currentUsername, onReact, onAuthorClick,
+  userCollections = [], onAddToCollection, onAddToWishlist
+}) => {
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
   const Icon = config.icon;
@@ -52,10 +59,55 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
   const isWinamp = theme === 'winamp';
   const isLight = theme === 'light';
 
-
   const firstImage = getImageUrl(item.imageUrls?.[0], 'thumbnail');
   const photoCount = item.imageUrls?.length || 0;
   const condition = item.condition || item.quality;
+
+  // --- New computed values ---
+  const isNew = Date.now() - new Date(item.timestamp).getTime() < 24 * 60 * 60 * 1000;
+  const isViewed = (item.viewedBy?.includes(currentUsername)) || false;
+  const isWanted = item.postType === 'WANTED';
+
+  // --- Quick action overlay state ---
+  const [showActionOverlay, setShowActionOverlay] = useState(false);
+  const [actionMode, setActionMode] = useState<'NONE' | 'COLLECTION_PICKER' | 'WISHLIST_PICKER'>('NONE');
+
+  // --- Hover preview portal state ---
+  const cardRef = useRef<HTMLDivElement>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const handleCardMouseEnter = () => {
+    // Skip hover preview on touch devices
+    if (window.matchMedia('(hover: none)').matches) return;
+    hoverTimerRef.current = setTimeout(() => {
+      if (!cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      const previewWidth = 288;
+      const x = rect.right + previewWidth + 16 > window.innerWidth
+        ? rect.left - previewWidth - 8
+        : rect.right + 8;
+      const y = Math.min(rect.top, window.innerHeight - 420);
+      setPreviewPos({ x, y });
+      setPreviewVisible(true);
+    }, 700);
+  };
+
+  const handleCardMouseLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setPreviewVisible(false);
+    if (actionMode === 'NONE') setShowActionOverlay(false);
+  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -65,13 +117,8 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
     onClick(item);
   };
 
-  const handleLike = () => {
-    onReact();
-  };
-
-  const handleAuthorClick = (author: string) => {
-    onAuthorClick(author);
-  };
+  const handleLike = () => { onReact(); };
+  const handleAuthorClick = (author: string) => { onAuthorClick(author); };
 
   // --- WINAMP THEME ---
   if (isWinamp) {
@@ -81,22 +128,34 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
         className="group cursor-pointer flex flex-col h-full bg-[#292929] border-t-2 border-l-2 border-r-2 border-b-2 border-t-[#505050] border-l-[#505050] border-r-[#101010] border-b-[#101010] overflow-hidden relative"
       >
         <div className="h-4 bg-gradient-to-r from-wa-blue-light to-wa-blue-dark flex items-center justify-between px-1 cursor-default select-none">
-          <span className="text-white font-winamp text-[10px] tracking-widest uppercase truncate w-[85%]">{item.title}</span>
+          <span className="text-white font-winamp text-[10px] tracking-widest uppercase truncate w-[85%]">
+            {isWanted && '🔍 '}{item.title}
+          </span>
           <div className="w-2 h-2 bg-[#DCDCDC] border border-t-white border-l-white border-r-[#505050] border-b-[#505050]"></div>
         </div>
 
         <div className="p-2 flex flex-col h-full">
-          <div className="relative aspect-square mb-2 bg-black border-2 border-t-[#101010] border-l-[#101010] border-r-[#505050] border-b-[#505050] overflow-hidden">
+          <div className={`relative aspect-square mb-2 bg-black border-2 border-t-[#101010] border-l-[#101010] border-r-[#505050] border-b-[#505050] overflow-hidden ${isWanted ? 'border-amber-700' : ''}`}>
             <ProgressiveImage
               imageData={firstImage}
               alt={item.title}
               size="thumbnail"
               className="w-full h-full"
             />
+            {isWanted && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Search size={24} className="text-amber-400 opacity-70" />
+              </div>
+            )}
             <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
             {photoCount > 1 && (
               <div className="absolute top-1 right-1 flex items-center gap-0.5 text-[8px] font-winamp text-wa-green bg-black/60 px-1">
                 <Camera size={7} /> {photoCount}
+              </div>
+            )}
+            {isNew && (
+              <div className="absolute top-1 left-1 flex items-center gap-0.5 text-[8px] font-winamp text-black bg-[#00ff00] px-1 font-bold">
+                NEW
               </div>
             )}
           </div>
@@ -109,10 +168,11 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
               @{item.owner}
             </div>
 
-            {/* Condition + price row */}
             <div className="flex items-center justify-between text-[9px] mb-1.5 text-[#00A000]">
               {condition && <span className="truncate uppercase">{condition}</span>}
-              {tradeStatus === 'FOR_SALE' && item.price ? (
+              {isWanted && item.price ? (
+                <span className="text-amber-400 font-bold ml-auto pl-1 shrink-0">МАХ: {formatPrice(item.price, item.currency)}</span>
+              ) : tradeStatus === 'FOR_SALE' && item.price ? (
                 <span className="text-[#00FF00] font-bold ml-auto pl-1 shrink-0">{formatPrice(item.price, item.currency)}</span>
               ) : tradeStatus !== 'NONE' && (
                 <span className={`ml-auto pl-1 shrink-0 ${tradeConfig.color.split(' ')[0]}`}>{tradeConfig.badge}</span>
@@ -146,10 +206,12 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
     return (
       <div
         onClick={handleCardClick}
-        className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative rounded-t-lg shadow-lg border-2 border-[#0058EE] bg-white ${isCursed || config.animated ? 'animate-pulse' : ''}`}
+        className={`group cursor-pointer flex flex-col h-full transition-all duration-300 hover:-translate-y-2 relative rounded-t-lg shadow-lg border-2 bg-white ${isWanted ? 'border-amber-400' : 'border-[#0058EE]'} ${isCursed || config.animated ? 'animate-pulse' : ''}`}
       >
-        <div className="h-6 bg-gradient-to-r from-[#0058EE] to-[#3F8CF3] rounded-t-[4px] flex items-center justify-between px-2 shadow-sm">
-          <span className="text-white font-bold text-[10px] drop-shadow-md truncate font-sans">{item.title}</span>
+        <div className={`h-6 rounded-t-[4px] flex items-center justify-between px-2 shadow-sm ${isWanted ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 'bg-gradient-to-r from-[#0058EE] to-[#3F8CF3]'}`}>
+          <span className="text-white font-bold text-[10px] drop-shadow-md truncate font-sans">
+            {isWanted && '🔍 '}{item.title}
+          </span>
           <div className="flex gap-1">
             <div className="w-3 h-3 bg-[#D64434] rounded-[2px] border border-white/30 shadow-inner"></div>
           </div>
@@ -162,10 +224,15 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
             size="thumbnail"
             className="w-full h-full transition-all duration-500 group-hover:scale-110"
           />
-          <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${config.badge}`}>
-            <Icon size={10} /> {config.name}
+          {isWanted && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <Search size={32} className="text-amber-400 opacity-80" />
+            </div>
+          )}
+          <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${isWanted ? 'bg-amber-500 text-black' : config.badge}`}>
+            {isWanted ? <><Search size={9} /> РАЗЫСКИВАЕТСЯ</> : <><Icon size={10} /> {config.name}</>}
           </div>
-          {tradeStatus !== 'NONE' && (
+          {!isWanted && tradeStatus !== 'NONE' && (
             <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
               {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })}
               {tradeConfig.badge}
@@ -176,18 +243,23 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
               <Camera size={9} /> {photoCount}
             </div>
           )}
+          {isNew && (
+            <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500 text-black text-[7px] font-bold animate-pulse">
+              ● NEW
+            </div>
+          )}
         </div>
 
         <div className="p-3 flex flex-col flex-1 bg-[#ECE9D8]">
-          {/* Condition + Price row */}
           <div className="flex items-center justify-between mb-2">
             {condition && (
               <span className="font-mono text-[10px] text-black/70 uppercase tracking-wide truncate">{condition}</span>
             )}
-            {tradeStatus === 'FOR_SALE' && item.price && (
+            {isWanted && item.price ? (
+              <span className="font-mono text-[11px] font-bold text-amber-700 ml-auto shrink-0">МАХ: {formatPrice(item.price, item.currency)}</span>
+            ) : tradeStatus === 'FOR_SALE' && item.price ? (
               <span className="font-mono text-[11px] font-bold text-green-700 ml-auto shrink-0">{formatPrice(item.price, item.currency)}</span>
-            )}
-            {tradeStatus === 'FOR_TRADE' && (
+            ) : tradeStatus === 'FOR_TRADE' && (
               <span className="font-mono text-[10px] font-bold text-blue-700 ml-auto shrink-0">ОБМЕН</span>
             )}
           </div>
@@ -226,116 +298,298 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({ item, theme, onClick, 
     );
   }
 
-  // --- DARK / LIGHT THEME — two-section card ---
+  // --- DARK / LIGHT THEME ---
   return (
-    <div
-      onClick={handleCardClick}
-      className={`group cursor-pointer flex flex-col rounded-2xl overflow-hidden transition-all duration-300
-        ${isLight
-          ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
-          : `bg-dark-surface ring-1 ring-white/8 hover:ring-green-500/40 hover:shadow-lg hover:shadow-green-500/10 ${isHighTier ? config.borderDark : ''}`
-        }
-        ${isCursed || config.animated ? 'animate-pulse' : ''}
-      `}
-    >
-      {/* Image section */}
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <ProgressiveImage
-          imageData={firstImage}
-          alt={item.title}
-          size="thumbnail"
-          className="w-full h-full transition-transform duration-500 group-hover:scale-105"
-        />
+    <>
+      <div
+        ref={cardRef}
+        onClick={handleCardClick}
+        onMouseEnter={handleCardMouseEnter}
+        onMouseLeave={handleCardMouseLeave}
+        className={`group cursor-pointer flex flex-col rounded-2xl overflow-hidden transition-all duration-300
+          ${isLight
+            ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
+            : `bg-dark-surface ring-1 ring-white/8 hover:ring-green-500/40 hover:shadow-lg hover:shadow-green-500/10 ${isHighTier && !isWanted ? config.borderDark : ''}`
+          }
+          ${isWanted ? (isLight ? 'ring-amber-400/50 hover:ring-amber-400' : 'ring-amber-500/30 hover:ring-amber-500/60') : ''}
+          ${isCursed || config.animated ? 'animate-pulse' : ''}
+        `}
+      >
+        {/* Image section */}
+        <div
+          className="relative aspect-[4/3] overflow-hidden"
+          onMouseEnter={() => !isWanted && onAddToCollection && setShowActionOverlay(true)}
+          onMouseLeave={() => { if (actionMode === 'NONE') setShowActionOverlay(false); }}
+        >
+          <ProgressiveImage
+            imageData={firstImage}
+            alt={item.title}
+            size="thumbnail"
+            className={`w-full h-full transition-transform duration-500 group-hover:scale-105 ${isViewed ? 'brightness-75 opacity-85' : ''}`}
+          />
 
-        {/* Light gradient at bottom of image only */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
-        {/* Top badges */}
-        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/50 text-white border-white/10">
-          {item.category}
-        </div>
-        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge}`}>
-          <Icon size={9} /> {config.name}
-        </div>
+          {/* WANTED: magnifying glass overlay */}
+          {isWanted && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+              <Search size={36} className="text-amber-400 opacity-60" />
+            </div>
+          )}
 
-        {/* Trade badge — bottom left of image */}
-        {tradeStatus !== 'NONE' && (
-          <div className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg flex items-center gap-1 text-[9px] font-bold tracking-wide shadow-lg uppercase border bg-zinc-900/90 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
-            {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })}
-            {tradeConfig.badge}
+          {/* ПРОСМОТРЕНО: top strip */}
+          {isViewed && !isWanted && (
+            <div className="absolute top-0 inset-x-0 flex items-center justify-center gap-1 bg-black/55 backdrop-blur-sm py-1 z-10 pointer-events-none">
+              <Eye size={10} className="text-white/60" />
+              <span className="text-[8px] font-pixel text-white/60 uppercase tracking-wide">Просмотрено</span>
+            </div>
+          )}
+
+          {/* Top-left: category + NEW badge stacked */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1 z-20">
+            <div className="px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/50 text-white border-white/10">
+              {item.category}
+            </div>
+            {isNew && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-green-500/90 text-black text-[7px] font-pixel font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-900 animate-pulse inline-block" />
+                NEW
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Photo count — bottom right of image */}
-        {photoCount > 1 && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-md">
-            <Camera size={9} /> {photoCount}
+          {/* Top-right: tier badge or WANTED badge */}
+          {isWanted ? (
+            <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg bg-amber-500 text-black border border-amber-400/50 z-20">
+              <Search size={9} /> РАЗЫСКИВАЕТСЯ
+            </div>
+          ) : (
+            <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge} z-20`}>
+              <Icon size={9} /> {config.name}
+            </div>
+          )}
+
+          {/* Trade badge — bottom left */}
+          {!isWanted && tradeStatus !== 'NONE' && (
+            <div className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg flex items-center gap-1 text-[9px] font-bold tracking-wide shadow-lg uppercase border bg-zinc-900/90 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+              {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })}
+              {tradeConfig.badge}
+            </div>
+          )}
+
+          {/* Photo count — bottom right */}
+          {photoCount > 1 && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-md z-20">
+              <Camera size={9} /> {photoCount}
+            </div>
+          )}
+
+          {/* Quick action overlay (only for non-WANTED, only if callbacks provided) */}
+          {onAddToCollection && onAddToWishlist && (
+            <div
+              className={`absolute inset-x-0 bottom-0 transition-all duration-200 z-30 ${showActionOverlay ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
+            >
+              {actionMode === 'NONE' && (
+                <div className="flex gap-2 p-2 bg-black/85 backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActionMode('COLLECTION_PICKER'); }}
+                    className="flex-1 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-[9px] font-bold text-blue-300 hover:bg-blue-500/30 transition-colors interactive flex items-center justify-center gap-1"
+                  >
+                    <FolderPlus size={10} /> Коллекция
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActionMode('WISHLIST_PICKER'); }}
+                    className="flex-1 py-1.5 bg-purple-500/20 border border-purple-500/40 rounded-lg text-[9px] font-bold text-purple-300 hover:bg-purple-500/30 transition-colors interactive flex items-center justify-center gap-1"
+                  >
+                    <BookmarkPlus size={10} /> Вишлист
+                  </button>
+                </div>
+              )}
+
+              {actionMode === 'COLLECTION_PICKER' && (
+                <div className="bg-black/92 backdrop-blur-md p-2 max-h-36 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[8px] font-pixel opacity-50 px-1">ВЫБЕРИТЕ КОЛЛЕКЦИЮ</span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setActionMode('NONE'); }} className="p-1 opacity-40 hover:opacity-80 interactive">
+                      <X size={10} />
+                    </button>
+                  </div>
+                  {userCollections.length === 0 ? (
+                    <div className="text-[8px] opacity-40 text-center py-2">Нет коллекций</div>
+                  ) : (
+                    userCollections.map(col => (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddToCollection(item.id, col.id);
+                          setActionMode('NONE');
+                          setShowActionOverlay(false);
+                        }}
+                        className="w-full text-left px-2 py-1.5 text-[9px] hover:bg-white/10 rounded transition-colors interactive block truncate"
+                      >
+                        {col.title}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {actionMode === 'WISHLIST_PICKER' && (
+                <div className="bg-black/92 backdrop-blur-md p-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[8px] font-pixel opacity-50">ПРИОРИТЕТ</span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setActionMode('NONE'); }} className="p-1 opacity-40 hover:opacity-80 interactive">
+                      <X size={10} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {(['GRAIL', 'HIGH', 'MEDIUM', 'LOW'] as WishlistPriority[]).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddToWishlist(item, p);
+                          setActionMode('NONE');
+                          setShowActionOverlay(false);
+                        }}
+                        className={`py-1.5 text-[8px] font-bold border rounded-lg hover:bg-white/10 transition-colors interactive ${
+                          p === 'GRAIL' ? 'border-yellow-500/50 text-yellow-400' :
+                          p === 'HIGH' ? 'border-orange-500/50 text-orange-400' :
+                          p === 'MEDIUM' ? 'border-blue-500/50 text-blue-400' :
+                          'border-white/20 text-white/50'
+                        }`}
+                      >
+                        {p === 'GRAIL' ? '👑 ГРААЛЬ' : p === 'HIGH' ? '🎯 ВЫСОКИЙ' : p === 'MEDIUM' ? '🔍 СРЕДНИЙ' : '👁 НИЗКИЙ'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Info panel */}
+        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+          {/* Title */}
+          <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
+            {item.title}
+          </h3>
+
+          {/* Condition + Price row */}
+          {(condition || (tradeStatus === 'FOR_SALE' && item.price) || isWanted) && (
+            <div className="flex items-center justify-between gap-2">
+              {condition && (
+                <div className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-gray-100 text-gray-600' : 'bg-white/8 text-white/60'}`}>
+                  <Tag size={9} />
+                  <span className="truncate">{condition}</span>
+                </div>
+              )}
+              {isWanted && item.price ? (
+                <span className="text-[11px] font-bold text-amber-400 ml-auto shrink-0">
+                  МАХ: {formatPrice(item.price, item.currency)}
+                </span>
+              ) : tradeStatus === 'FOR_SALE' && item.price ? (
+                <span className="text-[11px] font-bold text-emerald-500 ml-auto shrink-0">
+                  {formatPrice(item.price, item.currency)}
+                </span>
+              ) : tradeStatus === 'FOR_TRADE' && !item.price && !condition && (
+                <span className="text-[10px] font-bold text-blue-400">ОБМЕН</span>
+              )}
+            </div>
+          )}
+
+          {/* Author + Stats row */}
+          <div className="flex items-center justify-between gap-2">
+            <div
+              onClick={() => handleAuthorClick(item.owner)}
+              className="flex items-center gap-1.5 cursor-pointer interactive group/author min-w-0 flex-1"
+            >
+              <img
+                src={getUserAvatar(item.owner)}
+                className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+                alt={item.owner}
+              />
+              <span className={`text-[10px] group-hover/author:text-white transition-colors font-pixel truncate min-w-0 ${isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-white/60'}`}>
+                @{item.owner}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                <Eye size={11} /> <span>{uniqueViews}</span>
+              </div>
+              <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                <MessageSquare size={11} /> <span>{commentCount}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleLike}
+                className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-400' : isLight ? 'text-gray-400 hover:text-red-400' : 'text-white/40 hover:text-red-400'}`}
+              >
+                <Heart size={11} fill={isLiked ? "currentColor" : "none"} />
+                <span>{likeCount}</span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Info panel */}
-      <div className={`flex flex-col gap-2 px-3 py-2.5 ${isLight ? 'bg-white' : 'bg-dark-surface'}`}>
-        {/* Title */}
-        <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
-          {item.title}
-        </h3>
-
-        {/* Condition + Price row */}
-        {(condition || (tradeStatus === 'FOR_SALE' && item.price)) && (
-          <div className="flex items-center justify-between gap-2">
+      {/* Hover Preview Portal */}
+      {previewVisible && !isWanted && ReactDOM.createPortal(
+        <div
+          className="fixed z-[9999] w-72 rounded-2xl overflow-hidden shadow-2xl pointer-events-none border border-white/15"
+          style={{
+            left: previewPos.x,
+            top: previewPos.y,
+            background: 'rgba(15,15,20,0.97)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <div className="relative h-40 overflow-hidden">
+            <img src={firstImage} className="w-full h-full object-cover" alt={item.title} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+            <div className="absolute bottom-2 left-2 flex gap-3 text-[9px] font-mono text-white/70">
+              <span className="flex items-center gap-1"><Eye size={10}/> {uniqueViews}</span>
+              <span className="flex items-center gap-1"><Heart size={10}/> {likeCount}</span>
+              <span className="flex items-center gap-1"><MessageSquare size={10}/> {commentCount}</span>
+            </div>
+            <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[7px] font-pixel font-bold border border-white/10 ${config.badge}`}>
+              <Icon size={8} /> {config.name}
+            </div>
+          </div>
+          <div className="p-3 space-y-2">
+            <h3 className="font-pixel text-sm font-bold text-white line-clamp-2">{item.title}</h3>
+            {item.description && (
+              <p className="text-[10px] text-white/50 line-clamp-2">{item.description}</p>
+            )}
+            {Object.entries(item.specs || {}).slice(0, 3).map(([key, val]) => (
+              <div key={key} className="flex justify-between text-[9px] font-mono">
+                <span className="text-white/40 uppercase truncate mr-2">{key}</span>
+                <span className="text-white/70 shrink-0">{val}</span>
+              </div>
+            ))}
             {condition && (
-              <div className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-gray-100 text-gray-600' : 'bg-white/8 text-white/60'}`}>
-                <Tag size={9} />
-                <span className="truncate">{condition}</span>
+              <div className="flex justify-between text-[9px] font-mono">
+                <span className="text-white/40 uppercase">Состояние</span>
+                <span className="text-white/70">{condition}</span>
               </div>
             )}
             {tradeStatus === 'FOR_SALE' && item.price && (
-              <span className="text-[11px] font-bold text-emerald-500 ml-auto shrink-0">
+              <div className="text-emerald-400 font-bold text-sm font-mono pt-1">
                 {formatPrice(item.price, item.currency)}
-              </span>
-            )}
-            {tradeStatus === 'FOR_TRADE' && !item.price && !condition && (
-              <span className="text-[10px] font-bold text-blue-400">ОБМЕН</span>
+              </div>
             )}
           </div>
-        )}
-
-        {/* Author + Stats row */}
-        <div className="flex items-center justify-between gap-2">
-          <div
-            onClick={() => handleAuthorClick(item.owner)}
-            className="flex items-center gap-1.5 cursor-pointer interactive group/author min-w-0 flex-1"
-          >
-            <img
-              src={getUserAvatar(item.owner)}
-              className="w-4 h-4 rounded-full border border-white/20 shrink-0"
-              alt={item.owner}
-            />
-            <span className={`text-[10px] group-hover/author:text-white transition-colors font-pixel truncate min-w-0 ${isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-white/60'}`}>
-              @{item.owner}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
-              <Eye size={11} /> <span>{uniqueViews}</span>
-            </div>
-            <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
-              <MessageSquare size={11} /> <span>{commentCount}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleLike}
-              className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-400' : isLight ? 'text-gray-400 hover:text-red-400' : 'text-white/40 hover:text-red-400'}`}
-            >
-              <Heart size={11} fill={isLiked ? "currentColor" : "none"} />
-              <span>{likeCount}</span>
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
