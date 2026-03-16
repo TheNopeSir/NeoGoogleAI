@@ -91,6 +91,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   // Comment enhancements
   const [commentSort, setCommentSort] = useState<'newest' | 'oldest' | 'popular'>('newest');
+  const [collapsedComments, setCollapsedComments] = useState<Set<string>>(new Set());
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -328,6 +329,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       const isAuthor = c.author === currentUser;
       const replies = commentTree.byParent[c.id] || [];
       const isEditing = editingCommentId === c.id;
+      const isCollapsed = collapsedComments.has(c.id);
+      const parentComment = depth > 0 && c.parentId ? comments.find(p => p.id === c.parentId) : null;
+      const toggleCollapse = () => setCollapsedComments(prev => {
+          const next = new Set(prev);
+          if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+          return next;
+      });
 
       const openCommentReactionPicker = (e: React.MouseEvent | React.TouchEvent, id: string) => {
           let x: number, y: number;
@@ -369,6 +377,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                               <div onClick={() => onAuthorClick(c.author)} className="font-bold cursor-pointer text-green-500 font-pixel text-[10px] leading-none">@{c.author}</div>
                               <div className="text-[9px] opacity-30 font-mono leading-none">{c.timestamp}</div>
                               {c.editedAt && <span className="text-[8px] opacity-25 font-mono italic">ред.</span>}
+                              {replies.length > 0 && (
+                                  <button onClick={toggleCollapse} className="flex items-center gap-0.5 text-[9px] font-mono text-green-500/70 hover:text-green-400 transition-colors" title={isCollapsed ? 'Развернуть' : 'Свернуть'}>
+                                      <CornerDownRight size={10} />
+                                      {replies.length}
+                                      {isCollapsed ? <ChevronDown size={10} /> : <ChevronUp size={10} />}
+                                  </button>
+                              )}
                           </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -394,6 +409,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                           )}
                       </div>
                   </div>
+                  {parentComment && !isEditing && (
+                      <div className="pl-7 mb-1">
+                          <div className="border-l-2 border-white/20 pl-2 text-[9px] font-mono opacity-40 truncate">
+                              <span className="text-green-500/70">@{parentComment.author}:</span> {parentComment.text.slice(0, 60)}{parentComment.text.length > 60 ? '...' : ''}
+                          </div>
+                      </div>
+                  )}
                   {isEditing ? (
                       <div className="flex gap-2 mt-1 pl-7">
                           <input
@@ -437,7 +459,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                       </div>
                   )}
               </div>
-              {replies.map(reply => renderCommentNode(reply, depth + 1))}
+              {!isCollapsed && replies.map(reply => renderCommentNode(reply, depth + 1))}
           </div>
       );
   };

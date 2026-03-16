@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles } from 'lucide-react';
+import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles, Swords } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
+import DailyBattlesView from './DailyBattlesView';
 import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
 import SEO from './SEO';
@@ -15,6 +16,7 @@ interface CommunityHubProps {
     currentUser?: UserProfile | null;
     onReact: (id: string) => void;
     onFollow?: (username: string) => void;
+    currentUsername?: string;
 }
 
 // Winamp Helper wrapper
@@ -38,7 +40,7 @@ const MEDAL = [
 ];
 
 const CommunityHub: React.FC<CommunityHubProps> = ({
-    theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser, onReact, onFollow
+    theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser, onReact, onFollow, currentUsername
 }) => {
     // Read initial tab from URL
     const getInitialTab = () => {
@@ -46,10 +48,11 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
         const t = params.get('tab');
         if (t === 'trade') return 'TRADE';
         if (t === 'people') return 'PEOPLE';
+        if (t === 'battles') return 'BATTLES';
         return 'TRENDS';
     };
 
-    const [tab, setTab] = useState<'TRENDS' | 'PEOPLE' | 'TRADE'>(getInitialTab);
+    const [tab, setTab] = useState<'TRENDS' | 'PEOPLE' | 'TRADE' | 'BATTLES'>(getInitialTab);
     const [trendWindow, setTrendWindow] = useState<'48H' | 'ALL'>('48H');
     const [tradeFilter, setTradeFilter] = useState<'ALL' | 'SALE' | 'TRADE' | 'GIFT'>('ALL');
     const [peopleSearch, setPeopleSearch] = useState('');
@@ -65,6 +68,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
         if (newTab === 'TRENDS') params.delete('tab');
         else if (newTab === 'TRADE') params.set('tab', 'trade');
         else if (newTab === 'PEOPLE') params.set('tab', 'people');
+        else if (newTab === 'BATTLES') params.set('tab', 'battles');
         const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
         window.history.replaceState({ ...window.history.state }, '', newUrl);
     };
@@ -232,6 +236,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                 {renderTabButton('TRENDS', <TrendingUp size={20} />, 'ТРЕНДЫ')}
                 {renderTabButton('PEOPLE', <Users size={20} />, 'ЛЮДИ')}
                 {renderTabButton('TRADE', <RefreshCw size={20} />, 'ОБМЕН')}
+                {renderTabButton('BATTLES', <Swords size={20} />, 'БИТВЫ')}
             </div>
 
             {/* Content Area */}
@@ -562,6 +567,18 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                 })
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* ─── BATTLES TAB ─── */}
+                {tab === 'BATTLES' && (
+                    <div className="animate-in slide-in-from-right-4 pb-6">
+                        <DailyBattlesView
+                            theme={theme}
+                            exhibits={exhibits}
+                            currentUser={currentUsername || currentUser?.username || ''}
+                            onExhibitClick={onExhibitClick}
+                        />
                     </div>
                 )}
             </div>

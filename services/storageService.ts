@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Capacitor } from '@capacitor/core';
-import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType } from '../types';
+import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ArtifactBattle, DailyBracket } from '../types';
 
 // ==========================================
 // 🚀 NEO_ARCHIVE HIGH-PERFORMANCE DB LAYER
@@ -965,4 +965,35 @@ export const confirmDelivery = async (id: string) => {
     await apiCall('/trade_requests', 'POST', req);
     notifyListeners();
     await completeTradeRequest(id);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚔️ DAILY BATTLES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getDailyBracket = async (category: string): Promise<{ bracket: DailyBracket | null; reason?: string }> => {
+    try {
+        const data = await apiCall(`/battles?category=${encodeURIComponent(category)}`, 'GET');
+        return data;
+    } catch {
+        return { bracket: null };
+    }
+};
+
+export const castBattleVote = async (bracketId: string, battleId: string, exhibitId: string, username: string): Promise<ArtifactBattle | null> => {
+    try {
+        const data = await apiCall('/battles/vote', 'POST', { bracketId, battleId, exhibitId, username });
+        return data.battle ?? null;
+    } catch {
+        return null;
+    }
+};
+
+export const getBattleHistory = async (category: string, limit = 5): Promise<DailyBracket[]> => {
+    try {
+        const data = await apiCall(`/battles/history?category=${encodeURIComponent(category)}&limit=${limit}`, 'GET');
+        return data.history ?? [];
+    } catch {
+        return [];
+    }
 };

@@ -272,4 +272,32 @@ export interface TradeRequest {
     shipment?: ShipmentInfo;
 }
 
-export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'SHIPMENTS';
+export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'SHIPMENTS' | 'DAILY_BATTLES';
+
+export interface ArtifactBattle {
+  id: string;
+  bracketId: string;
+  category: string;
+  date: string;          // YYYY-MM-DD
+  round: 1 | 2;          // 1 = semi-final, 2 = final
+  slotIndex: number;     // 0 or 1 (which semi-final slot)
+  participant1: string;  // Exhibit ID
+  participant2: string;  // Exhibit ID
+  votes1: string[];      // usernames who voted for p1
+  votes2: string[];      // usernames who voted for p2
+  winner?: string;       // Exhibit ID
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
+  startTime: string;     // ISO
+  endTime: string;       // ISO (startTime + 12h)
+}
+
+export interface DailyBracket {
+  id: string;            // `${category}_${date}`
+  category: string;
+  date: string;          // YYYY-MM-DD
+  participants: string[]; // 4 Exhibit IDs
+  battles: ArtifactBattle[];
+  winner?: string;       // Champion Exhibit ID
+  status: 'ACTIVE' | 'COMPLETED';
+  createdAt: string;
+}

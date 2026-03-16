@@ -233,7 +233,7 @@ const ensureSchema = async () => {
     )`;
 
     // Tables logic
-    const tables = ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'];
+    const tables = ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests', 'battles'];
     
     // Ensure USERS table (special case: might have username instead of id)
     await query(`CREATE TABLE IF NOT EXISTS users (
@@ -1066,6 +1066,206 @@ api.get('/delivery/track/:trackingId', async (req, res) => {
         res.status(500).json({ error: e?.message || 'Delivery API error' });
     }
 });
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚔️ DAILY BATTLES
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getTodayUTC() {
+    const d = new Date();
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function buildBracket(category, participants, now) {
+    const date = getTodayUTC();
+    const bracketId = `${category}_${date}`;
+    const startTime = now.toISOString();
+    const semiEnd = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
+    const finalStart = semiEnd;
+    const finalEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    const battles = [
+        {
+            id: `${bracketId}_sf1`,
+            bracketId,
+            category,
+            date,
+            round: 1,
+            slotIndex: 0,
+            participant1: participants[0],
+            participant2: participants[1],
+            votes1: [],
+            votes2: [],
+            winner: undefined,
+            status: 'ACTIVE',
+            startTime,
+            endTime: semiEnd,
+        },
+        {
+            id: `${bracketId}_sf2`,
+            bracketId,
+            category,
+            date,
+            round: 1,
+            slotIndex: 1,
+            participant1: participants[2],
+            participant2: participants[3],
+            votes1: [],
+            votes2: [],
+            winner: undefined,
+            status: 'ACTIVE',
+            startTime,
+            endTime: semiEnd,
+        },
+        {
+            id: `${bracketId}_final`,
+            bracketId,
+            category,
+            date,
+            round: 2,
+            slotIndex: 0,
+            participant1: null,
+            participant2: null,
+            votes1: [],
+            votes2: [],
+            winner: undefined,
+            status: 'PENDING',
+            startTime: finalStart,
+            endTime: finalEnd,
+        },
+    ];
+
+    return {
+        id: bracketId,
+        category,
+        date,
+        participants,
+        battles,
+        winner: undefined,
+        status: 'ACTIVE',
+        createdAt: startTime,
+    };
+}
+
+function finalizeBracket(bracket, now) {
+    let changed = false;
+    const nowTs = now.getTime();
+
+    // Finalize expired semi-finals
+    bracket.battles.forEach(battle => {
+        if (battle.status === 'ACTIVE' && battle.round === 1 && new Date(battle.endTime).getTime() <= nowTs) {
+            battle.winner = battle.votes1.length >= battle.votes2.length ? battle.participant1 : battle.participant2;
+            battle.status = 'COMPLETED';
+            changed = true;
+        }
+    });
+
+    // Check if both semi-finals done -> activate final
+    const sf1 = bracket.battles.find(b => b.round === 1 && b.slotIndex === 0);
+    const sf2 = bracket.battles.find(b => b.round === 1 && b.slotIndex === 1);
+    const final = bracket.battles.find(b => b.round === 2);
+
+    if (sf1?.status === 'COMPLETED' && sf2?.status === 'COMPLETED' && final?.status === 'PENDING') {
+        final.participant1 = sf1.winner;
+        final.participant2 = sf2.winner;
+        final.status = 'ACTIVE';
+        changed = true;
+    }
+
+    // Finalize expired final
+    if (final?.status === 'ACTIVE' && new Date(final.endTime).getTime() <= nowTs) {
+        final.winner = final.votes1.length >= final.votes2.length ? final.participant1 : final.participant2;
+        final.status = 'COMPLETED';
+        bracket.winner = final.winner;
+        bracket.status = 'COMPLETED';
+        changed = true;
+    }
+
+    return changed;
+}
+
+// GET /api/battles?category=X
+api.get('/battles', async (req, res) => {
+    try {
+        const { category } = req.query;
+        if (!category) return res.status(400).json({ error: 'category required' });
+        const date = getTodayUTC();
+        const bracketId = `${encodeURIComponent(category)}_${date}`;
+
+        const { rows } = await query(`SELECT data FROM battles WHERE id = $1`, [bracketId]);
+        let bracket = rows[0]?.data;
+        const now = new Date();
+
+        if (!bracket) {
+            // Generate new bracket: pick 4 random non-draft exhibits from category
+            const { rows: exhibitRows } = await query(
+                `SELECT id FROM exhibits WHERE data->>'category' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
+                [category]
+            );
+            if (exhibitRows.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
+
+            const participants = exhibitRows.map(r => r.id);
+            bracket = buildBracket(category, participants, now);
+            bracket.id = bracketId;
+            bracket.battles.forEach(b => { b.bracketId = bracketId; });
+            await query(`INSERT INTO battles (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [bracketId, bracket]);
+        } else {
+            const changed = finalizeBracket(bracket, now);
+            if (changed) {
+                await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
+            }
+        }
+        res.json({ bracket });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Battle fetch error' });
+    }
+});
+
+// POST /api/battles/vote
+api.post('/battles/vote', async (req, res) => {
+    try {
+        const { bracketId, battleId, exhibitId, username } = req.body;
+        if (!bracketId || !battleId || !exhibitId || !username) return res.status(400).json({ error: 'Missing fields' });
+
+        const { rows } = await query(`SELECT data FROM battles WHERE id = $1`, [bracketId]);
+        if (!rows[0]) return res.status(404).json({ error: 'Bracket not found' });
+
+        const bracket = rows[0].data;
+        const battle = bracket.battles.find(b => b.id === battleId);
+        if (!battle) return res.status(404).json({ error: 'Battle not found' });
+        if (battle.status !== 'ACTIVE') return res.status(400).json({ error: 'Battle is not active' });
+        if (new Date(battle.endTime).getTime() <= Date.now()) return res.status(400).json({ error: 'Voting period ended' });
+
+        // Check already voted
+        if (battle.votes1.includes(username) || battle.votes2.includes(username)) {
+            return res.status(400).json({ error: 'Already voted' });
+        }
+
+        if (exhibitId === battle.participant1) battle.votes1.push(username);
+        else if (exhibitId === battle.participant2) battle.votes2.push(username);
+        else return res.status(400).json({ error: 'Invalid participant' });
+
+        await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
+        res.json({ battle });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Vote error' });
+    }
+});
+
+// GET /api/battles/history?category=X&limit=5
+api.get('/battles/history', async (req, res) => {
+    try {
+        const { category, limit = 5 } = req.query;
+        if (!category) return res.status(400).json({ error: 'category required' });
+        const { rows } = await query(
+            `SELECT data FROM battles WHERE data->>'category' = $1 AND data->>'status' = 'COMPLETED' ORDER BY data->>'date' DESC LIMIT $2`,
+            [category, parseInt(limit)]
+        );
+        res.json({ history: rows.map(r => r.data) });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'History fetch error' });
+    }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.use('/api', api);
