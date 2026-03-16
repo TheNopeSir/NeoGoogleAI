@@ -234,7 +234,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
             </div>
 
             {/* Navigation */}
-            <div className={`flex mb-6 sticky top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-b border-[#8592B5]' : isLight ? 'bg-white/90 border-b border-gray-200 backdrop-blur-md' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
+            <div className={`flex mb-6 sticky top-0 md:top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-b border-[#8592B5]' : isLight ? 'bg-white/90 border-b border-gray-200 backdrop-blur-md' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
                 {renderTabButton('TRENDS', <TrendingUp size={20} />, 'ТРЕНДЫ')}
                 {renderTabButton('PEOPLE', <Users size={20} />, 'ЛЮДИ')}
                 {renderTabButton('TRADE', <RefreshCw size={20} />, 'ОБМЕН')}
