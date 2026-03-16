@@ -269,6 +269,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                     src={u.avatarUrl || getUserAvatar(u.username)}
                                                     className={`w-14 h-14 rounded-full border-2 transition-transform group-hover:scale-110 ${medal ? `ring-2 ${medal.ring} shadow-lg ${medal.glow}` : 'border-white/20'}`}
                                                     alt={u.username}
+                                                    onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = getUserAvatar(u.username); }}
                                                 />
                                                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 text-[9px] font-bold flex items-center justify-center rounded-full ${medal ? `${medal.bg} ${medal.text}` : 'bg-white/20 text-white'}`}>
                                                     {medal?.icon || `#${i + 1}`}
@@ -446,6 +447,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                 className="w-10 h-10 rounded-full flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
                                                 onClick={() => onUserClick(u.username)}
                                                 alt={u.username}
+                                                onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = getUserAvatar(u.username); }}
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5">
