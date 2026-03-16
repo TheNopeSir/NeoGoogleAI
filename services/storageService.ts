@@ -971,9 +971,9 @@ export const confirmDelivery = async (id: string) => {
 // ⚔️ DAILY BATTLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const getDailyBracket = async (category: string): Promise<{ bracket: DailyBracket | null; reason?: string }> => {
+export const getDailyBracket = async (subcategory: string): Promise<{ bracket: DailyBracket | null; reason?: string }> => {
     try {
-        const data = await apiCall(`/battles?category=${encodeURIComponent(category)}`, 'GET');
+        const data = await apiCall(`/battles?subcategory=${encodeURIComponent(subcategory)}`, 'GET');
         return data;
     } catch {
         return { bracket: null };
@@ -989,9 +989,9 @@ export const castBattleVote = async (bracketId: string, battleId: string, exhibi
     }
 };
 
-export const getBattleHistory = async (category: string, limit = 5): Promise<DailyBracket[]> => {
+export const getBattleHistory = async (subcategory: string, limit = 5): Promise<DailyBracket[]> => {
     try {
-        const data = await apiCall(`/battles/history?category=${encodeURIComponent(category)}&limit=${limit}`, 'GET');
+        const data = await apiCall(`/battles/history?subcategory=${encodeURIComponent(subcategory)}&limit=${limit}`, 'GET');
         return data.history ?? [];
     } catch {
         return [];

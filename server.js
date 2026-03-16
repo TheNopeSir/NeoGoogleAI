@@ -1070,18 +1070,26 @@ api.get('/delivery/track/:trackingId', async (req, res) => {
 // ⚔️ DAILY BATTLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getTodayUTC() {
-    const d = new Date();
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+// 3-day period bucket (stable across restarts)
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+function getPeriodStart() {
+    const bucketStart = new Date(Math.floor(Date.now() / THREE_DAYS_MS) * THREE_DAYS_MS);
+    return bucketStart.toISOString().slice(0, 10); // YYYY-MM-DD
 }
+// Keep getTodayUTC as alias for compatibility
+const getTodayUTC = getPeriodStart;
+
+// Semi-final duration: 36h; final duration: 36h → total 72h (3 days)
+const SEMI_DURATION_MS = 36 * 60 * 60 * 1000;
+const FINAL_DURATION_MS = 36 * 60 * 60 * 1000;
 
 function buildBracket(category, participants, now) {
-    const date = getTodayUTC();
+    const date = getPeriodStart();
     const bracketId = `${category}_${date}`;
     const startTime = now.toISOString();
-    const semiEnd = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
+    const semiEnd = new Date(now.getTime() + SEMI_DURATION_MS).toISOString();
     const finalStart = semiEnd;
-    const finalEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const finalEnd = new Date(now.getTime() + SEMI_DURATION_MS + FINAL_DURATION_MS).toISOString();
 
     const battles = [
         {
@@ -1183,28 +1191,28 @@ function finalizeBracket(bracket, now) {
     return changed;
 }
 
-// GET /api/battles?category=X
+// GET /api/battles?subcategory=X
 api.get('/battles', async (req, res) => {
     try {
-        const { category } = req.query;
-        if (!category) return res.status(400).json({ error: 'category required' });
-        const date = getTodayUTC();
-        const bracketId = `${encodeURIComponent(category)}_${date}`;
+        const subcategory = req.query.subcategory || req.query.category; // backward compat
+        if (!subcategory) return res.status(400).json({ error: 'subcategory required' });
+        const date = getPeriodStart();
+        const bracketId = `${encodeURIComponent(subcategory)}_${date}`;
 
         const { rows } = await query(`SELECT data FROM battles WHERE id = $1`, [bracketId]);
         let bracket = rows[0]?.data;
         const now = new Date();
 
         if (!bracket) {
-            // Generate new bracket: pick 4 random non-draft exhibits from category
+            // Generate new bracket: pick 4 random non-draft exhibits matching subcategory
             const { rows: exhibitRows } = await query(
-                `SELECT id FROM exhibits WHERE data->>'category' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
-                [category]
+                `SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
+                [subcategory]
             );
             if (exhibitRows.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
 
             const participants = exhibitRows.map(r => r.id);
-            bracket = buildBracket(category, participants, now);
+            bracket = buildBracket(subcategory, participants, now);
             bracket.id = bracketId;
             bracket.battles.forEach(b => { b.bracketId = bracketId; });
             await query(`INSERT INTO battles (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [bracketId, bracket]);
@@ -1251,14 +1259,15 @@ api.post('/battles/vote', async (req, res) => {
     }
 });
 
-// GET /api/battles/history?category=X&limit=5
+// GET /api/battles/history?subcategory=X&limit=5
 api.get('/battles/history', async (req, res) => {
     try {
-        const { category, limit = 5 } = req.query;
-        if (!category) return res.status(400).json({ error: 'category required' });
+        const subcategory = req.query.subcategory || req.query.category; // backward compat
+        const limit = req.query.limit || 5;
+        if (!subcategory) return res.status(400).json({ error: 'subcategory required' });
         const { rows } = await query(
             `SELECT data FROM battles WHERE data->>'category' = $1 AND data->>'status' = 'COMPLETED' ORDER BY data->>'date' DESC LIMIT $2`,
-            [category, parseInt(limit)]
+            [subcategory, parseInt(limit)]
         );
         res.json({ history: rows.map(r => r.data) });
     } catch (e) {
