@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
   Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon,
-  ArrowUp, Loader2, Inbox
+  ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare, Flame
 } from 'lucide-react';
-import { UserProfile, Exhibit, WishlistItem, Collection } from '../types';
+import { UserProfile, Exhibit, WishlistItem, Collection, WishlistPriority } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
@@ -37,11 +37,58 @@ interface FeedViewProps {
   onUserClick: (username: string) => void;
   onWishlistClick: (item: WishlistItem) => void;
   onCollectionClick: (col: Collection) => void;
+
+  // Quick card actions
+  userCollections?: Collection[];
+  onAddToCollection?: (exhibitId: string, collectionId: string) => void;
+  onAddToWishlist?: (exhibit: Exhibit, priority: WishlistPriority) => void;
 }
+
+type SortMode = 'NEW' | 'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC' | 'RARITY';
+
+const RECENTLY_VIEWED_KEY = 'neo_recently_viewed';
 
 const FeedSkeleton: React.FC<{ viewMode: 'GRID' | 'LIST' }> = ({ viewMode }) => (
     <div className={`animate-pulse ${viewMode === 'GRID' ? 'aspect-[3/4]' : 'h-24'} bg-white/5 rounded-xl border border-white/5`}></div>
 );
+
+// Compact horizontal card for trending / recently viewed strips
+const TrendingCard: React.FC<{
+  item: Exhibit;
+  theme: string;
+  onClick: (item: Exhibit) => void;
+  label?: string;
+}> = ({ item, theme, onClick, label }) => {
+  const firstImage = getFirstImageUrl(item.imageUrls, 'thumbnail');
+  const trendScore = (item.likes * 10) + item.views;
+  const isLight = theme === 'light';
+  return (
+    <div
+      onClick={() => onClick(item)}
+      className={`w-36 flex-shrink-0 cursor-pointer rounded-xl overflow-hidden border transition-all group ${
+        isLight
+          ? 'border-black/10 bg-white hover:border-black/25 shadow-sm hover:shadow-md'
+          : 'border-white/10 bg-dark-surface hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10'
+      }`}
+    >
+      <div className="relative h-24 overflow-hidden">
+        <img
+          src={firstImage}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          alt={item.title}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute bottom-1 left-1.5 text-[8px] font-pixel font-bold text-orange-300">
+          {label ?? `🔥 ${trendScore}`}
+        </div>
+      </div>
+      <div className={`px-2 py-1.5 ${isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+        <div className={`text-[9px] font-pixel font-bold line-clamp-1 ${isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</div>
+        <div className={`text-[8px] font-mono mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>@{item.owner}</div>
+      </div>
+    </div>
+  );
+};
 
 const FeedView: React.FC<FeedViewProps> = ({
   theme,
@@ -63,13 +110,24 @@ const FeedView: React.FC<FeedViewProps> = ({
   onReact,
   onUserClick,
   onWishlistClick,
-  onCollectionClick
+  onCollectionClick,
+  userCollections = [],
+  onAddToCollection,
+  onAddToWishlist,
 }) => {
   const isWinamp = theme === 'winamp';
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const isLight = theme === 'light';
 
-  // Wishlist expanded users
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [expandedWishlistUsers, setExpandedWishlistUsers] = useState<Set<string>>(new Set());
+
+  // Sorting
+  const [sortMode, setSortMode] = useState<SortMode>('NEW');
+
+  // Price filter
+  const [priceFilterEnabled, setPriceFilterEnabled] = useState(false);
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
 
   // Infinite Scroll State
   const [visibleCount, setVisibleCount] = useState(100);
@@ -84,48 +142,101 @@ const FeedView: React.FC<FeedViewProps> = ({
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
-  // Reset subcategory when main category changes
+  // Reset subcategory, visible count, sort, price filter on main filter changes
   useEffect(() => {
     setSelectedSubcategory(null);
-    setVisibleCount(100); // Reset scroll on filter change
+    setVisibleCount(100);
   }, [selectedCategory, feedType]);
+
+  useEffect(() => {
+    if (feedMode !== 'ARTIFACTS') {
+      setSortMode('NEW');
+      setPriceFilterEnabled(false);
+      setPriceMin('');
+      setPriceMax('');
+    }
+  }, [feedMode]);
 
   // --- CORE FILTERING & SORTING LOGIC ---
   const processedExhibits = useMemo(() => {
-      // 1. FILTERING
       let items = exhibits.filter(e => {
-          // EXCLUDE SELF & DRAFTS
           if (e.owner === user.username) return false;
           if (e.isDraft) return false;
-
-          // Category Filter
           if (selectedCategory !== 'ВСЕ' && e.category !== selectedCategory) return false;
           if (selectedSubcategory && e.subcategory !== selectedSubcategory) return false;
-
-          // Feed Type Filter (Following vs Global)
           if (feedType === 'FOLLOWING' && !user.following.includes(e.owner)) return false;
+
+          // Price filter — only show FOR_SALE items within range, exclude WANTED max-price
+          if (priceFilterEnabled) {
+              if (e.tradeStatus !== 'FOR_SALE' || e.postType === 'WANTED') return false;
+              const p = e.price ?? 0;
+              if (priceMin && p < parseFloat(priceMin)) return false;
+              if (priceMax && p > parseFloat(priceMax)) return false;
+          }
 
           return true;
       });
 
-      // 2. SORTING BY TIME (Most Recent First)
-      const scoredItems = items.map(item => ({
-          ...item,
-          _ts: new Date(item.timestamp).getTime()
-      }));
-
-      return scoredItems.sort((a, b) => {
-          // Primary: Time (New to Old)
-          if (b._ts !== a._ts) return b._ts - a._ts;
-          // Secondary: ID (Deterministic tie-breaker)
-          return b.id.localeCompare(a.id);
+      return [...items].sort((a, b) => {
+          if (sortMode === 'NEW') {
+              const tsDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+              return tsDiff !== 0 ? tsDiff : b.id.localeCompare(a.id);
+          }
+          if (sortMode === 'POPULAR') {
+              return ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views);
+          }
+          if (sortMode === 'PRICE_ASC') {
+              const pa = a.tradeStatus === 'FOR_SALE' ? (a.price ?? Infinity) : Infinity;
+              const pb = b.tradeStatus === 'FOR_SALE' ? (b.price ?? Infinity) : Infinity;
+              return pa - pb;
+          }
+          if (sortMode === 'PRICE_DESC') {
+              const pa = a.tradeStatus === 'FOR_SALE' ? (a.price ?? -1) : -1;
+              const pb = b.tradeStatus === 'FOR_SALE' ? (b.price ?? -1) : -1;
+              return pb - pa;
+          }
+          if (sortMode === 'RARITY') {
+              const score = (x: Exhibit) => (x.likes * 25) + ((x.comments?.length || 0) * 10) + x.views;
+              return score(b) - score(a);
+          }
+          return 0;
       });
 
-  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType]);
+  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode, priceFilterEnabled, priceMin, priceMax]);
+
+  // --- TRENDING BLOCK (top 3 from last 48h) ---
+  const trendingExhibits = useMemo(() => {
+      const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+      return exhibits
+          .filter(e =>
+              !e.isDraft &&
+              e.owner !== user.username &&
+              e.postType !== 'WANTED' &&
+              new Date(e.timestamp).getTime() >= cutoff &&
+              (feedType === 'FOLLOWING' ? user.following.includes(e.owner) : true)
+          )
+          .sort((a, b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views))
+          .slice(0, 3);
+  }, [exhibits, user.username, user.following, feedType]);
+
+  // --- RECENTLY VIEWED (from localStorage) ---
+  const recentlyViewedExhibits = useMemo(() => {
+      try {
+          const raw = localStorage.getItem(RECENTLY_VIEWED_KEY);
+          if (!raw) return [];
+          const ids: string[] = JSON.parse(raw);
+          return ids
+              .map(id => exhibits.find(e => e.id === id))
+              .filter((e): e is Exhibit => !!e && !e.isDraft && e.owner !== user.username)
+              .slice(0, 15);
+      } catch {
+          return [];
+      }
+  }, [exhibits, user.username]);
 
   const processedWishlist = useMemo(() => {
       return wishlist.filter(w => {
-          if (w.owner === user.username) return false; // Exclude self
+          if (w.owner === user.username) return false;
           if (selectedCategory !== 'ВСЕ' && w.category !== selectedCategory) return false;
           if (feedType === 'FOLLOWING' && !user.following.includes(w.owner)) return false;
           return true;
@@ -134,7 +245,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
   const processedCollections = useMemo(() => {
       return collections.filter(c => {
-          if (c.owner === user.username) return false; // Exclude self
+          if (c.owner === user.username) return false;
           if (feedType === 'FOLLOWING' && !user.following.includes(c.owner)) return false;
           return true;
       }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -160,20 +271,27 @@ const FeedView: React.FC<FeedViewProps> = ({
   const visibleWishlist = processedWishlist.slice(0, visibleCount);
   const visibleCollections = processedCollections.slice(0, visibleCount);
 
-  // Parent Click Handler for List Items
   const handleListItemClick = (e: React.MouseEvent, item: Exhibit) => {
       const target = e.target as HTMLElement;
-      // Check if clicked element is a button or inside a button/interactive element
-      if (target.closest('button') || target.closest('a') || target.closest('.interactive')) {
-          return;
-      }
+      if (target.closest('button') || target.closest('a') || target.closest('.interactive')) return;
       onExhibitClick(item);
   };
+
+  const sortOptions: { key: SortMode; label: string }[] = [
+      { key: 'NEW', label: 'НОВЫЕ' },
+      { key: 'POPULAR', label: 'ХИТ' },
+      { key: 'PRICE_ASC', label: '₽↑' },
+      { key: 'PRICE_DESC', label: '₽↓' },
+      { key: 'RARITY', label: 'РЕДКОСТЬ' },
+  ];
+
+  const sectionHeaderClass = `text-[11px] font-pixel font-bold tracking-widest opacity-70`;
+  const dividerClass = `h-[1px] flex-1 ${isLight ? 'bg-black/10' : 'bg-white/10'}`;
 
   return (
     <div className="pb-24 space-y-4 animate-in fade-in isolate">
         <SEO title="NeoArchive | Лента" />
-        
+
         {/* 1. MOBILE HEADER */}
         <header className="md:hidden flex justify-between items-center px-4 pt-4 bg-transparent">
             <div className="flex items-center gap-2">
@@ -182,65 +300,117 @@ const FeedView: React.FC<FeedViewProps> = ({
             </div>
         </header>
 
-
         {/* 3. CONTROLS AREA */}
-        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : theme === 'light' ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
+        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
             <div className="max-w-[2400px] mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-3">
-                    {/* Segmented mode toggle with sliding pill */}
-                    <div className={`flex-1 flex relative p-1 rounded-2xl ${isWinamp ? 'bg-[#292929] border border-[#505050]' : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-black/[0.05]'}`}>
-                        {/* Sliding background indicator */}
+                    <div className={`flex-1 flex relative p-1 rounded-2xl ${isWinamp ? 'bg-[#292929] border border-[#505050]' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
                         <div className={`absolute top-1 bottom-1 w-[calc(33.333%-2px)] rounded-xl transition-transform duration-200 ease-out ${
                             isWinamp ? 'bg-[#00ff00]' :
                             feedMode === 'ARTIFACTS' ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-md shadow-green-500/20' :
                             feedMode === 'COLLECTIONS' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md shadow-blue-500/20' :
                             'bg-gradient-to-r from-purple-500 to-violet-500 shadow-md shadow-purple-500/20'
                         } ${feedMode === 'ARTIFACTS' ? 'translate-x-0.5' : feedMode === 'COLLECTIONS' ? 'translate-x-[calc(100%+1px)]' : 'translate-x-[calc(200%+1px)]'}`} />
-                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
                             <LayoutGrid size={12} /> ЛЕНТА
                         </button>
-                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
                             <Folder size={12} /> АЛЬБОМЫ
                         </button>
-                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : 'text-white') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>
+                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
                             <Radar size={12} /> ВИШЛИСТ
                         </button>
                     </div>
-                    <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : theme === 'dark' ? 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white' : 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black'}`}>
+                    <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white'}`}>
                         <Search size={18} />
                     </button>
                 </div>
 
-                {/* Filters Row */}
-                <div className="flex items-center gap-2">
-                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-black/[0.05]'}`}>
-                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-white/15 text-white shadow-sm' : 'bg-black/10 text-black shadow-sm') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ГЛАВНАЯ</button>
-                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-white/15 text-white shadow-sm' : 'bg-black/10 text-black shadow-sm') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ПОДПИСКИ</button>
+                {/* Filters Row: feedType + viewMode + sort pills */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
+                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ГЛАВНАЯ</button>
+                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ПОДПИСКИ</button>
                     </div>
 
-                    <div className="flex gap-1 shrink-0 ml-auto">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (theme === 'dark' ? 'bg-white/10 text-green-400' : 'bg-black/10 text-green-600') : 'opacity-25 hover:opacity-50'}`}><LayoutGrid size={15}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (theme === 'dark' ? 'bg-white/10 text-green-400' : 'bg-black/10 text-green-600') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
+                    <div className="flex gap-1 shrink-0">
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><LayoutGrid size={15}/></button>
+                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
                     </div>
+
+                    {/* Sort pills — only in ARTIFACTS mode */}
+                    {feedMode === 'ARTIFACTS' && (
+                        <div className="flex gap-1 shrink-0 ml-auto">
+                            {sortOptions.map(({ key, label }) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setSortMode(key)}
+                                    className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all ${
+                                        sortMode === key
+                                            ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40')
+                                            : 'opacity-30 hover:opacity-60'
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Category Pills */}
                 <div className="space-y-2">
                     <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (theme === 'dark' ? 'bg-white text-black shadow-md' : 'bg-black text-white shadow-md') : (theme === 'dark' ? 'bg-white/[0.06] text-white/50 hover:text-white/80' : 'bg-black/[0.05] text-black/50 hover:text-black/80')}`}>ВСЕ</button>
+                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (isLight ? 'bg-black text-white shadow-md' : 'bg-white text-black shadow-md') : (isLight ? 'bg-black/[0.05] text-black/50 hover:text-black/80' : 'bg-white/[0.06] text-white/50 hover:text-white/80')}`}>ВСЕ</button>
                         {Object.values(DefaultCategory).map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : theme === 'dark' ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40' : 'bg-green-100 text-green-700 ring-1 ring-green-300') : (theme === 'dark' ? 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.07]' : 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]')}`}>{cat}</button>
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : isLight ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40') : (isLight ? 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]' : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.07]')}`}>{cat}</button>
                         ))}
                     </div>
-                    {/* Subcategories */}
                     {selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] && (
                         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2 duration-150">
-                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>ВСЕ</button>
+                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ВСЕ</button>
                             {CATEGORY_SUBCATEGORIES[selectedCategory].map(sub => (
-                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : (theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}`}>{sub}</button>
+                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>{sub}</button>
                             ))}
+                        </div>
+                    )}
+
+                    {/* Price filter row — only in ARTIFACTS mode */}
+                    {feedMode === 'ARTIFACTS' && (
+                        <div className="flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-150">
+                            <button
+                                onClick={() => setPriceFilterEnabled(v => !v)}
+                                className={`flex items-center gap-1.5 text-[9px] font-bold px-3 py-1.5 rounded-lg transition-all ${
+                                    priceFilterEnabled
+                                        ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                                        : isLight ? 'bg-black/[0.05] text-black/40 hover:text-black/70' : 'bg-white/[0.05] text-white/40 hover:text-white/70'
+                                }`}
+                            >
+                                <DollarSign size={10} /> С ЦЕНОЙ
+                            </button>
+
+                            {priceFilterEnabled && (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-150">
+                                    <input
+                                        type="number"
+                                        value={priceMin}
+                                        onChange={e => setPriceMin(e.target.value)}
+                                        placeholder="от"
+                                        className={`w-20 border rounded-lg px-2 py-1 text-[10px] font-mono focus:border-emerald-500 outline-none ${isLight ? 'bg-black/5 border-black/15' : 'bg-black/30 border-white/10'}`}
+                                    />
+                                    <span className="text-[9px] opacity-40">—</span>
+                                    <input
+                                        type="number"
+                                        value={priceMax}
+                                        onChange={e => setPriceMax(e.target.value)}
+                                        placeholder="до"
+                                        className={`w-20 border rounded-lg px-2 py-1 text-[10px] font-mono focus:border-emerald-500 outline-none ${isLight ? 'bg-black/5 border-black/15' : 'bg-black/30 border-white/10'}`}
+                                    />
+                                    <span className="text-[9px] opacity-40 font-mono">₽</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -251,7 +421,43 @@ const FeedView: React.FC<FeedViewProps> = ({
         <div className="px-4 max-w-[2400px] mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
-                    {/* Loading State / Empty State */}
+                    {/* 🔥 ГОРЯЧЕЕ block */}
+                    {trendingExhibits.length > 0 && (
+                        <div className="mb-5">
+                            <div className="flex items-center gap-3 mb-3">
+                                <span className={sectionHeaderClass}>🔥 ГОРЯЧЕЕ</span>
+                                <div className={dividerClass} />
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                {trendingExhibits.map(item => (
+                                    <TrendingCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 👁 НЕДАВНО ПРОСМОТРЕННЫЕ block */}
+                    {recentlyViewedExhibits.length > 0 && (
+                        <div className="mb-5">
+                            <div className="flex items-center gap-3 mb-3">
+                                <span className={sectionHeaderClass}>👁 НЕДАВНО ПРОСМОТРЕННЫЕ</span>
+                                <div className={dividerClass} />
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                {recentlyViewedExhibits.map(item => (
+                                    <TrendingCard
+                                        key={item.id}
+                                        item={item}
+                                        theme={theme}
+                                        onClick={onExhibitClick}
+                                        label={`👁 ${item.viewedBy?.length || item.views}`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main feed grid */}
                     {exhibits.length === 0 ? (
                         <div className={`grid gap-4 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
                             {[1,2,3,4,5,6].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
@@ -264,7 +470,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     ) : (
                         <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-                            {visibleExhibits.map((item, index) => {
+                            {visibleExhibits.map((item) => {
                                 const isLiked = item.likedBy?.includes(user?.username || '') || false;
                                 try {
                                     return feedViewMode === 'GRID' ? (
@@ -276,21 +482,33 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             currentUsername={user?.username || ''}
                                             onReact={() => onReact(item.id)}
                                             onAuthorClick={onUserClick}
+                                            userCollections={userCollections}
+                                            onAddToCollection={onAddToCollection}
+                                            onAddToWishlist={onAddToWishlist}
                                         />
                                     ) : (
-                                    <div key={item.id} onClick={(e) => handleListItemClick(e, item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
-                                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20"><img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" /></div>
+                                    <div key={item.id} onClick={(e) => handleListItemClick(e, item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border-white/10'}`}>
+                                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black/20 relative">
+                                            <img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" />
+                                            {item.postType === 'WANTED' && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                    <Search size={18} className="text-amber-400" />
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-[9px] font-pixel opacity-50 uppercase">{item.category}</span>
+                                                    <span className={`text-[9px] font-pixel opacity-50 uppercase ${item.postType === 'WANTED' ? 'text-amber-400 opacity-80' : ''}`}>
+                                                        {item.postType === 'WANTED' ? '🔍 Я ищу' : item.category}
+                                                    </span>
                                                     <div className="relative z-20">
-                                                        <button 
+                                                        <button
                                                             type="button"
-                                                            onClick={() => onReact(item.id)} 
+                                                            onClick={() => onReact(item.id)}
                                                             className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1 cursor-pointer interactive"
                                                         >
-                                                            <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} /> 
+                                                            <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} />
                                                             <span>{item.likes}</span>
                                                         </button>
                                                     </div>
@@ -305,7 +523,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                     </div>
                                     );
                                 } catch (error) {
-                                    return null; 
+                                    return null;
                                 }
                             })}
                         </div>
@@ -330,12 +548,9 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {processedWishlist.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">ВИШЛИСТ ПУСТ</div>
                     ) : (() => {
-                        // ... Same as before ...
                         const wishlistByUser: { [username: string]: WishlistItem[] } = {};
                         processedWishlist.forEach(item => {
-                            if (!wishlistByUser[item.owner]) {
-                                wishlistByUser[item.owner] = [];
-                            }
+                            if (!wishlistByUser[item.owner]) wishlistByUser[item.owner] = [];
                             wishlistByUser[item.owner].push(item);
                         });
 
@@ -345,18 +560,14 @@ const FeedView: React.FC<FeedViewProps> = ({
 
                         const toggleUser = (username: string) => {
                             const newSet = new Set(expandedWishlistUsers);
-                            if (newSet.has(username)) {
-                                newSet.delete(username);
-                            } else {
-                                newSet.add(username);
-                            }
+                            if (newSet.has(username)) newSet.delete(username);
+                            else newSet.add(username);
                             setExpandedWishlistUsers(newSet);
                         };
 
                         return (
                             <div className="space-y-3">
                                 {usernames.map(username => {
-                                    // ...
                                     const userItems = wishlistByUser[username];
                                     const isExpanded = expandedWishlistUsers.has(username);
                                     const grails = userItems.filter(w => w.priority === 'GRAIL');
@@ -371,10 +582,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                 className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <img
-                                                        src={getUserAvatar(username)}
-                                                        className="w-10 h-10 rounded-full border-2 border-white/20"
-                                                    />
+                                                    <img src={getUserAvatar(username)} className="w-10 h-10 rounded-full border-2 border-white/20" />
                                                     <div>
                                                         <div className="font-pixel text-sm font-bold flex items-center gap-2">
                                                             @{username}

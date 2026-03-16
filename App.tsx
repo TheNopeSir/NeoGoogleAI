@@ -32,7 +32,7 @@ import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, ProcessedImage } from './types';
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 
@@ -343,18 +343,52 @@ export default function App() {
         const viewedBy = item.viewedBy || [];
         const currentUser = user?.username;
         if (currentUser && !viewedBy.includes(currentUser)) {
-             updatedItem = { 
-                 ...item, 
+             updatedItem = {
+                 ...item,
                  views: (item.views || 0) + 1,
                  viewedBy: [...viewedBy, currentUser]
              };
-             // Ensure local state is updated immediately for smoother UX
              setExhibits(prev => prev.map(e => e.id === item.id ? updatedItem : e));
              await db.updateExhibit(updatedItem);
         }
         sessionStorage.setItem(sessionKey, 'true');
     }
+    // Track recently viewed in localStorage
+    try {
+        const raw = localStorage.getItem('neo_recently_viewed');
+        const existing: string[] = raw ? JSON.parse(raw) : [];
+        const deduped = [item.id, ...existing.filter((id: string) => id !== item.id)].slice(0, 15);
+        localStorage.setItem('neo_recently_viewed', JSON.stringify(deduped));
+    } catch { /* ignore */ }
     navigateTo('EXHIBIT', { item: updatedItem });
+  };
+
+  // Add exhibit to a user's collection (quick action from feed card)
+  const handleAddExhibitToCollection = async (exhibitId: string, collectionId: string) => {
+    const col = collections.find(c => c.id === collectionId);
+    if (!col) return;
+    if (col.exhibitIds.includes(exhibitId)) return; // already in collection
+    const updated = { ...col, exhibitIds: [...col.exhibitIds, exhibitId] };
+    await db.updateCollection(updated);
+  };
+
+  // Create wishlist item from an exhibit (quick action from feed card)
+  const handleAddExhibitToWishlist = async (exhibit: Exhibit, priority: WishlistPriority) => {
+    if (!user) return;
+    const refImage = exhibit.imageUrls?.[0];
+    const refUrl = typeof refImage === 'string'
+      ? refImage
+      : (refImage as ProcessedImage)?.thumbnail || '';
+    const newItem: WishlistItem = {
+      id: crypto.randomUUID(),
+      title: exhibit.title,
+      category: exhibit.category,
+      owner: user.username,
+      priority,
+      referenceImageUrl: refUrl,
+      timestamp: new Date().toISOString(),
+    };
+    await db.saveWishlistItem(newItem);
   };
 
   // ROBUST REACTION HANDLER - FIXES DUPLICATION
@@ -662,7 +696,7 @@ export default function App() {
 
         <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : {})}>
             {view === 'FEED' && user && (
-                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} />
+                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} />
             )}
 
             {view === 'ACTIVITY' && user && (
@@ -705,7 +739,7 @@ export default function App() {
 
             {view === 'COMMUNITY_HUB' && (
                 <div className="p-4 pb-24">
-                    <CommunityHub theme={theme} users={db.getFullDatabase().users} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} onReact={handleReaction} />
+                    <CommunityHub theme={theme} users={db.getFullDatabase().users} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} onReact={handleReaction} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if(!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} />
                 </div>
             )}
 
