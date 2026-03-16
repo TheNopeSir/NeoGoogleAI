@@ -881,7 +881,8 @@ export const sendTradeRequest = async (payload: Partial<TradeRequest> & { messag
         price: payload.price,
         currency: 'RUB',
         isWishlistFulfillment: payload.isWishlistFulfillment,
-        wishlistId: payload.wishlistId
+        wishlistId: payload.wishlistId,
+        shipment: payload.shipment,
     };
 
     hotCache.tradeRequests.push(req);
@@ -894,12 +895,30 @@ export const sendTradeRequest = async (payload: Partial<TradeRequest> & { messag
 export const acceptTradeRequest = async (id: string) => {
     const req = hotCache.tradeRequests.find(r => r.id === id);
     if (!req) return;
-    req.status = 'ACCEPTED';
+
+    if (req.shipment) {
+        // When delivery is involved, don't transfer ownership yet.
+        // Ownership transfers only after the recipient confirms delivery.
+        req.status = 'SHIPPING_PENDING';
+        // Register the shipment and get a tracking ID
+        const { createShipment } = await import('./deliveryService');
+        try {
+            const trackingId = await createShipment(req.id, req.shipment);
+            req.shipment = { ...req.shipment, status: 'CREATED', trackingId };
+        } catch {
+            // If delivery API fails, fall back to standard flow
+            req.status = 'ACCEPTED';
+        }
+    } else {
+        // No delivery — transfer items immediately (legacy behaviour)
+        req.status = 'ACCEPTED';
+        const senderItems = hotCache.exhibits.filter(e => req.senderItems.includes(e.id));
+        const recipientItems = hotCache.exhibits.filter(e => req.recipientItems.includes(e.id));
+        for (const item of senderItems) { item.owner = req.recipient; item.tradeStatus = 'NONE'; await updateExhibit(item); }
+        for (const item of recipientItems) { item.owner = req.sender; item.tradeStatus = 'NONE'; await updateExhibit(item); }
+    }
+
     req.updatedAt = new Date().toISOString();
-    const senderItems = hotCache.exhibits.filter(e => req.senderItems.includes(e.id));
-    const recipientItems = hotCache.exhibits.filter(e => req.recipientItems.includes(e.id));
-    for (const item of senderItems) { item.owner = req.recipient; item.tradeStatus = 'NONE'; await updateExhibit(item); }
-    for (const item of recipientItems) { item.owner = req.sender; item.tradeStatus = 'NONE'; await updateExhibit(item); }
     await saveGeneric('trade_requests', req);
     await apiCall('/trade_requests', 'POST', req);
     notifyListeners();
@@ -922,7 +941,28 @@ export const completeTradeRequest = async (id: string) => {
     if (!req) return;
     req.status = 'COMPLETED';
     req.updatedAt = new Date().toISOString();
+
+    // If items weren't transferred yet (delivery flow), do it now
+    if (req.shipment) {
+        const senderItems = hotCache.exhibits.filter(e => req.senderItems.includes(e.id));
+        const recipientItems = hotCache.exhibits.filter(e => req.recipientItems.includes(e.id));
+        for (const item of senderItems) { item.owner = req.recipient; item.tradeStatus = 'NONE'; await updateExhibit(item); }
+        for (const item of recipientItems) { item.owner = req.sender; item.tradeStatus = 'NONE'; await updateExhibit(item); }
+    }
+
     await saveGeneric('trade_requests', req);
     await apiCall('/trade_requests', 'POST', req);
     notifyListeners();
+    createNotification(req.sender, 'TRADE_COMPLETED', req.recipient, req.id, 'Сделка завершена!');
+};
+
+export const confirmDelivery = async (id: string) => {
+    const req = hotCache.tradeRequests.find(r => r.id === id);
+    if (!req || !req.shipment) return;
+    req.shipment = { ...req.shipment, status: 'DELIVERED' };
+    req.updatedAt = new Date().toISOString();
+    await saveGeneric('trade_requests', req);
+    await apiCall('/trade_requests', 'POST', req);
+    notifyListeners();
+    await completeTradeRequest(id);
 };

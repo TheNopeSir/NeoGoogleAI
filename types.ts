@@ -196,8 +196,53 @@ export interface Duel {
     logs: string[];
 }
 
-export type TradeRequestStatus = 'PENDING' | 'COUNTER_OFFERED' | 'ACCEPTED' | 'COMPLETED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
+export type TradeRequestStatus = 'PENDING' | 'COUNTER_OFFERED' | 'ACCEPTED' | 'SHIPPING_PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'COMPLETED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
 export type TradeType = 'DIRECT' | 'MULTI' | 'GIFT' | 'MONEY';
+
+export interface ShippingAddress {
+    fullName: string;
+    phone: string;
+    city: string;
+    street: string;
+    house: string;
+    apartment?: string;
+    zipCode: string;
+    comment?: string;
+}
+
+export interface PickupPoint {
+    id: string;
+    name: string;
+    address: string;
+    lat: number;
+    lon: number;
+    workingHours: string;
+    provider: 'yandex';
+}
+
+export type DeliveryMethod = 'COURIER' | 'PICKUP_POINT';
+export type ShipmentStatus = 'PENDING' | 'CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
+
+export interface DeliveryTariff {
+    method: DeliveryMethod;
+    cost: number;
+    days: number;
+    label: string;
+}
+
+export interface ShipmentInfo {
+    provider: 'yandex';
+    method: DeliveryMethod;
+    cost: number;
+    trackingId?: string;
+    status: ShipmentStatus;
+    senderAddress: ShippingAddress;
+    recipientAddress?: ShippingAddress;
+    pickupPointId?: string;
+    pickupPointAddress?: string;
+    estimatedDelivery?: string;
+    createdAt: string;
+}
 
 export interface TradeMessage {
     author: string;
@@ -224,6 +269,7 @@ export interface TradeRequest {
         sender?: number;
         recipient?: number;
     };
+    shipment?: ShipmentInfo;
 }
 
-export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL';
+export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'SHIPMENTS';

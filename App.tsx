@@ -4,7 +4,7 @@ import {
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
   ListMusic, Radio, Zap, Activity, Disc,
-  LayoutTemplate, FilePlus2, Flag, UserCheck
+  LayoutTemplate, FilePlus2, Flag, UserCheck, Package
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -27,6 +27,7 @@ import SocialListView from './components/SocialListView';
 import SearchView from './components/SearchView';
 import UserWishlistView from './components/UserWishlistView';
 import FeedView from './components/FeedView';
+import ShipmentsView from './components/ShipmentsView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
@@ -688,6 +689,7 @@ export default function App() {
                         <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
                         <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
                         <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
+                        <button onClick={() => navigateTo('SHIPMENTS')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'SHIPMENTS' ? 'opacity-100' : 'opacity-50'}`}><Package size={24}/>{tradeRequests.some(r => r.shipment && r.recipient === user.username && (r.shipment.status === 'IN_TRANSIT' || r.shipment.status === 'DELIVERED') && r.status !== 'COMPLETED') && <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}</button>
                         <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/></button>
                     </div>
                 </nav>
@@ -707,6 +709,14 @@ export default function App() {
             
             {view === 'MY_COLLECTION' && user && (
                 <MyCollection theme={theme} user={user} exhibits={exhibits.filter(e => e.owner === user.username)} allExhibits={exhibits} collections={collections.filter(c => c.owner === user.username)} wishlist={wishlist} onBack={() => navigateTo('FEED')} onExhibitClick={(item) => { if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item }); else handleExhibitClick(item); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} onReact={handleReaction} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+            )}
+
+            {view === 'SHIPMENTS' && user && (
+                <ShipmentsView
+                    tradeRequests={tradeRequests}
+                    currentUser={user}
+                    onBack={() => navigateTo('FEED')}
+                />
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (

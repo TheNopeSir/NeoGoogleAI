@@ -1,8 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { X, RefreshCw, ArrowRightLeft, Lock, Check, Gift, MessageSquare, ChevronRight, AlertCircle, DollarSign, Wallet } from 'lucide-react';
-import { Exhibit, UserProfile, TradeType } from '../types';
+import { X, RefreshCw, ArrowRightLeft, Lock, Check, Gift, MessageSquare, ChevronRight, AlertCircle, DollarSign, Wallet, Truck } from 'lucide-react';
+import { Exhibit, UserProfile, TradeType, DeliveryMethod, DeliveryTariff, ShippingAddress, PickupPoint } from '../types';
 import { sendTradeRequest } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import DeliveryMethodSelector from './delivery/DeliveryMethodSelector';
+import ShippingAddressForm, { validateAddress } from './delivery/ShippingAddressForm';
+import PickupPointMap from './delivery/PickupPointMap';
 
 interface TradeOfferModalProps {
     targetItem?: Exhibit; // If initiated from an item (Target inventory)
@@ -25,18 +28,29 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
     isWishlist = false,
     wishlistId
 }) => {
-    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
     const [tradeType, setTradeType] = useState<TradeType>('DIRECT');
     const [mySelectedItems, setMySelectedItems] = useState<string[]>([]);
-    
-    // In Wishlist mode, we don't "take" the targetItem, we fulfill a wish. 
-    // So if isWishlist is true, theirSelectedItems starts empty. 
+
+    // In Wishlist mode, we don't "take" the targetItem, we fulfill a wish.
+    // So if isWishlist is true, theirSelectedItems starts empty.
     // Otherwise, it starts with targetItem if available.
     const [theirSelectedItems, setTheirSelectedItems] = useState<string[]>(!isWishlist && targetItem ? [targetItem.id] : []);
-    
+
     const [moneyAmount, setMoneyAmount] = useState<string>('');
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Delivery step state
+    const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | null>(null);
+    const [selectedTariff, setSelectedTariff] = useState<DeliveryTariff | null>(null);
+    const [senderAddress, setSenderAddress] = useState<Partial<ShippingAddress>>({});
+    const [recipientAddress, setRecipientAddress] = useState<Partial<ShippingAddress>>({});
+    const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
+    const [showPickupMap, setShowPickupMap] = useState(false);
+
+    // Delivery step is shown for all trade types except GIFT
+    const hasDeliveryStep = tradeType !== 'GIFT';
 
     // Filter locked items
     const availableMyItems = useMemo(() => userInventory.filter(i => !i.isDraft && !i.lockedInTradeId), [userInventory]);
@@ -101,32 +115,49 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
             if (tradeType === 'MONEY') {
                 if (!moneyAmount || parseInt(moneyAmount) <= 0) return alert("Введите корректную сумму в рублях");
                 if (isWishlist) {
-                    // Selling: Must select my item to give
                     if (mySelectedItems.length === 0) return alert("Выберите предмет, который вы продаете");
                 } else {
-                    // Buying: Must select their item to buy
                     if (theirSelectedItems.length === 0) return alert("Выберите предмет, который хотите купить");
                 }
             } else if (tradeType === 'GIFT') {
                 if (mySelectedItems.length === 0) return alert("Выберите подарок");
             } else {
-                // Direct / Multi
                 if (isWishlist) {
-                     // Fulfilling wish: Must give item. Might not ask for anything (Gift) or specific item?
-                     // If Direct/Multi in wishlist context, implies swap.
-                     if (mySelectedItems.length === 0) return alert("Выберите предмет для обмена");
+                    if (mySelectedItems.length === 0) return alert("Выберите предмет для обмена");
                 } else {
                     if (theirSelectedItems.length === 0) return alert("Выберите, что вы хотите получить");
                     if (mySelectedItems.length === 0) return alert("Выберите, что вы отдаете");
                 }
             }
             setStep(3);
+        } else if (step === 3 && hasDeliveryStep) {
+            setStep(4);
         }
     };
 
     const handleSubmit = async () => {
+        // Delivery step validation (only for non-GIFT trades that use delivery)
+        if (hasDeliveryStep) {
+            if (!deliveryMethod) return alert("Выберите способ доставки");
+            if (!validateAddress(senderAddress)) return alert("Заполните адрес отправителя");
+            if (deliveryMethod === 'COURIER' && !validateAddress(recipientAddress)) return alert("Заполните адрес получателя");
+            if (deliveryMethod === 'PICKUP_POINT' && !selectedPickupPoint) return alert("Выберите пункт выдачи на карте");
+        }
+
         setIsSubmitting(true);
         try {
+            const shipmentPayload = hasDeliveryStep && deliveryMethod && selectedTariff ? {
+                provider: 'yandex' as const,
+                method: deliveryMethod,
+                cost: selectedTariff.cost,
+                status: 'PENDING' as const,
+                senderAddress: senderAddress as ShippingAddress,
+                recipientAddress: deliveryMethod === 'COURIER' ? recipientAddress as ShippingAddress : undefined,
+                pickupPointId: selectedPickupPoint?.id,
+                pickupPointAddress: selectedPickupPoint?.address,
+                createdAt: new Date().toISOString(),
+            } : undefined;
+
             await sendTradeRequest({
                 recipient: recipient.username,
                 senderItems: mySelectedItems,
@@ -136,7 +167,8 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                 price: moneyAmount ? parseInt(moneyAmount) : undefined,
                 currency: 'RUB',
                 isWishlistFulfillment: isWishlist,
-                wishlistId: wishlistId
+                wishlistId: wishlistId,
+                shipment: shipmentPayload,
             });
             alert("Предложение отправлено!");
             onClose();
@@ -293,10 +325,69 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
         </div>
     );
 
+    const renderStep4_Delivery = () => (
+        <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] p-1 custom-scrollbar">
+            <div className="flex items-center gap-2 mb-2">
+                <Truck size={18} className="text-green-500" />
+                <h3 className="font-pixel text-sm text-white uppercase">Способ Доставки</h3>
+            </div>
+
+            <DeliveryMethodSelector
+                fromCity={senderAddress.city || 'Москва'}
+                toCity={recipientAddress.city || 'Москва'}
+                selected={deliveryMethod}
+                onSelect={(method, tariff) => {
+                    setDeliveryMethod(method);
+                    setSelectedTariff(tariff);
+                    if (method === 'PICKUP_POINT') {
+                        setShowPickupMap(true);
+                    }
+                }}
+            />
+
+            {selectedPickupPoint && deliveryMethod === 'PICKUP_POINT' && (
+                <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-xl text-xs text-green-300">
+                    <p className="font-bold mb-0.5">ПВЗ выбран:</p>
+                    <p>{selectedPickupPoint.name}</p>
+                    <p className="opacity-70">{selectedPickupPoint.address}</p>
+                    <button
+                        onClick={() => setShowPickupMap(true)}
+                        className="mt-1 text-green-400 underline"
+                    >
+                        Изменить
+                    </button>
+                </div>
+            )}
+
+            <div className="border-t border-white/10 pt-4">
+                <ShippingAddressForm
+                    value={senderAddress}
+                    onChange={setSenderAddress}
+                    title="Адрес отправителя (ваш)"
+                />
+            </div>
+
+            {deliveryMethod === 'COURIER' && (
+                <div className="border-t border-white/10 pt-4">
+                    <ShippingAddressForm
+                        value={recipientAddress}
+                        onChange={setRecipientAddress}
+                        title={`Адрес получателя (@${recipient.username})`}
+                    />
+                </div>
+            )}
+        </div>
+    );
+
+    // Total steps: 4 for non-GIFT, 3 for GIFT
+    const totalSteps = hasDeliveryStep ? 4 : 3;
+    const isLastStep = hasDeliveryStep ? step === 4 : step === 3;
+
     return (
+        <>
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in zoom-in-95">
             <div className="w-full max-w-2xl max-h-[90vh] h-full flex flex-col bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden font-sans">
-                
+
                 {/* Header */}
                 <div className="bg-[#222] p-4 flex justify-between items-center border-b border-white/5 flex-shrink-0">
                     <div className="flex items-center gap-3">
@@ -314,6 +405,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                     <div className={`flex-1 h-1 ${step >= 1 ? 'bg-green-500' : 'bg-white/10'}`}/>
                     <div className={`flex-1 h-1 ${step >= 2 ? 'bg-green-500' : 'bg-white/10'}`}/>
                     <div className={`flex-1 h-1 ${step >= 3 ? 'bg-green-500' : 'bg-white/10'}`}/>
+                    {hasDeliveryStep && <div className={`flex-1 h-1 ${step >= 4 ? 'bg-green-500' : 'bg-white/10'}`}/>}
                 </div>
 
                 {/* Content - Scrollable */}
@@ -321,17 +413,18 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                     {step === 1 && renderStep1_Type()}
                     {step === 2 && renderStep2_Selection()}
                     {step === 3 && renderStep3_Confirm()}
+                    {step === 4 && renderStep4_Delivery()}
                 </div>
 
                 {/* Footer - Fixed */}
                 <div className="p-4 bg-[#222] border-t border-white/5 flex justify-between flex-shrink-0">
                     {step > 1 ? (
-                        <button onClick={() => setStep(prev => prev - 1 as any)} className="px-6 py-3 border border-white/20 rounded-xl font-bold text-xs uppercase hover:bg-white/5 text-white">Назад</button>
+                        <button onClick={() => setStep(prev => (prev - 1) as any)} className="px-6 py-3 border border-white/20 rounded-xl font-bold text-xs uppercase hover:bg-white/5 text-white">Назад</button>
                     ) : (
                         <div></div>
                     )}
-                    
-                    {step < 3 ? (
+
+                    {!isLastStep ? (
                         <button onClick={handleNext} className="px-8 py-3 bg-green-600 text-black font-bold rounded-xl text-xs uppercase hover:bg-green-500 flex items-center gap-2">
                             Далее <ChevronRight size={16}/>
                         </button>
@@ -343,6 +436,19 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                 </div>
             </div>
         </div>
+
+        {/* Pickup point map overlay */}
+        {showPickupMap && (
+            <PickupPointMap
+                city={senderAddress.city || 'Москва'}
+                onSelect={pt => {
+                    setSelectedPickupPoint(pt);
+                    setShowPickupMap(false);
+                }}
+                onClose={() => setShowPickupMap(false)}
+            />
+        )}
+        </>
     );
 };
 

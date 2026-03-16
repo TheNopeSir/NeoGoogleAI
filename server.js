@@ -959,6 +959,115 @@ api.post('/exhibits', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' }); }
 });
 
+// ─── Delivery Proxy (Yandex Delivery) ────────────────────────────────────────
+// If YANDEX_DELIVERY_TOKEN is empty, all endpoints return mock data.
+
+const YANDEX_DELIVERY_TOKEN = process.env.YANDEX_DELIVERY_TOKEN || '';
+const YANDEX_API_BASE = process.env.YANDEX_DELIVERY_SANDBOX === 'true'
+    ? 'https://b2b.taxi.tst.yandex.net/b2b/cargo/integration/v1'
+    : 'https://b2b.taxi.yandex.net/b2b/cargo/integration/v1';
+
+const isMockDelivery = !YANDEX_DELIVERY_TOKEN;
+
+// Mock data
+const MOCK_PICKUP_POINTS = [
+    { id: 'pvz-msk-001', name: 'Яндекс ПВЗ — Арбат', address: 'Москва, ул. Арбат, д. 12', lat: 55.7494, lon: 37.5929, workingHours: 'Пн–Вс: 9:00–21:00', provider: 'yandex' },
+    { id: 'pvz-msk-002', name: 'Яндекс ПВЗ — Тверская', address: 'Москва, Тверская ул., д. 7', lat: 55.7634, lon: 37.6066, workingHours: 'Пн–Сб: 10:00–22:00', provider: 'yandex' },
+    { id: 'pvz-msk-003', name: 'Яндекс ПВЗ — Таганская', address: 'Москва, Таганская ул., д. 3', lat: 55.7388, lon: 37.6539, workingHours: 'Пн–Вс: 8:00–22:00', provider: 'yandex' },
+];
+
+async function yandexPost(path, body) {
+    const https = await import('https');
+    const { default: fetch } = await import('node-fetch').catch(() => ({ default: global.fetch }));
+    const res = await fetch(YANDEX_API_BASE + path, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${YANDEX_DELIVERY_TOKEN}`,
+        },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Yandex Delivery API ${res.status}: ${await res.text()}`);
+    return res.json();
+}
+
+api.post('/delivery/tariffs', async (req, res) => {
+    try {
+        if (isMockDelivery) {
+            return res.json([
+                { method: 'COURIER', cost: 390, days: 2, label: 'Курьер до двери' },
+                { method: 'PICKUP_POINT', cost: 290, days: 3, label: 'Пункт выдачи' },
+            ]);
+        }
+        const { from, to, weightKg = 1 } = req.body;
+        const data = await yandexPost('/check-price', {
+            items: [{ quantity: 1, size: { height: 0.1, length: 0.3, width: 0.2 }, weight: weightKg, cost_value: '100', cost_currency: 'RUB', droppof_point: 1, pickup_point: 1 }],
+            route_points: [
+                { coordinates: { lat: 55.75, lon: 37.61 } },
+                { coordinates: { lat: 55.76, lon: 37.62 } },
+            ],
+            fullname: 'Стандарт',
+        });
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Delivery API error' });
+    }
+});
+
+api.post('/delivery/pickup-points', async (req, res) => {
+    try {
+        if (isMockDelivery) return res.json(MOCK_PICKUP_POINTS);
+        const { city } = req.body;
+        // Yandex Delivery uses location-based search; simplified version
+        const data = await yandexPost('/pickup-points', { city });
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Delivery API error' });
+    }
+});
+
+api.post('/delivery/create', async (req, res) => {
+    try {
+        if (isMockDelivery) {
+            const trackingId = 'MOCK-' + Math.random().toString(16).slice(2, 10).toUpperCase();
+            return res.json({ trackingId });
+        }
+        const { tradeId, senderAddress, recipientAddress, method, cost } = req.body;
+        const data = await yandexPost('/claims/create', {
+            client_requirements: { taxi_class: 'express' },
+            route_points: [
+                { address: { fullname: senderAddress.street + ', ' + senderAddress.house, city: senderAddress.city }, type: 'source', visit_order: 1, contact: { name: senderAddress.fullName, phone: senderAddress.phone } },
+                { address: { fullname: recipientAddress?.street + ', ' + recipientAddress?.house, city: recipientAddress?.city }, type: 'destination', visit_order: 2, contact: { name: recipientAddress?.fullName, phone: recipientAddress?.phone } },
+            ],
+            items: [{ title: `Посылка по трейду ${tradeId}`, size: { height: 0.1, length: 0.3, width: 0.2 }, weight: 1, cost_value: String(cost || 0), cost_currency: 'RUB', quantity: 1, droppof_point: 2, pickup_point: 1 }],
+        });
+        res.json({ trackingId: data.id });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Delivery API error' });
+    }
+});
+
+api.get('/delivery/track/:trackingId', async (req, res) => {
+    try {
+        if (isMockDelivery) {
+            const char = req.params.trackingId.at(-1) ?? '0';
+            const statuses = ['CREATED', 'IN_TRANSIT', 'IN_TRANSIT', 'DELIVERED'];
+            const idx = parseInt(char, 16) % 4;
+            return res.json({ status: statuses[idx] });
+        }
+        const { default: fetch } = await import('node-fetch').catch(() => ({ default: global.fetch }));
+        const r = await fetch(`${YANDEX_API_BASE}/claims/info?claim_id=${req.params.trackingId}`, {
+            headers: { 'Authorization': `Bearer ${YANDEX_DELIVERY_TOKEN}` },
+        });
+        if (!r.ok) throw new Error(`Yandex track error ${r.status}`);
+        const data = await r.json();
+        res.json({ status: data.status });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Delivery API error' });
+    }
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.use('/api', api);
 setupAdminAPI(app, query, cache);
 
