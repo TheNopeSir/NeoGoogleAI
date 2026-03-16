@@ -4,6 +4,7 @@ import { UserProfile, Exhibit } from '../types';
 import DailyBattlesView from './DailyBattlesView';
 import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
+import { getFirstImageUrl } from '../utils/imageUtils';
 import SEO from './SEO';
 
 interface CommunityHubProps {
@@ -350,9 +351,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                     onTouchEnd={e => e.stopPropagation()}
                                 >
                                     {newExhibits.map(item => {
-                                        const img = typeof item.imageUrls?.[0] === 'string'
-                                            ? item.imageUrls[0]
-                                            : (item.imageUrls?.[0] as any)?.thumbnailUrl || (item.imageUrls?.[0] as any)?.url || '';
+                                        const img = getFirstImageUrl(item.imageUrls, 'thumbnail');
                                         return (
                                             <div
                                                 key={item.id}
@@ -484,9 +483,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                     onTouchEnd={e => e.stopPropagation()}
                                 >
                                     {wantedExhibits.map(item => {
-                                        const img = typeof item.imageUrls?.[0] === 'string'
-                                            ? item.imageUrls[0]
-                                            : (item.imageUrls?.[0] as any)?.thumbnailUrl || (item.imageUrls?.[0] as any)?.url || '';
+                                        const img = getFirstImageUrl(item.imageUrls, 'thumbnail');
                                         return (
                                             <div
                                                 key={item.id}

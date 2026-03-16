@@ -1191,30 +1191,67 @@ function finalizeBracket(bracket, now) {
     return changed;
 }
 
-// GET /api/battles?subcategory=X
+// GET /api/battles?category=X  (main category like МУЗЫКА)
+// Auto-picks 2 random subcategories (≥2 items each) → SF1 = subA vs subA, SF2 = subB vs subB
 api.get('/battles', async (req, res) => {
     try {
-        const subcategory = req.query.subcategory || req.query.category; // backward compat
-        if (!subcategory) return res.status(400).json({ error: 'subcategory required' });
+        const category = req.query.category || req.query.subcategory; // subcategory kept for backward compat
+        if (!category) return res.status(400).json({ error: 'category required' });
         const date = getPeriodStart();
-        const bracketId = `${encodeURIComponent(subcategory)}_${date}`;
+        const bracketId = `${encodeURIComponent(category)}_${date}`;
 
         const { rows } = await query(`SELECT data FROM battles WHERE id = $1`, [bracketId]);
         let bracket = rows[0]?.data;
         const now = new Date();
 
         if (!bracket) {
-            // Generate new bracket: pick 4 random non-draft exhibits matching subcategory
-            const { rows: exhibitRows } = await query(
-                `SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
-                [subcategory]
+            // Find 2 distinct subcategories within this category, each with ≥2 items
+            const { rows: subcatRows } = await query(
+                `SELECT data->>'subcategory' AS subcategory, COUNT(*) AS cnt
+                 FROM exhibits
+                 WHERE data->>'category' = $1
+                   AND data->>'subcategory' IS NOT NULL
+                   AND data->>'subcategory' != ''
+                   AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false')
+                 GROUP BY data->>'subcategory'
+                 HAVING COUNT(*) >= 2
+                 ORDER BY RANDOM()
+                 LIMIT 2`,
+                [category]
             );
-            if (exhibitRows.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
 
-            const participants = exhibitRows.map(r => r.id);
-            bracket = buildBracket(subcategory, participants, now);
-            bracket.id = bracketId;
-            bracket.battles.forEach(b => { b.bracketId = bracketId; });
+            if (subcatRows.length >= 2) {
+                const subA = subcatRows[0].subcategory;
+                const subB = subcatRows[1].subcategory;
+                const [resA, resB] = await Promise.all([
+                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 2`, [subA]),
+                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 2`, [subB]),
+                ]);
+                if (resA.rows.length < 2 || resB.rows.length < 2) {
+                    return res.json({ bracket: null, reason: 'not_enough_artifacts' });
+                }
+                // participants: [A1, A2, B1, B2] — SF1 = A1 vs A2, SF2 = B1 vs B2
+                const participants = [resA.rows[0].id, resA.rows[1].id, resB.rows[0].id, resB.rows[1].id];
+                bracket = buildBracket(category, participants, now);
+                bracket.id = bracketId;
+                bracket.battles.forEach(b => { b.bracketId = bracketId; });
+                // Tag each semi-final with its subcategory for display
+                bracket.battles[0].category = subA;
+                bracket.battles[1].category = subB;
+                bracket.subcategoryA = subA;
+                bracket.subcategoryB = subB;
+            } else {
+                // Fallback: try picking any 4 from main category (no subcategory constraint)
+                const { rows: fallbackRows } = await query(
+                    `SELECT id FROM exhibits WHERE data->>'category' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
+                    [category]
+                );
+                if (fallbackRows.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
+                const participants = fallbackRows.map(r => r.id);
+                bracket = buildBracket(category, participants, now);
+                bracket.id = bracketId;
+                bracket.battles.forEach(b => { b.bracketId = bracketId; });
+            }
             await query(`INSERT INTO battles (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [bracketId, bracket]);
         } else {
             const changed = finalizeBracket(bracket, now);
