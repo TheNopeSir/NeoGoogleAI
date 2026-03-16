@@ -9,6 +9,7 @@ interface Props {
     tradeRequests: TradeRequest[];
     currentUser: UserProfile;
     onBack: () => void;
+    embedded?: boolean;
 }
 
 type Tab = 'outgoing' | 'incoming';
@@ -22,7 +23,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
     SHIPPING_PENDING: <Package size={16} className="text-yellow-400" />,
 };
 
-export default function ShipmentsView({ tradeRequests, currentUser, onBack }: Props) {
+export default function ShipmentsView({ tradeRequests, currentUser, onBack, embedded }: Props) {
     const [tab, setTab] = useState<Tab>('outgoing');
     const [trackingReq, setTrackingReq] = useState<TradeRequest | null>(null);
     const [confirming, setConfirming] = useState<string | null>(null);
@@ -57,16 +58,18 @@ export default function ShipmentsView({ tradeRequests, currentUser, onBack }: Pr
 
     return (
         <div className="flex flex-col h-full bg-[var(--color-bg-primary)]">
-            {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-[var(--color-border)] shrink-0">
-                <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors">
-                    <ArrowLeft size={20} className="text-[var(--color-text-secondary)]" />
-                </button>
-                <div>
-                    <h1 className="font-semibold text-[var(--color-text-primary)]">Мои Отправки</h1>
-                    <p className="text-xs text-[var(--color-text-secondary)]">Яндекс Доставка</p>
+            {/* Header — hidden when embedded in profile */}
+            {!embedded && (
+                <div className="flex items-center gap-3 p-4 border-b border-[var(--color-border)] shrink-0">
+                    <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors">
+                        <ArrowLeft size={20} className="text-[var(--color-text-secondary)]" />
+                    </button>
+                    <div>
+                        <h1 className="font-semibold text-[var(--color-text-primary)]">Мои Отправки</h1>
+                        <p className="text-xs text-[var(--color-text-secondary)]">Яндекс Доставка</p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Tabs */}
             <div className="flex border-b border-[var(--color-border)] shrink-0">

@@ -54,6 +54,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
     const [tradeFilter, setTradeFilter] = useState<'ALL' | 'SALE' | 'TRADE' | 'GIFT'>('ALL');
     const [peopleSearch, setPeopleSearch] = useState('');
     const [peopleSort, setPeopleSort] = useState<'SCORE' | 'POSTS' | 'FOLLOWERS'>('SCORE');
+    const [selectedHotCategory, setSelectedHotCategory] = useState<string | null>(null);
 
     const isWinamp = theme === 'winamp';
     const isLight = theme === 'light';
@@ -116,9 +117,10 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
     const newExhibits = useMemo(() =>
         exhibits
             .filter(e => !e.isDraft && new Date(e.timestamp).getTime() > cutoff24h)
+            .filter(e => !selectedHotCategory || e.category === selectedHotCategory)
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             .slice(0, 6),
-        [exhibits]);
+        [exhibits, selectedHotCategory]);
 
     const hotCategories = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -155,12 +157,14 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                     (u.achievements?.find(a => a.id === 'INFLUENCER')?.current || 0) +
                     ((u.followers?.length || 0) * 2),
             }))
+            .filter(u => u.postCount > 0)
             .filter(u => !query || u.username.toLowerCase().includes(query))
             .sort((a, b) => {
                 if (peopleSort === 'SCORE') return b.score - a.score;
                 if (peopleSort === 'POSTS') return b.postCount - a.postCount;
                 return b.followerCount - a.followerCount;
-            });
+            })
+            .slice(0, 10);
     }, [users, exhibits, currentUser, peopleSearch, peopleSort]);
 
     const isFollowing = (username: string) => currentUser?.following?.includes(username) || false;
@@ -307,16 +311,24 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                             <div>
                                 <h3 className={sectionLabel}><Flame size={14} className="text-orange-400" /> ГОРЯЧИЕ КАТЕГОРИИ</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {hotCategories.map(([cat, count]) => (
-                                        <div
-                                            key={cat}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-pixel border transition-all ${isWinamp ? 'bg-[#292929] border-[#505050] text-wa-green' : isXP ? 'bg-[#ECE9D8] border-[#8592B5] text-blue-800' : isLight ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-orange-500/10 border-orange-500/30 text-orange-400'}`}
-                                        >
-                                            <Flame size={10} className="opacity-70" />
-                                            {cat}
-                                            <span className={`text-[9px] font-mono opacity-60`}>{count}</span>
-                                        </div>
-                                    ))}
+                                    {hotCategories.map(([cat, count]) => {
+                                        const isActive = selectedHotCategory === cat;
+                                        return (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedHotCategory(prev => prev === cat ? null : cat)}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-pixel border transition-all cursor-pointer ${
+                                                    isActive
+                                                        ? (isWinamp ? 'bg-wa-gold text-black border-wa-gold' : isXP ? 'bg-blue-700 text-white border-blue-700' : isLight ? 'bg-orange-500 text-white border-orange-500' : 'bg-orange-500 text-black border-orange-500')
+                                                        : (isWinamp ? 'bg-[#292929] border-[#505050] text-wa-green hover:border-wa-gold' : isXP ? 'bg-[#ECE9D8] border-[#8592B5] text-blue-800 hover:border-blue-700' : isLight ? 'bg-orange-50 border-orange-200 text-orange-700 hover:border-orange-400' : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:border-orange-500/60')
+                                                }`}
+                                            >
+                                                <Flame size={10} className="opacity-70" />
+                                                {cat}
+                                                <span className={`text-[9px] font-mono opacity-60`}>{count}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -359,9 +371,22 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         </div>
 
                         {/* New Today */}
-                        {newExhibits.length > 0 && (
+                        {(newExhibits.length > 0 || selectedHotCategory) && (
                             <div>
-                                <h3 className={sectionLabel}><Sparkles size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ</h3>
+                                <h3 className={sectionLabel}>
+                                    <Sparkles size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ
+                                    {selectedHotCategory && (
+                                        <button
+                                            onClick={() => setSelectedHotCategory(null)}
+                                            className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 transition-all"
+                                        >
+                                            {selectedHotCategory} ×
+                                        </button>
+                                    )}
+                                </h3>
+                                {newExhibits.length === 0 && (
+                                    <p className="text-[9px] opacity-40 font-mono py-3">Нет новинок в этой категории за 24ч.</p>
+                                )}
                                 <div
                                     className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
                                     onTouchStart={e => e.stopPropagation()}

@@ -347,7 +347,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           )}
 
           {/* Top-left: category + NEW badge stacked */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1 z-20">
+          <div className={`absolute ${isViewed && !isWanted ? 'top-7' : 'top-2'} left-2 flex flex-col gap-1 z-20`}>
             <div className="px-2 py-0.5 rounded-lg backdrop-blur-md text-[8px] font-pixel border uppercase bg-black/50 text-white border-white/10">
               {item.category}
             </div>
@@ -365,7 +365,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
               <Search size={9} /> РАЗЫСКИВАЕТСЯ
             </div>
           ) : (
-            <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge} z-20`}>
+            <div className={`absolute ${isViewed ? 'top-7' : 'top-2'} right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge} z-20`}>
               <Icon size={9} /> {config.name}
             </div>
           )}

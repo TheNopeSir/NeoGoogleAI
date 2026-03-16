@@ -4,9 +4,9 @@ import {
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings,
     Search, Terminal, Sun, Package, Heart, Link as LinkIcon,
     AlertTriangle, RefreshCw, Crown, AlertCircle, Mail, Key, Bell,
-    BookOpen, Check
+    BookOpen, Check, Truck
 } from 'lucide-react';
-import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem } from '../types';
+import { UserProfile, Exhibit, Collection, GuestbookEntry, UserStatus, AppSettings, WishlistItem, TradeRequest } from '../types';
 import { STATUS_OPTIONS } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar, subscribeToPush, unsubscribeFromPush } from '../services/storageService';
@@ -14,6 +14,7 @@ import WishlistCard from './WishlistCard';
 import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import SEO from './SEO';
+import ShipmentsView from './ShipmentsView';
 
 interface UserProfileViewProps {
     user: UserProfile;
@@ -57,7 +58,8 @@ interface UserProfileViewProps {
     onOpenSocialList: (username: string, type: 'followers' | 'following') => void;
     onThemeChange?: (theme: 'dark' | 'light' | 'xp' | 'winamp') => void;
     onWishlistClick: (item: WishlistItem) => void;
-    allUsers: UserProfile[]; 
+    allUsers: UserProfile[];
+    tradeRequests?: TradeRequest[];
 }
 
 const WinampWindow = ({ title, children, className = '' }: { title: string, children?: React.ReactNode, className?: string }) => (
@@ -79,7 +81,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     isEditingProfile, setIsEditingProfile, editTagline, setEditTagline, editBio, setEditBio, editStatus, setEditStatus, editTelegram, setEditTelegram, 
     editPassword, setEditPassword,
     onSaveProfile, onProfileImageUpload, onProfileCoverUpload, guestbookInput, setGuestbookInput, guestbookInputRef, profileTab, setProfileTab, refreshData,
-    onOpenSocialList, onThemeChange, onWishlistClick, allUsers
+    onOpenSocialList, onThemeChange, onWishlistClick, allUsers, tradeRequests = []
 }) => {
     const profileUser = allUsers.find(u => u.username === viewedProfileUsername) || { 
         username: viewedProfileUsername, 
@@ -101,7 +103,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const isWinamp = theme === 'winamp';
     const isPlaceholderEmail = user.email?.includes('placeholder') || user.email?.includes('tg_');
 
-    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST'>('SHELF');
+    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST' | 'SHIPMENTS'>('SHELF');
     const [localProfileTab, setLocalProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>('ARTIFACTS');
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
@@ -371,6 +373,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Heart size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><MessageSquare size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Search size={20} className="mx-auto"/></button>
+                {isCurrentUser && <button onClick={() => setActiveSection('SHIPMENTS')} className={`flex-1 pb-3 text-center relative ${activeSection === 'SHIPMENTS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Truck size={20} className="mx-auto"/></button>}
                 {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Settings size={20} className="mx-auto"/></button>}
             </div>
 
@@ -483,6 +486,17 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             ))
                         )}
                     </div>
+                </div>
+            )}
+
+            {isCurrentUser && activeSection === 'SHIPMENTS' && (
+                <div className="animate-in fade-in -mx-4">
+                    <ShipmentsView
+                        tradeRequests={tradeRequests}
+                        currentUser={user}
+                        onBack={() => {}}
+                        embedded
+                    />
                 </div>
             )}
 
