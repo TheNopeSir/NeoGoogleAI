@@ -43,7 +43,7 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
   const isWinamp = theme === 'winamp';
 
   return (
-    <div className={`max-w-xl mx-auto space-y-8 animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+    <div className={`max-w-4xl mx-auto space-y-8 animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
       <div className="flex items-center justify-between border-b border-dashed border-white/10 pb-4">
         <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
           <ArrowLeft size={14} /> ОТМЕНА

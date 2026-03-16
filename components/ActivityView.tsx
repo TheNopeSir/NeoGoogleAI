@@ -267,7 +267,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     let lastDateLabel = '';
 
     return (
-        <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             
             {/* Header Tabs */}
             <div className={`flex mb-6 border-b ${isWinamp ? 'border-[#505050]' : isLight ? 'border-gray-200' : 'border-gray-500/30'}`}>

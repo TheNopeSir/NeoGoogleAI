@@ -30,7 +30,7 @@ const UserWishlistView: React.FC<UserWishlistViewProps> = ({
     };
 
     return (
-        <div className={`max-w-6xl mx-auto animate-in fade-in pb-32 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto animate-in fade-in pb-32 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={14} /> НАЗАД

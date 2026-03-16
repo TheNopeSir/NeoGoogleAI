@@ -302,7 +302,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
         {/* 3. CONTROLS AREA */}
         <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
-            <div className="max-w-[2400px] mx-auto w-full space-y-3">
+            <div className="max-w-4xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-3">
@@ -418,7 +418,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         </div>
 
         {/* 4. MAIN FEED CONTENT */}
-        <div className="px-4 max-w-[2400px] mx-auto w-full">
+        <div className="px-4 max-w-4xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
                     {/* 🔥 ГОРЯЧЕЕ block */}

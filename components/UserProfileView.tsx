@@ -217,7 +217,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     };
 
     return (
-        <div className={`max-w-7xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 px-4 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
+        <div className={`max-w-4xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 px-4 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
             <SEO title={`@${profileUser.username} | NeoArchive`} />
 
             {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-2 md:px-0"><ArrowLeft size={16} /> НАЗАД</button>}

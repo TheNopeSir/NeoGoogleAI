@@ -31,7 +31,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
     const currentUserProfile = getFullDatabase().users.find(u => u.username === currentUser) || { username: currentUser } as UserProfile;
 
     return (
-        <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             
             {showTradeModal && (
                 <TradeOfferModal

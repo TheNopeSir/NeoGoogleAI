@@ -47,7 +47,7 @@ const SocialListView: React.FC<SocialListViewProps> = ({
     };
 
     return (
-        <div className={`max-w-2xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
              <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
                 <button onClick={onBack} className={`opacity-70 hover:opacity-100 flex items-center gap-2 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <ArrowLeft size={16} /> НАЗАД
