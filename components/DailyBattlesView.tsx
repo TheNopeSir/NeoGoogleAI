@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Swords, Trophy, Clock, Lock, ChevronRight, RefreshCw, Zap, ChevronDown } from 'lucide-react';
+import { Swords, Trophy, Clock, Lock, ChevronRight, RefreshCw, Zap } from 'lucide-react';
 import { Exhibit, ArtifactBattle, DailyBracket } from '../types';
 import { getArtifactTier, TIER_CONFIG, CATEGORY_SUBCATEGORIES } from '../constants';
 import { getDailyBracket, castBattleVote, getBattleHistory } from '../services/storageService';
@@ -14,10 +14,7 @@ interface DailyBattlesViewProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** All subcategories flattened with their parent category */
-const ALL_SUBCATEGORIES: { sub: string; parent: string }[] = Object.entries(CATEGORY_SUBCATEGORIES).flatMap(
-    ([parent, subs]) => subs.map(sub => ({ sub, parent }))
-);
+const MAIN_CATEGORIES = Object.keys(CATEGORY_SUBCATEGORIES);
 
 function formatCountdown(endTime: string): string {
     const diff = new Date(endTime).getTime() - Date.now();
@@ -40,10 +37,10 @@ function saveLocalVote(bracketId: string, battleId: string, exhibitId: string) {
     localStorage.setItem(getVotesKey(bracketId), JSON.stringify(votes));
 }
 
-/** Smart merge: update bracket state only where vote counts/status actually changed */
+/** Smart merge — only update state if vote counts/status actually changed */
 function mergeBracket(prev: DailyBracket | null, next: DailyBracket | null): DailyBracket | null {
     if (!prev || !next) return next;
-    if (prev.id !== next.id) return next; // Different bracket, replace fully
+    if (prev.id !== next.id) return next;
     const changed =
         next.status !== prev.status ||
         next.winner !== prev.winner ||
@@ -63,65 +60,67 @@ function mergeBracket(prev: DailyBracket | null, next: DailyBracket | null): Dai
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, currentUser, onExhibitClick }) => {
-    const [selectedSub, setSelectedSub] = useState<string>('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [bracket, setBracket] = useState<DailyBracket | null>(null);
     const [history, setHistory] = useState<DailyBracket[]>([]);
-    const [firstLoad, setFirstLoad] = useState(true);   // show spinner only on first load
+    const [firstLoad, setFirstLoad] = useState(true);
     const [voting, setVoting] = useState<Record<string, boolean>>({});
     const [localVotes, setLocalVotes] = useState<Record<string, string>>({});
     const [notEnough, setNotEnough] = useState(false);
-    const [expandedParent, setExpandedParent] = useState<string | null>(null);
 
-    // Countdown stored in a ref-driven state to avoid re-rendering battle cards
-    const [tickKey, setTickKey] = useState(0); // tick every second
+    // Separate ticker — only countdown text re-renders, not battle cards
+    const [tickKey, setTickKey] = useState(0);
     const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const isWinamp = theme === 'winamp';
     const isDark = theme === 'dark';
 
-    // ── Subcategory counts ────────────────────────────────────────────────────
+    // ── Category viability check ──────────────────────────────────────────────
 
-    const subCounts = useMemo(() => {
+    /** Count subcategories per main category that have ≥2 non-draft artifacts */
+    const categoryCounts = useMemo(() => {
         const map: Record<string, number> = {};
-        ALL_SUBCATEGORIES.forEach(({ sub }) => {
-            map[sub] = exhibits.filter(e => !e.isDraft && e.subcategory === sub).length;
+        MAIN_CATEGORIES.forEach(cat => {
+            const subs = CATEGORY_SUBCATEGORIES[cat] ?? [];
+            map[cat] = subs.filter(sub =>
+                exhibits.filter(e => !e.isDraft && e.subcategory === sub).length >= 2
+            ).length;
         });
         return map;
     }, [exhibits]);
 
-    // Auto-pick first subcategory with enough exhibits
-    useEffect(() => {
-        if (!selectedSub) {
-            const found = ALL_SUBCATEGORIES.find(({ sub }) => (subCounts[sub] ?? 0) >= 4);
-            if (found) {
-                setSelectedSub(found.sub);
-                setExpandedParent(found.parent);
-            }
-        }
-    }, [subCounts, selectedSub]);
+    const hasBattle = (cat: string) => (categoryCounts[cat] ?? 0) >= 2;
 
-    // Update localVotes when bracket changes
+    // Auto-pick first viable category
+    useEffect(() => {
+        if (!selectedCategory) {
+            const found = MAIN_CATEGORIES.find(c => hasBattle(c));
+            setSelectedCategory(found ?? (MAIN_CATEGORIES[0] || ''));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [categoryCounts]);
+
+    // Sync local votes when bracket id changes
     useEffect(() => {
         if (bracket) setLocalVotes(loadLocalVotes(bracket.id));
     }, [bracket?.id]);
 
     // ── Fetch ─────────────────────────────────────────────────────────────────
 
-    const fetchBracket = useCallback(async (sub: string, silent = false) => {
-        if (!sub) return;
+    const fetchBracket = useCallback(async (cat: string, silent = false) => {
+        if (!cat) return;
         if (!silent) setFirstLoad(true);
         setNotEnough(false);
         try {
-            const result = await getDailyBracket(sub);
+            const result = await getDailyBracket(cat);
             if (result.reason === 'not_enough_artifacts') {
                 setNotEnough(true);
                 setBracket(null);
             } else {
-                // Silent merge: only update state if data actually changed
                 setBracket(prev => mergeBracket(prev, result.bracket));
             }
             if (!silent) {
-                const hist = await getBattleHistory(sub, 5);
+                const hist = await getBattleHistory(cat, 5);
                 setHistory(hist);
             }
         } finally {
@@ -129,21 +128,19 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
         }
     }, []);
 
-    // Load on subcategory change
     useEffect(() => {
-        if (selectedSub) fetchBracket(selectedSub, false);
-    }, [selectedSub, fetchBracket]);
+        if (selectedCategory) fetchBracket(selectedCategory, false);
+    }, [selectedCategory, fetchBracket]);
 
-    // Background refresh every 30s — silent, no spinner
+    // Background silent refresh every 30s
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (selectedSub) fetchBracket(selectedSub, true);
+        const iv = setInterval(() => {
+            if (selectedCategory) fetchBracket(selectedCategory, true);
         }, 30_000);
-        return () => clearInterval(interval);
-    }, [selectedSub, fetchBracket]);
+        return () => clearInterval(iv);
+    }, [selectedCategory, fetchBracket]);
 
-    // ── Countdown tick (only updates a counter, battle cards don't re-render) ─
-
+    // Countdown ticker
     useEffect(() => {
         tickRef.current = setInterval(() => setTickKey(k => k + 1), 1000);
         return () => { if (tickRef.current) clearInterval(tickRef.current); };
@@ -152,41 +149,35 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
     // ── Vote ──────────────────────────────────────────────────────────────────
 
     const handleVote = async (battle: ArtifactBattle, exhibitId: string, voteKey: 'votes1' | 'votes2') => {
-        if (!currentUser || voting[battle.id]) return;
-        if (localVotes[battle.id]) return;
+        if (!currentUser || voting[battle.id] || localVotes[battle.id]) return;
         if (battle.status !== 'ACTIVE') return;
         if (new Date(battle.endTime).getTime() <= Date.now()) return;
         if (!bracket) return;
 
-        // Optimistic update: add vote immediately in local state — smooth, no flash
-        const newVote = { [battle.id]: exhibitId };
-        setLocalVotes(prev => ({ ...prev, ...newVote }));
+        // Optimistic update — instant feedback, no flash
+        setLocalVotes(prev => ({ ...prev, [battle.id]: exhibitId }));
         setBracket(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                battles: prev.battles.map(b => {
-                    if (b.id !== battle.id) return b;
-                    return {
-                        ...b,
-                        votes1: voteKey === 'votes1' ? [...b.votes1, currentUser] : b.votes1,
-                        votes2: voteKey === 'votes2' ? [...b.votes2, currentUser] : b.votes2,
-                    };
+                battles: prev.battles.map(b => b.id !== battle.id ? b : {
+                    ...b,
+                    votes1: voteKey === 'votes1' ? [...b.votes1, currentUser] : b.votes1,
+                    votes2: voteKey === 'votes2' ? [...b.votes2, currentUser] : b.votes2,
                 }),
             };
         });
 
         setVoting(v => ({ ...v, [battle.id]: true }));
         try {
-            const updatedBattle = await castBattleVote(battle.bracketId, battle.id, exhibitId, currentUser);
-            if (updatedBattle) {
+            const updated = await castBattleVote(battle.bracketId, battle.id, exhibitId, currentUser);
+            if (updated) {
                 saveLocalVote(bracket.id, battle.id, exhibitId);
-                // Silent refresh to get server-confirmed counts
-                fetchBracket(selectedSub, true);
+                fetchBracket(selectedCategory, true);
             } else {
-                // Vote failed — roll back optimistic update
+                // Roll back on failure
                 setLocalVotes(loadLocalVotes(bracket.id));
-                fetchBracket(selectedSub, true);
+                fetchBracket(selectedCategory, true);
             }
         } finally {
             setVoting(v => ({ ...v, [battle.id]: false }));
@@ -198,7 +189,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
     const getExhibit = (id: string | null | undefined): Exhibit | undefined =>
         id ? exhibits.find(e => e.id === id) : undefined;
 
-    // ── Artifact card (memoised to prevent re-renders from countdown ticks) ───
+    // ── Compact ArtifactCard (memoised — won't re-render from countdown ticks) ─
 
     const ArtifactCard = useCallback(({
         battle, participantId, voteKey, isWinner, isPending,
@@ -226,34 +217,55 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
             : isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200';
 
         return (
-            <div className={`flex-1 flex flex-col border rounded-xl overflow-hidden ${cardBg} ${iVotedThis ? 'ring-2 ring-green-500' : ''} ${isWinner ? 'ring-2 ring-yellow-400' : ''}`}>
+            <div className={`flex flex-col border rounded-lg overflow-hidden flex-1 min-w-0
+                ${cardBg}
+                ${iVotedThis ? 'ring-2 ring-green-500' : ''}
+                ${isWinner ? 'ring-2 ring-yellow-400' : ''}
+            `}>
                 {/* Image */}
-                <div className="relative aspect-square overflow-hidden cursor-pointer" onClick={() => artifact && onExhibitClick(artifact)}>
+                <div
+                    className="relative overflow-hidden cursor-pointer"
+                    style={{ aspectRatio: '1 / 1' }}
+                    onClick={() => artifact && onExhibitClick(artifact)}
+                >
                     {imgUrl
                         ? <img src={imgUrl} alt={artifact?.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                        : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Swords size={32} className="opacity-20" /></div>
+                        : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Swords size={18} className="opacity-20" /></div>
                     }
-                    {isPending && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><Lock size={24} className="text-gray-400" /></div>}
-                    {isWinner && <div className="absolute top-2 left-2"><Trophy size={20} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.9)]" /></div>}
-                    {tierCfg && <div className={`absolute bottom-2 right-2 text-[8px] font-pixel px-1.5 py-0.5 rounded ${tierCfg.badge}`}>{tierCfg.name}</div>}
+                    {isPending && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <Lock size={14} className="text-gray-400" />
+                        </div>
+                    )}
+                    {isWinner && (
+                        <div className="absolute top-1 left-1">
+                            <Trophy size={12} className="text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.9)]" />
+                        </div>
+                    )}
+                    {tierCfg && (
+                        <div className={`absolute bottom-1 right-1 text-[6px] font-pixel px-1 py-0.5 rounded ${tierCfg.badge}`}>
+                            {tierCfg.name}
+                        </div>
+                    )}
                 </div>
 
                 {/* Info */}
-                <div className="p-2 flex flex-col gap-1.5 flex-1">
-                    <div className="font-pixel text-[9px] leading-tight truncate opacity-80">{artifact?.title || (isPending ? '???' : '—')}</div>
-                    <div className="text-[8px] font-mono opacity-40 truncate">@{artifact?.owner || '???'}</div>
+                <div className="p-1.5 flex flex-col gap-1 flex-1">
+                    <div className="font-pixel text-[8px] leading-tight line-clamp-2 opacity-80">
+                        {artifact?.title || (isPending ? '???' : '—')}
+                    </div>
+                    <div className="text-[7px] font-mono opacity-30 truncate">@{artifact?.owner || '???'}</div>
 
-                    {/* Vote bar — smooth CSS transition, no jump */}
+                    {/* Vote bar with smooth CSS transition — no jump on update */}
                     {(hasVoted || battle.status === 'COMPLETED') && !isPending && (
-                        <div className="mt-1">
-                            <div className="flex justify-between text-[8px] font-mono opacity-60 mb-0.5">
-                                <span>{votes} гол.</span>
-                                <span>{pct}%</span>
+                        <div className="mt-0.5">
+                            <div className="flex justify-between text-[7px] font-mono opacity-50 mb-0.5">
+                                <span>{votes}</span><span>{pct}%</span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-1 rounded-full bg-white/10 overflow-hidden">
                                 <div
                                     className="h-full rounded-full bg-green-500"
-                                    style={{ width: `${pct}%`, transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                                    style={{ width: `${pct}%`, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }}
                                 />
                             </div>
                         </div>
@@ -264,13 +276,13 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         <button
                             onClick={() => participantId && handleVote(battle, participantId, voteKey)}
                             disabled={voting[battle.id]}
-                            className="mt-auto w-full py-1.5 rounded-lg bg-green-500 text-black font-pixel text-[9px] hover:bg-green-400 active:scale-95 transition-all disabled:opacity-50"
+                            className="mt-auto w-full py-1 rounded bg-green-500 text-black font-pixel text-[7px] hover:bg-green-400 active:scale-95 transition-all disabled:opacity-50"
                         >
-                            {voting[battle.id] ? '...' : '▲ ГОЛОСОВАТЬ'}
+                            {voting[battle.id] ? '…' : '▲ VOTE'}
                         </button>
                     )}
                     {hasVoted && iVotedThis && !isPending && (
-                        <div className="mt-auto text-center text-[8px] font-pixel text-green-500 opacity-80">✓ ВАШ ВЫБОР</div>
+                        <div className="mt-auto text-center text-[8px] font-pixel text-green-500">✓</div>
                     )}
                 </div>
             </div>
@@ -278,47 +290,140 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [localVotes, voting, exhibits, currentUser, isWinamp, isDark]);
 
-    // ── Battle block ──────────────────────────────────────────────────────────
+    // ── Derived battle refs (declared early so render fns can close over them) ─
 
-    const renderBattle = (battle: ArtifactBattle, label: string) => {
+    const sf1 = bracket?.battles.find(b => b.round === 1 && b.slotIndex === 0);
+    const sf2 = bracket?.battles.find(b => b.round === 1 && b.slotIndex === 1);
+    const final = bracket?.battles.find(b => b.round === 2);
+
+    // ── Battle blocks ─────────────────────────────────────────────────────────
+
+    const sfBg = isWinamp
+        ? 'bg-[#292929] border-[#505050]'
+        : isDark ? 'bg-white/3 border-white/5' : 'bg-gray-100 border-gray-200';
+
+    /** Renders one semi-final as a compact 2-card pair */
+    const renderSfPair = (battle: ArtifactBattle, label: string) => {
         const isPending = battle.status === 'PENDING';
         const isCompleted = battle.status === 'COMPLETED';
-        const isFinal = battle.round === 2;
-        // Countdown rendered from tickKey — only the text re-renders, not the cards
         const timeLeft = !isPending && !isCompleted ? formatCountdown(battle.endTime) : null;
-
-        const bgClass = isWinamp
-            ? 'bg-[#292929] border-[#505050]'
-            : isDark ? 'bg-white/3 border-white/5' : 'bg-gray-100 border-gray-200';
+        const totalVotes = battle.votes1.length + battle.votes2.length;
 
         return (
-            <div key={battle.id} className={`border rounded-2xl p-3 mb-4 ${bgClass}`}>
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        <Swords size={14} className={isFinal ? 'text-yellow-400' : 'text-green-500'} />
-                        <span className={`font-pixel text-[10px] ${isFinal ? 'text-yellow-400' : 'text-green-500'}`}>{label}</span>
+            <div className={`flex-1 min-w-0 rounded-xl border p-2 flex flex-col gap-2 ${sfBg}`}>
+                {/* Sub-header: subcategory name + timer */}
+                <div className="flex items-center justify-between min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                        <span className="font-pixel text-[8px] text-green-500 truncate">
+                            {(battle as any).category || label}
+                        </span>
+                        <span className="text-[7px] font-mono opacity-25 flex-shrink-0">· {label}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {isPending && <div className="flex items-center gap-1 text-[9px] font-mono opacity-40"><Lock size={10} /> ЖДЁТ ПОЛУФИНАЛА</div>}
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                        {isPending && <Lock size={8} className="opacity-30" />}
                         {timeLeft && (
-                            <div className="flex items-center gap-1 text-[9px] font-mono text-orange-400">
-                                <Clock size={10} />
-                                {/* tickKey causes only this span to re-render */}
+                            <div className="flex items-center gap-0.5 text-[8px] font-mono text-orange-400">
+                                <Clock size={8} />
+                                {/* tickKey means only this text node re-renders */}
                                 <span key={tickKey}>{timeLeft}</span>
                             </div>
                         )}
-                        {isCompleted && <div className="flex items-center gap-1 text-[9px] font-mono text-yellow-500"><Trophy size={10} /> ЗАВЕРШЕНО</div>}
+                        {isCompleted && <Trophy size={8} className="text-yellow-500" />}
                     </div>
                 </div>
 
-                <div className="flex items-stretch gap-3">
-                    <ArtifactCard battle={battle} participantId={battle.participant1} voteKey="votes1" isWinner={battle.winner === battle.participant1} isPending={isPending} />
-                    <div className="flex items-center"><div className="font-pixel text-sm opacity-40">VS</div></div>
-                    <ArtifactCard battle={battle} participantId={battle.participant2} voteKey="votes2" isWinner={battle.winner === battle.participant2} isPending={isPending} />
+                {/* 2 artifact cards + VS divider */}
+                <div className="flex items-stretch gap-1.5">
+                    <ArtifactCard
+                        battle={battle}
+                        participantId={battle.participant1}
+                        voteKey="votes1"
+                        isWinner={battle.winner === battle.participant1}
+                        isPending={isPending}
+                    />
+                    <div className="flex items-center flex-shrink-0">
+                        <span className="font-pixel text-[9px] opacity-20">vs</span>
+                    </div>
+                    <ArtifactCard
+                        battle={battle}
+                        participantId={battle.participant2}
+                        voteKey="votes2"
+                        isWinner={battle.winner === battle.participant2}
+                        isPending={isPending}
+                    />
                 </div>
 
-                {!isPending && (battle.votes1.length + battle.votes2.length) > 0 && (
-                    <div className="mt-2 text-center text-[8px] font-mono opacity-30">
+                {totalVotes > 0 && (
+                    <div className="text-center text-[7px] font-mono opacity-20">
+                        {totalVotes} голосов
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    /** Renders the final match (wider layout) */
+    const renderFinal = (battle: ArtifactBattle) => {
+        const isPending = battle.status === 'PENDING';
+        const isCompleted = battle.status === 'COMPLETED';
+        const timeLeft = !isPending && !isCompleted ? formatCountdown(battle.endTime) : null;
+        const finalBg = isWinamp
+            ? 'bg-[#292929] border-yellow-600/30'
+            : isDark ? 'bg-yellow-500/5 border-yellow-500/15' : 'bg-yellow-50 border-yellow-200';
+
+        return (
+            <div className={`rounded-xl border p-3 ${finalBg}`}>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <Swords size={12} className="text-yellow-400" />
+                        <span className="font-pixel text-[10px] text-yellow-400">⚔ ФИНАЛ</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        {isPending && (
+                            <div className="flex items-center gap-1 text-[8px] font-mono opacity-35">
+                                <Lock size={8} />
+                                {sf1 && sf1.status === 'ACTIVE'
+                                    ? <span key={tickKey}>откроется через {formatCountdown(sf1.endTime)}</span>
+                                    : <span>ждёт полуфинала</span>
+                                }
+                            </div>
+                        )}
+                        {timeLeft && (
+                            <div className="flex items-center gap-1 text-[8px] font-mono text-orange-400">
+                                <Clock size={9} />
+                                <span key={tickKey}>{timeLeft}</span>
+                            </div>
+                        )}
+                        {isCompleted && (
+                            <div className="flex items-center gap-1 text-[8px] font-mono text-yellow-500">
+                                <Trophy size={9} /> ЗАВЕРШЁН
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-stretch gap-4">
+                    <ArtifactCard
+                        battle={battle}
+                        participantId={battle.participant1}
+                        voteKey="votes1"
+                        isWinner={battle.winner === battle.participant1}
+                        isPending={isPending}
+                    />
+                    <div className="flex items-center flex-shrink-0">
+                        <span className="font-pixel text-sm opacity-30">VS</span>
+                    </div>
+                    <ArtifactCard
+                        battle={battle}
+                        participantId={battle.participant2}
+                        voteKey="votes2"
+                        isWinner={battle.winner === battle.participant2}
+                        isPending={isPending}
+                    />
+                </div>
+
+                {(battle.votes1.length + battle.votes2.length) > 0 && (
+                    <div className="mt-2 text-center text-[8px] font-mono opacity-20">
                         Всего голосов: {battle.votes1.length + battle.votes2.length}
                     </div>
                 )}
@@ -326,204 +431,182 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
         );
     };
 
-    // ── History card ──────────────────────────────────────────────────────────
-
-    const renderHistoryCard = (b: DailyBracket) => {
-        const champion = getExhibit(b.winner);
-        const imgUrl = champion ? getFirstImageUrl(champion.imageUrls, 'thumbnail') : '';
-        return (
-            <div
-                key={b.id}
-                className={`flex-shrink-0 w-24 rounded-xl overflow-hidden border cursor-pointer hover:scale-105 transition-transform ${isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : 'bg-white/5 border-white/10'}`}
-                onClick={() => champion && onExhibitClick(champion)}
-            >
-                {imgUrl
-                    ? <img src={imgUrl} alt={champion?.title} className="w-full aspect-square object-cover" />
-                    : <div className="w-full aspect-square bg-white/5 flex items-center justify-center"><Trophy size={20} className="opacity-20" /></div>
-                }
-                <div className="p-1.5">
-                    <div className="text-[7px] font-mono opacity-30">{b.date}</div>
-                    <div className="text-[8px] font-pixel truncate opacity-70">{champion?.title || '???'}</div>
-                    <div className="text-[7px] font-pixel text-yellow-500">🏆 ЧЕМ.</div>
-                </div>
-            </div>
-        );
-    };
-
-    const sf1 = bracket?.battles.find(b => b.round === 1 && b.slotIndex === 0);
-    const sf2 = bracket?.battles.find(b => b.round === 1 && b.slotIndex === 1);
-    const final = bracket?.battles.find(b => b.round === 2);
-
-    // ── Subcategory selector (grouped by parent) ──────────────────────────────
-
-    const parentCategories = useMemo(() => Object.keys(CATEGORY_SUBCATEGORIES), []);
+    const containerClass = isWinamp ? 'text-[#00ff00] font-mono' : isDark ? 'text-gray-200' : 'text-gray-800';
+    const labelClass = 'text-[9px] font-pixel opacity-40 mb-2 tracking-widest flex items-center gap-1.5';
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    const containerClass = isWinamp ? 'text-[#00ff00] font-mono' : isDark ? 'text-gray-200' : 'text-gray-800';
-    const labelClass = 'text-[9px] font-pixel opacity-40 mb-2 tracking-widest flex items-center gap-2';
-
     return (
         <div className={`${containerClass} animate-in fade-in duration-300`}>
+
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <Swords size={18} className="text-orange-400" />
+                    <Swords size={16} className="text-orange-400" />
                     <h2 className="font-pixel text-sm tracking-widest">БИТВЫ</h2>
-                    <span className="text-[8px] font-mono opacity-30 border border-white/10 rounded px-1.5 py-0.5">3 ДНЯ</span>
+                    <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">3 ДНЯ</span>
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-mono opacity-40">
-                    <Clock size={12} />
+                <div className="text-[8px] font-mono opacity-25">
                     {new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </div>
             </div>
 
-            {/* Subcategory selector (accordion by parent category) */}
-            <div className="mb-4 space-y-1">
-                {parentCategories.map(parent => {
-                    const subs = CATEGORY_SUBCATEGORIES[parent] ?? [];
-                    const isExpanded = expandedParent === parent;
-                    const hasEnough = subs.some(s => (subCounts[s] ?? 0) >= 4);
-                    const isActive = subs.includes(selectedSub);
-
+            {/* ── Category carousel (horizontal pills) ────────────────────── */}
+            <div
+                className="flex gap-2 overflow-x-auto pb-2 mb-4"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+            >
+                {MAIN_CATEGORIES.map(cat => {
+                    const viable = hasBattle(cat);
+                    const isSelected = selectedCategory === cat;
                     return (
-                        <div key={parent} className={`rounded-xl overflow-hidden border transition-all ${
-                            isWinamp
-                                ? 'border-[#505050] bg-[#1a1a1a]'
-                                : isActive
-                                ? isDark ? 'border-orange-500/40 bg-orange-500/5' : 'border-orange-300 bg-orange-50'
-                                : isDark ? 'border-white/5 bg-white/3' : 'border-gray-200 bg-gray-50'
-                        }`}>
-                            {/* Parent header */}
-                            <button
-                                className="w-full flex items-center justify-between px-3 py-2 text-left"
-                                onClick={() => setExpandedParent(isExpanded ? null : parent)}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className={`font-pixel text-[10px] ${isActive ? 'text-orange-400' : 'opacity-60'}`}>{parent}</span>
-                                    {!hasEnough && <span className="text-[8px] font-mono opacity-30">мало</span>}
-                                </div>
-                                <ChevronDown size={12} className={`opacity-40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                            </button>
-
-                            {/* Subcategory pills */}
-                            {isExpanded && (
-                                <div className="px-3 pb-3 flex flex-wrap gap-1.5">
-                                    {subs.map(sub => {
-                                        const count = subCounts[sub] ?? 0;
-                                        const enough = count >= 4;
-                                        const isSelected = selectedSub === sub;
-                                        return (
-                                            <button
-                                                key={sub}
-                                                onClick={() => { if (enough) setSelectedSub(sub); }}
-                                                disabled={!enough}
-                                                title={!enough ? `Нужно 4, есть ${count}` : undefined}
-                                                className={`px-2.5 py-1 rounded-lg font-pixel text-[8px] transition-all ${
-                                                    isSelected
-                                                        ? 'bg-orange-500 text-black'
-                                                        : enough
-                                                        ? isWinamp ? 'border border-[#505050] hover:border-[#00ff00]' : 'border border-white/10 hover:border-orange-500/60 hover:bg-orange-500/10'
-                                                        : 'opacity-20 cursor-not-allowed border border-dashed border-white/10'
-                                                }`}
-                                            >
-                                                {sub}
-                                                {!enough && <span className="ml-1 opacity-60">{count}/4</span>}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-full font-pixel text-[9px] transition-all border ${
+                                isSelected
+                                    ? 'bg-orange-500 text-black border-orange-500'
+                                    : viable
+                                    ? isWinamp
+                                        ? 'border-[#505050] hover:border-[#00ff00] hover:text-[#00ff00]'
+                                        : isDark
+                                        ? 'border-white/15 hover:border-orange-500/60 hover:bg-orange-500/10'
+                                        : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50'
+                                    : 'border-white/5 opacity-25 cursor-default'
+                            }`}
+                            title={!viable ? 'Недостаточно артефактов в подкатегориях' : undefined}
+                        >
+                            {cat}
+                        </button>
                     );
                 })}
             </div>
 
-            {/* Content */}
+            {/* ── Main content ─────────────────────────────────────────────── */}
+
             {firstLoad && !bracket ? (
                 <div className="flex items-center justify-center py-16 gap-2 opacity-40">
                     <RefreshCw size={16} className="animate-spin" />
-                    <span className="font-pixel text-xs">ЗАГРУЗКА ТУРНИРА...</span>
+                    <span className="font-pixel text-xs">ЗАГРУЗКА...</span>
                 </div>
+
             ) : notEnough ? (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-                    <Swords size={32} className="mx-auto mb-3 opacity-20" />
+                    <Swords size={28} className="mx-auto mb-3 opacity-20" />
                     <div className="font-pixel text-xs opacity-40">НЕДОСТАТОЧНО АРТЕФАКТОВ</div>
-                    <div className="text-[10px] font-mono opacity-30 mt-1">Нужно минимум 4 объекта в подкатегории</div>
+                    <div className="text-[9px] font-mono opacity-25 mt-1">
+                        Нужно ≥2 подкатегории с минимум 2 объектами
+                    </div>
                 </div>
+
             ) : !bracket ? (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-                    <Zap size={32} className="mx-auto mb-3 opacity-20" />
-                    <div className="font-pixel text-xs opacity-40">ВЫБЕРИТЕ ПОДКАТЕГОРИЮ</div>
+                    <Zap size={28} className="mx-auto mb-3 opacity-20" />
+                    <div className="font-pixel text-xs opacity-40">НЕТ ДАННЫХ</div>
                 </div>
+
             ) : (
                 <>
-                    {/* Active subcategory label */}
-                    <div className="mb-3 flex items-center gap-2">
-                        <div className="text-[9px] font-mono opacity-30">{bracket.category}</div>
-                        {bracket.status === 'COMPLETED' && (
-                            <div className="text-[8px] font-pixel text-yellow-500 border border-yellow-500/30 rounded px-1.5 py-0.5">ЗАВЕРШЁН</div>
-                        )}
-                    </div>
-
                     {/* Champion banner */}
                     {bracket.winner && (
-                        <div className={`mb-4 p-3 rounded-2xl border flex items-center gap-3 bg-yellow-500/10 border-yellow-500/30`}>
-                            <Trophy size={24} className="text-yellow-400 flex-shrink-0" />
-                            <div>
-                                <div className="font-pixel text-[9px] text-yellow-500">🏆 ЧЕМПИОН</div>
-                                <div className="font-pixel text-xs font-bold">{getExhibit(bracket.winner)?.title || '???'}</div>
+                        <div className="mb-4 p-3 rounded-2xl border flex items-center gap-3 bg-yellow-500/10 border-yellow-500/30">
+                            <Trophy size={22} className="text-yellow-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                                <div className="font-pixel text-[8px] text-yellow-500">🏆 ЧЕМПИОН</div>
+                                <div className="font-pixel text-xs font-bold truncate">
+                                    {getExhibit(bracket.winner)?.title || '???'}
+                                </div>
                             </div>
                             <button
-                                onClick={() => { const e = getExhibit(bracket.winner); if (e) onExhibitClick(e); }}
-                                className="ml-auto text-yellow-400 hover:text-yellow-300 transition-colors"
+                                onClick={() => {
+                                    const e = getExhibit(bracket.winner);
+                                    if (e) onExhibitClick(e);
+                                }}
+                                className="ml-auto text-yellow-400 hover:text-yellow-300 transition-colors flex-shrink-0"
                             >
-                                <ChevronRight size={16} />
+                                <ChevronRight size={14} />
                             </button>
                         </div>
                     )}
 
-                    {/* Semi-finals */}
-                    <div className={labelClass}>ПОЛУФИНАЛЫ · 36Ч</div>
-                    {sf1 && renderBattle(sf1, 'ПОЛУФИНАЛ 1')}
-                    {sf2 && renderBattle(sf2, 'ПОЛУФИНАЛ 2')}
-
-                    {/* Separator */}
-                    <div className="flex items-center gap-3 my-4 opacity-15">
-                        <div className="flex-1 h-px bg-current" />
-                        <Swords size={12} />
-                        <div className="flex-1 h-px bg-current" />
+                    {/* ── Semi-finals: 4-in-a-row ──────────────────────────── */}
+                    <div className={labelClass}>
+                        <Swords size={9} className="text-green-500" /> ПОЛУФИНАЛЫ · 36Ч
                     </div>
 
-                    {/* Final */}
-                    <div className={`${labelClass} text-yellow-400/60`}>
-                        ФИНАЛ · 36Ч
-                        {final?.status === 'PENDING' && sf1?.status === 'ACTIVE' && (
-                            <span className="opacity-50">· откроется через {formatCountdown(sf1.endTime)}</span>
+                    <div className="flex items-stretch gap-2 mb-4">
+                        {sf1 && renderSfPair(sf1, 'СФ1')}
+
+                        {/* Vertical divider with sword icon */}
+                        {sf1 && sf2 && (
+                            <div className="flex flex-col items-center justify-center w-5 flex-shrink-0">
+                                <div className="flex-1 w-px bg-white/8" />
+                                <Swords size={10} className="opacity-15 my-1 flex-shrink-0" />
+                                <div className="flex-1 w-px bg-white/8" />
+                            </div>
                         )}
-                    </div>
-                    {final && renderBattle(final, '⚔ ФИНАЛ')}
 
-                    {/* Silent refresh indicator — tiny dot in corner, no spinner */}
-                    <div className="text-center mt-1 mb-6">
+                        {sf2 && renderSfPair(sf2, 'СФ2')}
+                    </div>
+
+                    {/* ── Divider ───────────────────────────────────────────── */}
+                    <div className="flex items-center gap-3 my-4 opacity-10">
+                        <div className="flex-1 h-px bg-current" />
+                        <Swords size={10} />
+                        <div className="flex-1 h-px bg-current" />
+                    </div>
+
+                    {/* ── Final ─────────────────────────────────────────────── */}
+                    <div className={`${labelClass} text-yellow-400/50`}>
+                        <Trophy size={9} className="text-yellow-500" /> ФИНАЛ · 36Ч
+                    </div>
+                    {final && renderFinal(final)}
+
+                    {/* Refresh link */}
+                    <div className="text-center mt-4 mb-2">
                         <button
-                            onClick={() => fetchBracket(selectedSub, false)}
-                            className="flex items-center gap-1.5 mx-auto text-[8px] font-mono opacity-20 hover:opacity-60 transition-opacity"
+                            onClick={() => fetchBracket(selectedCategory, false)}
+                            className="flex items-center gap-1.5 mx-auto text-[8px] font-mono opacity-15 hover:opacity-50 transition-opacity"
                         >
-                            <RefreshCw size={9} /> ОБНОВИТЬ
+                            <RefreshCw size={8} /> ОБНОВИТЬ
                         </button>
                     </div>
                 </>
             )}
 
-            {/* History */}
+            {/* ── History ──────────────────────────────────────────────────── */}
             {history.length > 0 && (
-                <div className="mt-2">
+                <div className="mt-4">
                     <div className={labelClass}>
-                        <Trophy size={10} className="text-yellow-500" /> ПРОШЛЫЕ ЧЕМПИОНЫ
+                        <Trophy size={9} className="text-yellow-500" /> ПРОШЛЫЕ ЧЕМПИОНЫ
                     </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                        {history.map(renderHistoryCard)}
+                    <div
+                        className="flex gap-3 overflow-x-auto pb-2"
+                        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+                    >
+                        {history.map(b => {
+                            const champion = getExhibit(b.winner);
+                            const imgUrl = champion ? getFirstImageUrl(champion.imageUrls, 'thumbnail') : '';
+                            return (
+                                <div
+                                    key={b.id}
+                                    className={`flex-shrink-0 w-20 rounded-xl overflow-hidden border cursor-pointer hover:scale-105 transition-transform ${
+                                        isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : 'bg-white/5 border-white/10'
+                                    }`}
+                                    onClick={() => champion && onExhibitClick(champion)}
+                                >
+                                    {imgUrl
+                                        ? <img src={imgUrl} alt={champion?.title} className="w-full aspect-square object-cover" />
+                                        : <div className="w-full aspect-square bg-white/5 flex items-center justify-center"><Trophy size={16} className="opacity-20" /></div>
+                                    }
+                                    <div className="p-1.5">
+                                        <div className="text-[6px] font-mono opacity-25">{b.date}</div>
+                                        <div className="text-[7px] font-pixel truncate opacity-60">{champion?.title || '???'}</div>
+                                        <div className="text-[7px] font-pixel text-yellow-500">🏆</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
