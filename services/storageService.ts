@@ -869,27 +869,64 @@ export const markSingleNotificationRead = async (id: string, username: string) =
     }
 }
 
-export const toggleFollow = async (me:string, them:string) => {
-    const myUser = hotCache.users.find(u => u.username === me);
+export const toggleFollow = async (me: string, them: string) => {
+    const myUser   = hotCache.users.find(u => u.username === me);
     const theirUser = hotCache.users.find(u => u.username === them);
-    if(myUser) {
-        if(myUser.following.includes(them)) {
-            myUser.following = myUser.following.filter(u => u !== them);
-            if(theirUser) {
-                theirUser.followers = (theirUser.followers || []).filter(u => u !== me);
-                await updateUserProfile(theirUser);
+
+    if (!myUser) return;
+
+    const isCurrentlyFollowing = myUser.following.includes(them);
+
+    // ── Optimistic local update (instant UI feedback) ──
+    if (isCurrentlyFollowing) {
+        myUser.following = myUser.following.filter(u => u !== them);
+        if (theirUser) theirUser.followers = (theirUser.followers || []).filter(u => u !== me);
+    } else {
+        if (!myUser.following.includes(them)) myUser.following.push(them);
+        if (theirUser) {
+            if (!theirUser.followers) theirUser.followers = [];
+            if (!theirUser.followers.includes(me)) theirUser.followers.push(me);
+        }
+    }
+    notifyListeners();
+
+    try {
+        // ── Atomic server-side update via dedicated endpoint ──
+        // Uses PostgreSQL JSON ops — no race conditions, works even if theirUser
+        // is missing from hotCache.
+        const result = await apiCall('/follow', 'POST', {
+            follower: me,
+            following: them,
+            unfollow: isCurrentlyFollowing,
+        });
+
+        if (result.success) {
+            const db = await getDB();
+            if (result.followerProfile) {
+                hotCache.users = hotCache.users.map(u => u.username === me   ? result.followerProfile  : u);
+                await db.put('users', result.followerProfile);
+            }
+            if (result.followingProfile) {
+                hotCache.users = hotCache.users.map(u => u.username === them ? result.followingProfile : u);
+                await db.put('users', result.followingProfile);
+            }
+            notifyListeners();
+        }
+    } catch (e) {
+        // ── Revert optimistic update on failure ──
+        console.error('[toggleFollow] Error:', e);
+        if (isCurrentlyFollowing) {
+            if (!myUser.following.includes(them)) myUser.following.push(them);
+            if (theirUser) {
+                if (!theirUser.followers) theirUser.followers = [];
+                if (!theirUser.followers.includes(me)) theirUser.followers.push(me);
             }
         } else {
-            myUser.following.push(them);
-            if(theirUser) {
-                if(!theirUser.followers) theirUser.followers = [];
-                if(!theirUser.followers.includes(me)) {
-                    theirUser.followers.push(me);
-                    await updateUserProfile(theirUser);
-                }
-            }
+            myUser.following = myUser.following.filter(u => u !== them);
+            if (theirUser) theirUser.followers = (theirUser.followers || []).filter(u => u !== me);
         }
-        await updateUserProfile(myUser);
+        notifyListeners();
+        throw e;
     }
 };
 

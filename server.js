@@ -712,6 +712,62 @@ api.delete('/push/subscribe', async (req, res) => {
     }
 });
 
+// --- FOLLOW / UNFOLLOW (atomic PostgreSQL JSON ops) ---
+api.post('/follow', authLimiter, async (req, res) => {
+    try {
+        const { follower, following, unfollow = false } = req.body;
+        if (!follower || !following) return res.status(400).json({ error: 'follower and following required' });
+
+        if (unfollow) {
+            // Remove from follower's following list
+            await query(`
+                UPDATE users SET data = jsonb_set(data, '{following}',
+                    COALESCE((SELECT jsonb_agg(v) FROM jsonb_array_elements(COALESCE(data->'following','[]'::jsonb)) v WHERE v <> to_jsonb($1::text)), '[]'::jsonb)
+                ), updated_at = NOW() WHERE username = $2
+            `, [following, follower]);
+            // Remove follower from following's followers list
+            await query(`
+                UPDATE users SET data = jsonb_set(data, '{followers}',
+                    COALESCE((SELECT jsonb_agg(v) FROM jsonb_array_elements(COALESCE(data->'followers','[]'::jsonb)) v WHERE v <> to_jsonb($1::text)), '[]'::jsonb)
+                ), updated_at = NOW() WHERE username = $2
+            `, [follower, following]);
+        } else {
+            // Add to follower's following list (idempotent)
+            await query(`
+                UPDATE users SET data = jsonb_set(data, '{following}',
+                    CASE WHEN COALESCE(data->'following','[]'::jsonb) @> to_jsonb($1::text)
+                        THEN COALESCE(data->'following','[]'::jsonb)
+                        ELSE COALESCE(data->'following','[]'::jsonb) || to_jsonb($1::text)
+                    END
+                ), updated_at = NOW() WHERE username = $2
+            `, [following, follower]);
+            // Add to following's followers list (idempotent)
+            await query(`
+                UPDATE users SET data = jsonb_set(data, '{followers}',
+                    CASE WHEN COALESCE(data->'followers','[]'::jsonb) @> to_jsonb($1::text)
+                        THEN COALESCE(data->'followers','[]'::jsonb)
+                        ELSE COALESCE(data->'followers','[]'::jsonb) || to_jsonb($1::text)
+                    END
+                ), updated_at = NOW() WHERE username = $2
+            `, [follower, following]);
+        }
+
+        // Return updated profiles so client can sync hotCache
+        const [followerResult, followingResult] = await Promise.all([
+            query(`SELECT * FROM users WHERE username = $1`, [follower]),
+            query(`SELECT * FROM users WHERE username = $1`, [following]),
+        ]);
+        res.json({
+            success: true,
+            followerProfile:  followerResult.rows[0]  ? mapRow(followerResult.rows[0])  : null,
+            followingProfile: followingResult.rows[0] ? mapRow(followingResult.rows[0]) : null,
+        });
+    } catch (e) {
+        console.error('[FOLLOW] Error:', e);
+        res.status(500).json({ error: e?.message || 'Internal Server Error' });
+    }
+});
+
 const sendPushToUser = async (username, title, body, url = '/') => {
     if (!vapidPublicKey || !vapidPrivateKey) return;
     try {
