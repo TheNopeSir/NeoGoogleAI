@@ -56,6 +56,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [guestbook, setGuestbook] = useState<GuestbookEntry[]>([]);
   const [tradeRequests, setTradeRequests] = useState<TradeRequest[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   
   const [selectedExhibit, setSelectedExhibit] = useState<Exhibit | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -213,7 +214,7 @@ export default function App() {
       else if (root === 'create') setView('CREATE_HUB');
       else if (root === 'my-collection') setView('MY_COLLECTION');
       else if (root === 'u' || root === 'profile') {
-          const username = segments[1];
+          const username = segments[1] ? decodeURIComponent(segments[1]) : '';
           if (username) {
               setViewedProfileUsername(username);
               if (segments[2] === 'wishlist') setView('USER_WISHLIST');
@@ -246,7 +247,7 @@ export default function App() {
       if (newView === 'SHIPMENTS' && user) {
           if (!params?.username) setViewedProfileUsername(user.username);
           setView('USER_PROFILE');
-          window.history.pushState({ view: 'USER_PROFILE', params }, '', `/u/${user.username}`);
+          window.history.pushState({ view: 'USER_PROFILE', params }, '', `/u/${encodeURIComponent(user.username)}`);
           return;
       }
 
@@ -276,8 +277,8 @@ export default function App() {
       setView(newView);
 
       let path = '/';
-      if (newView === 'USER_PROFILE') path = `/u/${params?.username || viewedProfileUsername}`;
-      else if (newView === 'USER_WISHLIST') path = `/u/${params?.username || viewedProfileUsername}/wishlist`;
+      if (newView === 'USER_PROFILE') path = `/u/${encodeURIComponent(params?.username || viewedProfileUsername)}`;
+      else if (newView === 'USER_WISHLIST') path = `/u/${encodeURIComponent(params?.username || viewedProfileUsername)}/wishlist`;
       else if (newView === 'EXHIBIT') path = `/artifact/${params?.item?.id || selectedExhibit?.id}`;
       else if (newView === 'COLLECTION_DETAIL') path = `/collection/${params?.collection?.id || selectedCollection?.id}`;
       else if (newView === 'COMMUNITY_HUB') path = '/community';
@@ -313,6 +314,7 @@ export default function App() {
     setMessages(data.messages || []);
     setGuestbook(data.guestbook || []);
     setTradeRequests([...(data.tradeRequests || [])]);
+    setAllUsers([...(data.users || [])]);
     setIsOffline(db.isOffline());
     
     if (user) {
@@ -734,7 +736,7 @@ export default function App() {
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (
-                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleReaction(id)} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } if (parentId) { const parentComment = (selectedExhibit.comments || []).find((c: Comment) => c.id === parentId); if (parentComment && parentComment.author !== user.username && parentComment.author !== selectedExhibit.owner) { db.createNotification(parentComment.author, 'COMMENT', user.username, selectedExhibit.id, `↩ ${text.slice(0, 40)}`); } } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onEditComment={handleEditComment} onCommentReact={handleCommentReact} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={db.getFullDatabase().users} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
+                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={() => {}} onFavorite={() => {}} onLike={(id) => handleReaction(id)} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } if (parentId) { const parentComment = (selectedExhibit.comments || []).find((c: Comment) => c.id === parentId); if (parentComment && parentComment.author !== user.username && parentComment.author !== selectedExhibit.owner) { db.createNotification(parentComment.author, 'COMMENT', user.username, selectedExhibit.id, `↩ ${text.slice(0, 40)}`); } } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onEditComment={handleEditComment} onCommentReact={handleCommentReact} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if (!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { await db.deleteExhibit(id); handleBack(); }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={allUsers} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
             )}
 
             {view === 'COLLECTION_DETAIL' && selectedCollection && (
@@ -757,18 +759,18 @@ export default function App() {
 
             {view === 'SEARCH' && (
                 <div className="p-4 pb-24">
-                    <SearchView theme={theme} exhibits={exhibits} collections={collections} users={db.getFullDatabase().users} onBack={handleBack} onExhibitClick={handleExhibitClick} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onReact={handleReaction} currentUser={user} />
+                    <SearchView theme={theme} exhibits={exhibits} collections={collections} users={allUsers} onBack={handleBack} onExhibitClick={handleExhibitClick} onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onReact={handleReaction} currentUser={user} />
                 </div>
             )}
 
             {view === 'COMMUNITY_HUB' && (
                 <div className="p-4 pb-24">
-                    <CommunityHub theme={theme} users={db.getFullDatabase().users} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} currentUsername={user?.username} onReact={handleReaction} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if(!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} />
+                    <CommunityHub theme={theme} users={allUsers} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} currentUsername={user?.username} onReact={handleReaction} onFollow={(u) => { if(user) { db.toggleFollow(user.username, u); if(!user.following.includes(u)) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} />
                 </div>
             )}
 
             {view === 'DIRECT_CHAT' && user && (
-                <DirectChat theme={theme} currentUser={user} partnerUsername={viewedProfileUsername} messages={messages.filter(m => (m.sender.toLowerCase() === user.username.toLowerCase() && m.receiver.toLowerCase() === viewedProfileUsername.toLowerCase()) || (m.sender.toLowerCase() === viewedProfileUsername.toLowerCase() && m.receiver.toLowerCase() === user.username.toLowerCase()))} users={db.getFullDatabase().users} onBack={handleBack} onSendMessage={async (text) => { const msg = { id: crypto.randomUUID(), sender: user.username, receiver: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveMessage(msg); }} onReactToMessage={handleMessageReaction} />
+                <DirectChat theme={theme} currentUser={user} partnerUsername={viewedProfileUsername} messages={messages.filter(m => (m.sender.toLowerCase() === user.username.toLowerCase() && m.receiver.toLowerCase() === viewedProfileUsername.toLowerCase()) || (m.sender.toLowerCase() === viewedProfileUsername.toLowerCase() && m.receiver.toLowerCase() === user.username.toLowerCase()))} users={allUsers} onBack={handleBack} onSendMessage={async (text) => { const msg = { id: crypto.randomUUID(), sender: user.username, receiver: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveMessage(msg); }} onReactToMessage={handleMessageReaction} />
             )}
 
             {/* Other views (Create, Edit etc) */}
@@ -810,7 +812,7 @@ export default function App() {
                       initialData={selectedExhibit} 
                       userArtifacts={exhibits.filter(e => e.owner === user?.username)}
                       currentUser={user}
-                      allUsers={db.getFullDatabase().users}
+                      allUsers={allUsers}
                     />
                 </div>
             )}
@@ -885,7 +887,7 @@ export default function App() {
                     onOpenSocialList={(u, type) => { setViewedProfileUsername(u); setSocialListType(type); setView('SOCIAL_LIST'); }} 
                     onThemeChange={(t) => setTheme(t)} 
                     onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }}
-                    allUsers={db.getFullDatabase().users}
+                    allUsers={allUsers}
                     tradeRequests={tradeRequests}
                 />
             )}
