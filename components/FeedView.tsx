@@ -13,6 +13,7 @@ import { getFirstImageUrl } from '../utils/imageUtils';
 import WishlistCard from './WishlistCard';
 import CollectionCard from './CollectionCard';
 import SEO from './SEO';
+import XI from './XI';
 
 interface FeedViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -320,17 +321,17 @@ const FeedView: React.FC<FeedViewProps> = ({
                             'bg-gradient-to-r from-purple-500 to-violet-500 shadow-md shadow-purple-500/20'
                         } ${feedMode === 'ARTIFACTS' ? 'translate-x-0.5' : feedMode === 'COLLECTIONS' ? 'translate-x-[calc(100%+1px)]' : 'translate-x-[calc(200%+1px)]'}`} />
                         <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
-                            <LayoutGrid size={12} /> ЛЕНТА
+                            <XI icon={LayoutGrid} size={12} /> ЛЕНТА
                         </button>
                         <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
-                            <Folder size={12} /> АЛЬБОМЫ
+                            <XI icon={Folder} size={12} /> АЛЬБОМЫ
                         </button>
                         <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
-                            <Radar size={12} /> ВИШЛИСТ
+                            <XI icon={Radar} size={12} /> ВИШЛИСТ
                         </button>
                     </div>
                     <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white'}`}>
-                        <Search size={18} />
+                        <XI icon={Search} size={18} />
                     </button>
                 </div>
 
@@ -342,7 +343,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     </div>
 
                     <div className="flex gap-1 shrink-0">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><LayoutGrid size={15}/></button>
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><XI icon={LayoutGrid} size={15}/></button>
                         <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
                     </div>
 
@@ -394,7 +395,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         : isLight ? 'bg-black/[0.05] text-black/40 hover:text-black/70' : 'bg-white/[0.05] text-white/40 hover:text-white/70'
                                 }`}
                             >
-                                <DollarSign size={10} /> С ЦЕНОЙ
+                                <XI icon={DollarSign} size={10} /> С ЦЕНОЙ
                             </button>
 
                             {priceFilterEnabled && (
@@ -470,7 +471,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     ) : processedExhibits.length === 0 ? (
                         <div className="text-center py-20 opacity-50 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">
-                            <Inbox size={36} className="mx-auto mb-3 opacity-40" />
+                            <XI icon={Inbox} size={36} className="mx-auto mb-3 opacity-40" />
                             ЗДЕСЬ ПОКА ПУСТО<br/>
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
@@ -498,7 +499,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             <img src={getFirstImageUrl(item.imageUrls, 'thumbnail')} className="w-full h-full object-cover" />
                                             {item.postType === 'WANTED' && (
                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                                    <Search size={18} className="text-amber-400" />
+                                                    <XI icon={Search} size={18} className="text-amber-400" />
                                                 </div>
                                             )}
                                         </div>
@@ -514,7 +515,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                             onClick={() => onReact(item.id)}
                                                             className="flex items-center gap-1 text-[10px] hover:text-red-500 transition-colors p-1 -m-1 cursor-pointer interactive"
                                                         >
-                                                            <Heart size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} />
+                                                            <XI icon={Heart} size={12} className={isLiked ? "text-red-500 fill-current" : "opacity-60"} />
                                                             <span>{item.likes}</span>
                                                         </button>
                                                     </div>
@@ -609,7 +610,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                                     >
                                                         ПРОФИЛЬ
                                                     </button>
-                                                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                    {isExpanded ? <XI icon={ChevronUp} size={20} /> : <XI icon={ChevronDown} size={20} />}
                                                 </div>
                                             </div>
 
@@ -645,7 +646,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
             <div ref={observerRef} className="h-16 flex items-center justify-center">
                 {isLoadingMore && (
-                    <Loader2 size={20} className="animate-spin text-white/30" />
+                    <XI icon={Loader2} size={20} className="animate-spin text-white/30" />
                 )}
             </div>
         </div>
@@ -657,7 +658,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                 className={`fixed bottom-24 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all md:bottom-8 ${isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500 text-black hover:bg-green-400'}`}
                 aria-label="Наверх"
             >
-                <ArrowUp size={18} />
+                <XI icon={ArrowUp} size={18} />
             </button>
         )}
     </div>

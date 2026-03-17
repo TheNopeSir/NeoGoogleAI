@@ -5,6 +5,7 @@ import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRAD
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface CreateArtifactViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -157,7 +158,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
     <div className={`max-w-4xl mx-auto space-y-8 animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
       <div className="flex items-center justify-between">
         <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-          <ArrowLeft size={14} /> ОТМЕНА
+          <XI icon={ArrowLeft} size={14} /> ОТМЕНА
         </button>
         <h2 className={`font-pixel text-lg ${isWinamp ? 'text-[#00ff00]' : ''}`}>
           {initialData ? 'РЕДАКТИРОВАНИЕ' : isWanted ? 'Я_ИЩУ' : 'НОВЫЙ_АРТЕФАКТ'}
@@ -176,7 +177,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 : 'opacity-40 hover:opacity-70'
             }`}
           >
-            <Archive size={12} /> АРТЕФАКТ
+            <XI icon={Archive} size={12} /> АРТЕФАКТ
           </button>
           <button
             type="button"
@@ -187,14 +188,14 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 : 'opacity-40 hover:opacity-70'
             }`}
           >
-            <Search size={12} /> Я ИЩУ
+            <XI icon={Search} size={12} /> Я ИЩУ
           </button>
         </div>
       )}
 
       {isWanted && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/8 text-amber-400 text-[10px] font-pixel">
-          <Search size={14} />
+          <XI icon={Search} size={14} />
           Публичный запрос — другие коллекционеры увидят, что вы ищете этот предмет
         </div>
       )}
@@ -222,14 +223,14 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 {/* Main Image Indicator */}
                 {idx === 0 && (
                   <div className="absolute top-2 left-2 bg-yellow-500 text-black p-1.5 rounded-full shadow-lg">
-                    <Star size={12} fill="currentColor" />
+                    <XI icon={Star} size={12} fill="currentColor" />
                   </div>
                 )}
 
                 {/* Drag Handle */}
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="bg-black/70 text-white p-1 rounded">
-                    <GripVertical size={14} />
+                    <XI icon={GripVertical} size={14} />
                   </div>
                 </div>
 
@@ -242,7 +243,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                         className="bg-white/20 hover:bg-white/30 text-white p-1 rounded transition-colors"
                         title="Переместить влево"
                       >
-                        <ChevronLeft size={14} />
+                        <XI icon={ChevronLeft} size={14} />
                       </button>
                     )}
                     {idx !== 0 && (
@@ -251,7 +252,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                         className="bg-yellow-500/80 hover:bg-yellow-500 text-black p-1 rounded transition-colors"
                         title="Сделать главным"
                       >
-                        <Star size={14} />
+                        <XI icon={Star} size={14} />
                       </button>
                     )}
                     {idx < images.length - 1 && (
@@ -260,7 +261,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                         className="bg-white/20 hover:bg-white/30 text-white p-1 rounded transition-colors"
                         title="Переместить вправо"
                       >
-                        <ChevronRight size={14} />
+                        <XI icon={ChevronRight} size={14} />
                       </button>
                     )}
                   </div>
@@ -271,7 +272,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
                   className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
                 >
-                  <X size={14} />
+                  <XI icon={X} size={14} />
                 </button>
               </div>
             ))}
@@ -279,7 +280,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               onClick={() => fileInputRef.current?.click()}
               className={`w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl transition-all ${isWinamp ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'dark' ? 'border-white/10 hover:border-green-500/50 bg-white/5' : 'border-black/10 hover:border-black/30'}`}
             >
-              <Camera size={28} />
+              <XI icon={Camera} size={28} />
               <span className="text-[10px] font-pixel">ДОБАВИТЬ_ФОТО</span>
             </button>
             <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
@@ -306,7 +307,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               </div>
 
               {!isWanted && <div>
-                  <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><Video size={12}/> Ссылка на видео (YouTube/Rutube)</label>
+                  <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={Video} size={12}/> Ссылка на видео (YouTube/Rutube)</label>
                   <input
                       value={videoUrl}
                       onChange={e => setVideoUrl(e.target.value)}
@@ -377,7 +378,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   )}
                 </div>
                 <div>
-                    <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><Award size={12}/> Грейд / Состояние</label>
+                    <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={Award} size={12}/> Грейд / Состояние</label>
                     <select 
                         value={condition} 
                         onChange={e => setCondition(e.target.value)}
@@ -395,7 +396,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               {isAdmin && initialData?.id && (
                 <div className="p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-xl">
                   <label className="text-[10px] font-pixel opacity-70 uppercase tracking-widest mb-2 flex items-center gap-2 text-yellow-500">
-                    <User size={12}/> Владелец артефакта (только для суперадминов)
+                    <XI icon={User} size={12}/> Владелец артефакта (только для суперадминов)
                   </label>
                   <select
                     value={adminOwner}
@@ -417,7 +418,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               {isWanted ? (
                 <div>
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <DollarSign size={12}/> Максимальная цена (необязательно)
+                    <XI icon={DollarSign} size={12}/> Максимальная цена (необязательно)
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -440,7 +441,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 </div>
               ) : (
                 <div>
-                  <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><RefreshCw size={12}/> Статус (Торговый терминал)</label>
+                  <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={RefreshCw} size={12}/> Статус (Торговый терминал)</label>
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     {Object.entries(TRADE_STATUS_CONFIG).filter(([k]) => k !== 'NONE').map(([k, cfg]) => {
                       const statusKey = k as TradeStatus;
@@ -510,7 +511,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
             {!isWanted && <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="font-pixel text-[11px] opacity-70 tracking-widest uppercase flex items-center gap-2">
-                  <Info size={14} className="text-blue-400" /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
+                  <XI icon={Info} size={14} className="text-blue-400" /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
                 </h3>
               </div>
               <div className={`grid grid-cols-1 gap-4 p-5 rounded-2xl border border-white/5 ${isWinamp ? 'bg-black' : 'bg-black/20'}`}>
@@ -530,7 +531,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               {/* Linked Items Selection */}
               <div className="pt-4 border-t border-white/10">
                   <h3 className="font-pixel text-[11px] opacity-70 tracking-widest uppercase flex items-center gap-2 mb-4">
-                      <Link2 size={14} className="text-yellow-400" /> СВЯЗАННЫЕ ПРЕДМЕТЫ
+                      <XI icon={Link2} size={14} className="text-yellow-400" /> СВЯЗАННЫЕ ПРЕДМЕТЫ
                   </h3>
                   <div className="max-h-48 overflow-y-auto grid grid-cols-1 gap-2 pr-2 custom-scrollbar">
                       {userArtifacts.filter(a => a.id !== initialData?.id).length === 0 && <div className="text-center opacity-30 text-[10px] py-4">Нет других предметов для связки</div>}
@@ -558,13 +559,13 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
             onClick={() => handleSubmit(false)}
             className="flex-1 py-5 bg-green-500 text-black rounded-2xl font-pixel text-sm tracking-[0.2em] hover:scale-[1.01] active:scale-95 transition-all shadow-[0_0_30px_rgba(74,222,128,0.4)] flex items-center justify-center gap-3 font-black"
           >
-            <Save size={20} /> СОХРАНИТЬ В АРХИВ
+            <XI icon={Save} size={20} /> СОХРАНИТЬ В АРХИВ
           </button>
           <button 
             onClick={() => handleSubmit(true)}
             className="px-8 py-5 bg-white/5 border-2 border-white/10 rounded-2xl font-pixel text-[10px] opacity-60 hover:opacity-100 hover:bg-white/10 transition-all flex items-center justify-center gap-3 tracking-widest"
           >
-            <Archive size={20} /> В ЧЕРНОВИКИ
+            <XI icon={Archive} size={20} /> В ЧЕРНОВИКИ
           </button>
         </div>
       </div>

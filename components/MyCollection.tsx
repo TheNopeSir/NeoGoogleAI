@@ -4,6 +4,7 @@ import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import WishlistCard from './WishlistCard';
+import XI from './XI';
 
 interface MyCollectionProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -63,10 +64,10 @@ const MyCollection: React.FC<MyCollectionProps> = ({
         <div className={`max-w-4xl mx-auto animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             <div className="flex items-center justify-between mb-6">
                 <button onClick={onBack} className={`flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={16} /> НАЗАД
+                    <XI icon={ArrowLeft} size={16} /> НАЗАД
                 </button>
                 <div className={`font-pixel text-lg flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <Package size={24} />
+                    <XI icon={Package} size={24} />
                     МОЯ ПОЛКА
                 </div>
             </div>
@@ -89,7 +90,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {activeTab === 'DRAFTS' && (
                 <div className="animate-in slide-in-from-right-4">
                     <h3 className="font-pixel text-xs mb-4 opacity-70 flex items-center gap-2 uppercase tracking-widest">
-                        <Archive size={14}/> Черновики ({drafts.length})
+                        <XI icon={Archive} size={14}/> Черновики ({drafts.length})
                     </h3>
                     {drafts.length === 0 ? (
                         <div className="text-center py-10 opacity-30 font-pixel text-xs">Нет черновиков</div>
@@ -117,7 +118,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {activeTab === 'MY_ITEMS' && (
                 <div className="animate-in slide-in-from-right-4">
                     <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
-                        <Package size={16} /> Ваши артефакты ({published.length})
+                        <XI icon={Package} size={16} /> Ваши артефакты ({published.length})
                     </h3>
                     {published.length === 0 ? (
                         <div className={`p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'}`}>
@@ -145,7 +146,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {activeTab === 'WISHLIST' && (
                 <div className="animate-in slide-in-from-right-4">
                     <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
-                        <Search size={16} /> Вишлист ({myWishlist.length})
+                        <XI icon={Search} size={16} /> Вишлист ({myWishlist.length})
                     </h3>
                     {myWishlist.length === 0 ? (
                         <div className={`p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'}`}>
@@ -171,7 +172,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {activeTab === 'FAVORITES' && (
                 <div className="animate-in slide-in-from-right-4">
                     <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
-                        <Heart size={16} className="text-red-500" /> Избранные артефакты ({favorites.length})
+                        <XI icon={Heart} size={16} className="text-red-500" /> Избранные артефакты ({favorites.length})
                     </h3>
                     {favorites.length === 0 ? (
                         <div className={`p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'}`}>
@@ -199,7 +200,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {activeTab === 'COLLECTIONS' && (
                 <div className="animate-in slide-in-from-right-4">
                     <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
-                        <FolderPlus size={16} /> Коллекции ({collections.length})
+                        <XI icon={FolderPlus} size={16} /> Коллекции ({collections.length})
                     </h3>
                     {collections.length === 0 ? (
                         <div className={`p-8 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'}`}>

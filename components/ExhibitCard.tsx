@@ -7,6 +7,7 @@ import { getUserAvatar } from '../services/storageService';
 import ProgressiveImage from './ProgressiveImage';
 import { getImageUrl } from '../utils/imageUtils';
 import MatrixIcon from './MatrixIcon';
+import XI from './XI';
 
 interface ExhibitCardProps {
   item: Exhibit;
@@ -145,13 +146,13 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             />
             {isWanted && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                <Search size={24} className="text-amber-400 opacity-70" />
+                <XI icon={Search} size={24} className="text-amber-400 opacity-70" />
               </div>
             )}
             <div className="absolute bottom-1 right-1 text-[8px] font-winamp text-wa-green bg-black/50 px-1">{item.category}</div>
             {photoCount > 1 && (
               <div className="absolute top-1 right-1 flex items-center gap-0.5 text-[8px] font-winamp text-wa-green bg-black/60 px-1">
-                <Camera size={7} /> {photoCount}
+                <XI icon={Camera} size={7} /> {photoCount}
               </div>
             )}
             {isNew && (
@@ -184,7 +185,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
               <span className="text-[#00A000]">{item.views} kbps</span>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 hover:text-white" title="Комментарии">
-                  <MessageSquare size={10} /> {commentCount}
+                  <XI icon={MessageSquare} size={10} /> {commentCount}
                 </div>
                 <button
                   type="button"
@@ -192,7 +193,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                   className="flex items-center gap-1 hover:text-[#FFD700] p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center"
                   title="Лайки"
                 >
-                  <Heart size={10} fill={isLiked ? "currentColor" : "none"} /> {likeCount}
+                  <XI icon={Heart} size={10} fill={isLiked ? "currentColor" : "none"} /> {likeCount}
                 </button>
               </div>
             </div>
@@ -227,11 +228,11 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           />
           {isWanted && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <Search size={32} className="text-amber-400 opacity-80" />
+              <XI icon={Search} size={32} className="text-amber-400 opacity-80" />
             </div>
           )}
           <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[8px] font-pixel font-bold shadow-xl border border-white/10 ${isWanted ? 'bg-amber-500 text-black' : config.badge}`}>
-            {isWanted ? <><Search size={9} /> РАЗЫСКИВАЕТСЯ</> : <><Icon size={10} /> {config.name}</>}
+            {isWanted ? <><XI icon={Search} size={9} /> РАЗЫСКИВАЕТСЯ</> : <><Icon size={10} /> {config.name}</>}
           </div>
           {!isWanted && tradeStatus !== 'NONE' && (
             <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
@@ -241,7 +242,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           )}
           {photoCount > 1 && (
             <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 text-white px-1.5 py-0.5 rounded">
-              <Camera size={9} /> {photoCount}
+              <XI icon={Camera} size={9} /> {photoCount}
             </div>
           )}
           {isNew && (
@@ -277,18 +278,18 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-1 text-[11px] text-black/60" title="Просмотры">
-                <Eye size={12} /> <span>{uniqueViews}</span>
+                <XI icon={Eye} size={12} /> <span>{uniqueViews}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 text-[11px] text-black/60" title="Комментарии">
-                  <MessageSquare size={12} /> <span>{commentCount}</span>
+                  <XI icon={MessageSquare} size={12} /> <span>{commentCount}</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleLike}
                   className={`flex items-center gap-1 text-[11px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-500' : 'text-black/60 hover:text-red-500'}`}
                 >
-                  <Heart size={12} fill={isLiked ? "currentColor" : "none"} />
+                  <XI icon={Heart} size={12} fill={isLiked ? "currentColor" : "none"} />
                   <span>{likeCount}</span>
                 </button>
               </div>
@@ -335,14 +336,14 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           {/* WANTED: magnifying glass overlay */}
           {isWanted && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-              <Search size={36} className="text-amber-400 opacity-60" />
+              <XI icon={Search} size={36} className="text-amber-400 opacity-60" />
             </div>
           )}
 
           {/* ПРОСМОТРЕНО: top strip */}
           {isViewed && !isWanted && (
             <div className="absolute top-0 inset-x-0 flex items-center justify-center gap-1 bg-black/55 backdrop-blur-sm py-1 z-10 pointer-events-none">
-              <Eye size={10} className="text-white/60" />
+              <XI icon={Eye} size={10} className="text-white/60" />
               <span className="text-[8px] font-pixel text-white/60 uppercase tracking-wide">Просмотрено</span>
             </div>
           )}
@@ -363,7 +364,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           {/* Top-right: tier badge or WANTED badge */}
           {isWanted ? (
             <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg bg-amber-500 text-black border border-amber-400/50 z-20">
-              <Search size={9} /> РАЗЫСКИВАЕТСЯ
+              <XI icon={Search} size={9} /> РАЗЫСКИВАЕТСЯ
             </div>
           ) : (
             <div className={`absolute ${isViewed ? 'top-7' : 'top-2'} right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-pixel font-bold shadow-lg border border-white/10 ${config.badge} z-20`}>
@@ -382,7 +383,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           {/* Photo count — bottom right */}
           {photoCount > 1 && (
             <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-md z-20">
-              <Camera size={9} /> {photoCount}
+              <XI icon={Camera} size={9} /> {photoCount}
             </div>
           )}
 
@@ -399,7 +400,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                       onClick={(e) => { e.stopPropagation(); setActionMode('COLLECTION_PICKER'); }}
                       className="flex-1 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-[9px] font-bold text-blue-300 hover:bg-blue-500/30 transition-colors interactive flex items-center justify-center gap-1"
                     >
-                      <FolderPlus size={10} /> Коллекция
+                      <XI icon={FolderPlus} size={10} /> Коллекция
                     </button>
                   )}
                   <button
@@ -407,7 +408,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                     onClick={(e) => { e.stopPropagation(); setActionMode('WISHLIST_PICKER'); }}
                     className="flex-1 py-1.5 bg-purple-500/20 border border-purple-500/40 rounded-lg text-[9px] font-bold text-purple-300 hover:bg-purple-500/30 transition-colors interactive flex items-center justify-center gap-1"
                   >
-                    <BookmarkPlus size={10} /> Вишлист
+                    <XI icon={BookmarkPlus} size={10} /> Вишлист
                   </button>
                 </div>
               )}
@@ -417,7 +418,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[8px] font-pixel opacity-50 px-1">ВЫБЕРИТЕ КОЛЛЕКЦИЮ</span>
                     <button type="button" onClick={(e) => { e.stopPropagation(); setActionMode('NONE'); }} className="p-1 opacity-40 hover:opacity-80 interactive">
-                      <X size={10} />
+                      <XI icon={X} size={10} />
                     </button>
                   </div>
                   {userCollections.length === 0 ? (
@@ -447,7 +448,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[8px] font-pixel opacity-50">ПРИОРИТЕТ</span>
                     <button type="button" onClick={(e) => { e.stopPropagation(); setActionMode('NONE'); }} className="p-1 opacity-40 hover:opacity-80 interactive">
-                      <X size={10} />
+                      <XI icon={X} size={10} />
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-1">
@@ -490,7 +491,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             <div className="flex items-center justify-between gap-2">
               {condition && (
                 <div className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-gray-100 text-gray-600' : 'bg-white/8 text-white/60'}`}>
-                  <Tag size={9} />
+                  <XI icon={Tag} size={9} />
                   <span className="truncate">{condition}</span>
                 </div>
               )}

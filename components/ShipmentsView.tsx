@@ -4,6 +4,7 @@ import type { TradeRequest, UserProfile } from '../types';
 import { confirmDelivery } from '../services/storageService';
 import { shipmentStatusLabel } from '../services/deliveryService';
 import ShipmentTracker from './delivery/ShipmentTracker';
+import XI from './XI';
 
 interface Props {
     tradeRequests: TradeRequest[];
@@ -15,12 +16,12 @@ interface Props {
 type Tab = 'outgoing' | 'incoming';
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
-    PENDING: <Package size={16} className="text-yellow-400" />,
-    CREATED: <PackageSearch size={16} className="text-blue-400" />,
-    IN_TRANSIT: <Truck size={16} className="text-orange-400" />,
-    DELIVERED: <PackageCheck size={16} className="text-green-400" />,
-    FAILED: <Package size={16} className="text-red-400" />,
-    SHIPPING_PENDING: <Package size={16} className="text-yellow-400" />,
+    PENDING: <XI icon={Package} size={16} className="text-yellow-400" />,
+    CREATED: <XI icon={PackageSearch} size={16} className="text-blue-400" />,
+    IN_TRANSIT: <XI icon={Truck} size={16} className="text-orange-400" />,
+    DELIVERED: <XI icon={PackageCheck} size={16} className="text-green-400" />,
+    FAILED: <XI icon={Package} size={16} className="text-red-400" />,
+    SHIPPING_PENDING: <XI icon={Package} size={16} className="text-yellow-400" />,
 };
 
 export default function ShipmentsView({ tradeRequests, currentUser, onBack, embedded }: Props) {
@@ -50,7 +51,7 @@ export default function ShipmentsView({ tradeRequests, currentUser, onBack, embe
         const label = shipmentStatusLabel(s as any);
         return (
             <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-[var(--color-bg-tertiary)]">
-                {STATUS_ICONS[s] ?? <Package size={14} />}
+                {STATUS_ICONS[s] ?? <XI icon={Package} size={14} />}
                 {label}
             </span>
         );
@@ -62,7 +63,7 @@ export default function ShipmentsView({ tradeRequests, currentUser, onBack, embe
             {!embedded && (
                 <div className="flex items-center gap-3 p-4 border-b border-[var(--color-border)] shrink-0">
                     <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors">
-                        <ArrowLeft size={20} className="text-[var(--color-text-secondary)]" />
+                        <XI icon={ArrowLeft} size={20} className="text-[var(--color-text-secondary)]" />
                     </button>
                     <div>
                         <h1 className="font-semibold text-[var(--color-text-primary)]">Мои Отправки</h1>
@@ -99,7 +100,7 @@ export default function ShipmentsView({ tradeRequests, currentUser, onBack, embe
             <div className="flex-1 overflow-y-auto">
                 {displayed.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 py-20 text-[var(--color-text-secondary)]">
-                        <Package size={40} className="opacity-30" />
+                        <XI icon={Package} size={40} className="opacity-30" />
                         <p className="text-sm">Отправок пока нет</p>
                         <p className="text-xs opacity-60 text-center px-8">
                             Отправки появятся здесь когда вы оформите обмен с доставкой
@@ -134,9 +135,9 @@ export default function ShipmentsView({ tradeRequests, currentUser, onBack, embe
                                     {/* Address */}
                                     <div className="flex items-center gap-1.5 mb-3">
                                         {shipment.method === 'COURIER' ? (
-                                            <Truck size={12} className="text-[var(--color-text-secondary)] shrink-0" />
+                                            <XI icon={Truck} size={12} className="text-[var(--color-text-secondary)] shrink-0" />
                                         ) : (
-                                            <Package size={12} className="text-[var(--color-text-secondary)] shrink-0" />
+                                            <XI icon={Package} size={12} className="text-[var(--color-text-secondary)] shrink-0" />
                                         )}
                                         <p className="text-xs text-[var(--color-text-secondary)] truncate">
                                             {shipment.method === 'COURIER'

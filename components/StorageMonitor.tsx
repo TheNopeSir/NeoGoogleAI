@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Database, AlertTriangle, Trash2 } from 'lucide-react';
 import { getStorageEstimate, clearLocalCache } from '../services/storageService';
+import XI from './XI';
 
 interface StorageMonitorProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -47,7 +48,7 @@ const StorageMonitor: React.FC<StorageMonitorProps> = ({ theme }) => {
         <div className={`p-4 rounded border animate-in fade-in slide-in-from-bottom-2 ${isWinamp ? 'bg-[#191919] border-[#505050] text-[#00ff00]' : theme === 'dark' ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 font-pixel text-xs">
-                    <Database size={14} />
+                    <XI icon={Database} size={14} />
                     <span>ХРАНИЛИЩЕ УСТРОЙСТВА</span>
                 </div>
                 <span className="font-mono text-xs font-bold">{stats.percentage.toFixed(1)}%</span>
@@ -64,7 +65,7 @@ const StorageMonitor: React.FC<StorageMonitorProps> = ({ theme }) => {
 
             {isCritical && (
                 <div className="flex items-center gap-2 text-red-500 text-xs font-bold mb-4 animate-pulse">
-                    <AlertTriangle size={14} />
+                    <XI icon={AlertTriangle} size={14} />
                     <span>ВНИМАНИЕ: МАЛО МЕСТА!</span>
                 </div>
             )}
@@ -77,7 +78,7 @@ const StorageMonitor: React.FC<StorageMonitorProps> = ({ theme }) => {
                 }}
                 className="w-full py-2 flex items-center justify-center gap-2 border border-red-500 text-red-500 hover:bg-red-500/10 rounded text-xs font-pixel font-bold transition-colors"
             >
-                <Trash2 size={14} /> ОЧИСТИТЬ КЭШ
+                <XI icon={Trash2} size={14} /> ОЧИСТИТЬ КЭШ
             </button>
             <p className="text-[9px] opacity-50 mt-2 text-center">Очистка кэша освободит место, удалив сохраненные изображения. Приложение перезагрузится.</p>
         </div>

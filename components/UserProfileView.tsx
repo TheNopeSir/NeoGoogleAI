@@ -15,6 +15,7 @@ import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import SEO from './SEO';
 import ShipmentsView from './ShipmentsView';
+import XI from './XI';
 
 interface UserProfileViewProps {
     user: UserProfile;
@@ -222,7 +223,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
         <div className={`max-w-4xl mx-auto space-y-4 animate-in slide-in-from-right-8 fade-in duration-500 pb-32 px-4 ${isWinamp ? 'font-winamp text-wa-green' : ''}`}>
             <SEO title={`@${profileUser.username} | NeoArchive`} />
 
-            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-2 md:px-0"><ArrowLeft size={16} /> НАЗАД</button>}
+            {!isWinamp && <button onClick={onBack} className="flex items-center gap-2 hover:underline opacity-70 font-pixel text-xs px-2 md:px-0"><XI icon={ArrowLeft} size={16} /> НАЗАД</button>}
             
             <div className={isWinamp ? '' : `md:rounded-3xl border-b md:border overflow-hidden relative ${theme === 'dark' ? 'bg-dark-surface border-dark-dim' : 'bg-white border-light-dim'}`}>
                 {isWinamp ? (
@@ -251,7 +252,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <div className="h-32 md:h-52 bg-gray-800 relative group">
                             {profileUser.coverUrl ? <img src={profileUser.coverUrl} className="w-full h-full object-cover" /> : <div className={`w-full h-full ${theme === 'dark' ? 'bg-gradient-to-r from-green-900/20 to-black' : 'bg-gradient-to-r from-gray-100 to-gray-300'}`}></div>}
                             {isEditingProfile && isCurrentUser && (
-                                <label className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-xl cursor-pointer hover:bg-black/70 border border-white/20 flex items-center gap-2 backdrop-blur-sm"><Camera size={16} /> <span className="text-[10px] font-pixel">ОБЛОЖКА</span><input type="file" accept="image/*" className="hidden" onChange={onProfileCoverUpload} /></label>
+                                <label className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-xl cursor-pointer hover:bg-black/70 border border-white/20 flex items-center gap-2 backdrop-blur-sm"><XI icon={Camera} size={16} /> <span className="text-[10px] font-pixel">ОБЛОЖКА</span><input type="file" accept="image/*" className="hidden" onChange={onProfileCoverUpload} /></label>
                             )}
                         </div>
 
@@ -262,7 +263,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <img src={profileUser.avatarUrl} className="w-full h-full object-cover"/>
                                     </div>
                                     {isEditingProfile && isCurrentUser && (
-                                        <label className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"><Camera size={24} className="text-white" /><input type="file" accept="image/*" className="hidden" onChange={onProfileImageUpload} /></label>
+                                        <label className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"><XI icon={Camera} size={24} className="text-white" /><input type="file" accept="image/*" className="hidden" onChange={onProfileImageUpload} /></label>
                                     )}
                                 </div>
 
@@ -275,7 +276,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <div className="flex items-center gap-6 border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'followers')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.followers?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Фолловеры</span></button>
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'following')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.following?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Подписки</span></button>
-                                            <button onClick={() => onViewHallOfFame(viewedProfileUsername)} className="flex flex-col items-center group"><Trophy size={18} className="group-hover:text-yellow-500" /><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Награды</span></button>
+                                            <button onClick={() => onViewHallOfFame(viewedProfileUsername)} className="flex flex-col items-center group"><XI icon={Trophy} size={18} className="group-hover:text-yellow-500" /><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Награды</span></button>
                                         </div>
                                     </div>
                                 </div>
@@ -286,7 +287,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     <div className="space-y-4 bg-black/5 p-4 rounded-xl border border-dashed border-white/10">
                                         {isPlaceholderEmail && (
                                             <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-lg flex items-start gap-3">
-                                                <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+                                                <XI icon={AlertCircle} size={20} className="text-red-500 flex-shrink-0" />
                                                 <div>
                                                     <h3 className="text-red-500 font-bold text-xs mb-1">НЕОБХОДИМО ПРИВЯЗАТЬ EMAIL</h3>
                                                     <p className="text-[10px] opacity-70">
@@ -306,15 +307,15 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/5">
                                             <div>
-                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><Mail size={12}/> Email</label>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><XI icon={Mail} size={12}/> Email</label>
                                                 <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><Key size={12}/> Новый пароль</label>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2"><XI icon={Key} size={12}/> Новый пароль</label>
                                                 <div className="flex gap-2">
                                                     <input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} type={showPassword ? "text" : "password"} placeholder="Изменить пароль..." className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none"/>
-                                                    <button onClick={() => setShowPassword(!showPassword)} className="p-2 border rounded-lg hover:bg-white/10"><Eye size={14}/></button>
-                                                    <button onClick={generateSecurePassword} className="p-2 border rounded-lg hover:bg-white/10"><Wand2 size={14}/></button>
+                                                    <button onClick={() => setShowPassword(!showPassword)} className="p-2 border rounded-lg hover:bg-white/10"><XI icon={Eye} size={14}/></button>
+                                                    <button onClick={generateSecurePassword} className="p-2 border rounded-lg hover:bg-white/10"><XI icon={Wand2} size={14}/></button>
                                                 </div>
                                             </div>
                                         </div>
@@ -324,13 +325,13 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         </div>
                                         {passwordRequestSent && (
                                             <div className="flex items-start gap-2 bg-green-500/10 border border-green-500/40 p-3 rounded-lg text-xs">
-                                                <Check size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
+                                                <XI icon={Check} size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
                                                 <span className="opacity-90">Письмо с подтверждением смены <strong>пароля</strong> отправлено на вашу почту. Проверьте входящие.</span>
                                             </div>
                                         )}
                                         {emailRequestSent && (
                                             <div className="flex items-start gap-2 bg-green-500/10 border border-green-500/40 p-3 rounded-lg text-xs">
-                                                <Check size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
+                                                <XI icon={Check} size={14} className="text-green-500 mt-0.5 flex-shrink-0"/>
                                                 <span className="opacity-90">Письмо с подтверждением нового <strong>email</strong> отправлено на <strong>{editEmail}</strong>. Текущий email останется прежним до подтверждения.</span>
                                             </div>
                                         )}
@@ -342,13 +343,13 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                                                 {isCurrentUser ? (
                                                     <>
-                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setEditEmail(user?.email || ''); setIsEditingProfile(true); }} className="flex-1 md:flex-none px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center justify-center gap-2"><Edit2 size={12} /> Ред.</button>
-                                                        <button onClick={onLogout} className="px-3 py-1.5 border border-red-500/30 text-red-500 rounded-lg"><LogOut size={12} /></button>
+                                                        <button onClick={() => { setEditTagline(user?.tagline || ''); setEditBio(user?.bio || ''); setEditEmail(user?.email || ''); setIsEditingProfile(true); }} className="flex-1 md:flex-none px-3 py-1.5 border rounded-lg text-[10px] uppercase font-bold hover:bg-white/10 flex items-center justify-center gap-2"><XI icon={Edit2} size={12} /> Ред.</button>
+                                                        <button onClick={onLogout} className="px-3 py-1.5 border border-red-500/30 text-red-500 rounded-lg"><XI icon={LogOut} size={12} /></button>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <button onClick={() => onFollow(profileUser.username)} className={`flex-1 md:flex-none px-4 py-2 md:py-1.5 rounded-lg font-bold font-pixel text-[10px] uppercase transition-all ${isSubscribed ? 'border border-white/20 opacity-60' : 'bg-green-500 text-black border-green-500'}`}>{isSubscribed ? 'Подписан' : 'Подписаться'}</button>
-                                                        <button onClick={() => onChat(profileUser.username)} className="px-4 py-2 md:py-1.5 border rounded-lg hover:bg-white/10"><MessageSquare size={14} /></button>
+                                                        <button onClick={() => onChat(profileUser.username)} className="px-4 py-2 md:py-1.5 border rounded-lg hover:bg-white/10"><XI icon={MessageSquare} size={14} /></button>
                                                     </>
                                                 )}
                                             </div>
@@ -356,7 +357,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         {profileUser.bio && <p className="font-mono text-xs opacity-70 whitespace-pre-wrap leading-relaxed max-w-2xl">{profileUser.bio}</p>}
                                         {isCurrentUser && isPlaceholderEmail && !isEditingProfile && (
                                             <div onClick={() => setIsEditingProfile(true)} className="mt-2 bg-red-500/10 border border-red-500/50 p-2 rounded flex items-center gap-2 cursor-pointer hover:bg-red-500/20">
-                                                <AlertCircle size={14} className="text-red-500"/>
+                                                <XI icon={AlertCircle} size={14} className="text-red-500"/>
                                                 <span className="text-[10px] text-red-400 font-bold">Нажмите "Ред.", чтобы установить Email и Пароль.</span>
                                             </div>
                                         )}
@@ -369,12 +370,12 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             </div>
 
             <div className={`flex mb-4 mt-2 px-0 md:px-0 ${isWinamp ? 'gap-1' : 'border-b border-gray-500/30'}`}>
-                <button onClick={() => setActiveSection('SHELF')} className={`flex-1 pb-3 text-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Package size={20} className="mx-auto"/></button>
-                <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Heart size={20} className="mx-auto"/></button>
-                <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><MessageSquare size={20} className="mx-auto"/></button>
-                <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Search size={20} className="mx-auto"/></button>
-                {isCurrentUser && <button onClick={() => setActiveSection('SHIPMENTS')} className={`flex-1 pb-3 text-center relative ${activeSection === 'SHIPMENTS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Truck size={20} className="mx-auto"/></button>}
-                {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><Settings size={20} className="mx-auto"/></button>}
+                <button onClick={() => setActiveSection('SHELF')} className={`flex-1 pb-3 text-center ${activeSection === 'SHELF' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Package} size={20} className="mx-auto"/></button>
+                <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Heart} size={20} className="mx-auto"/></button>
+                <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={MessageSquare} size={20} className="mx-auto"/></button>
+                <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Search} size={20} className="mx-auto"/></button>
+                {isCurrentUser && <button onClick={() => setActiveSection('SHIPMENTS')} className={`flex-1 pb-3 text-center relative ${activeSection === 'SHIPMENTS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Truck} size={20} className="mx-auto"/></button>}
+                {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Settings} size={20} className="mx-auto"/></button>}
             </div>
 
             {/* SECTIONS CONTENT */}
@@ -458,7 +459,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                 className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-green-500 outline-none"
                             />
                             <button onClick={handleGuestbookSubmit} className="bg-green-500 text-black px-4 py-2 rounded-lg hover:bg-green-400">
-                                <Send size={16} />
+                                <XI icon={Send} size={16} />
                             </button>
                         </div>
                     )}
@@ -477,7 +478,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <div className="flex items-center gap-2">
                                             <span className="text-[9px] opacity-40 font-mono">{entry.timestamp}</span>
                                             {(isCurrentUser || entry.author === user.username) && (
-                                                <button onClick={() => handleDeleteEntry(entry.id)} className="text-red-500 opacity-50 hover:opacity-100"><Trash2 size={12}/></button>
+                                                <button onClick={() => handleDeleteEntry(entry.id)} className="text-red-500 opacity-50 hover:opacity-100"><XI icon={Trash2} size={12}/></button>
                                             )}
                                         </div>
                                     </div>
@@ -502,7 +503,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
             {isCurrentUser && activeSection === 'CONFIG' && (
                 <div className="p-6 rounded-xl border flex flex-col gap-6 animate-in fade-in bg-white/5 border-white/10 mx-0 md:mx-0">
-                    <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><Palette size={14}/> Внешний вид</h3>
+                    <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><XI icon={Palette} size={14}/> Внешний вид</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <button onClick={() => updateSetting('theme', 'dark')} className="p-4 border rounded hover:bg-white/10 text-xs">Matrix</button>
                         <button onClick={() => updateSetting('theme', 'light')} className="p-4 border rounded hover:bg-white/10 text-xs">Light</button>
@@ -511,7 +512,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </div>
 
                     <div className="pt-6 border-t border-white/10">
-                        <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><Bell size={14}/> Уведомления</h3>
+                        <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><XI icon={Bell} size={14}/> Уведомления</h3>
                         <div className={`flex items-center justify-between p-4 border rounded transition-all ${pushEnabled ? 'border-green-500/50 bg-green-500/10' : 'border-white/10'}`}>
                             <div>
                                 <div className="font-bold text-xs mb-1">Push-уведомления</div>
@@ -525,8 +526,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </div>
 
                     <div className="pt-6 border-t border-white/10">
-                        <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Danger Zone</h3>
-                        <button onClick={handleHardReset} className="w-full py-4 border-2 border-red-500/50 text-red-500 rounded-xl hover:bg-red-500/10 font-bold text-xs uppercase flex items-center justify-center gap-2"><RefreshCw size={16}/> HARD RESET</button>
+                        <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 text-red-500"><XI icon={AlertTriangle} size={14}/> Danger Zone</h3>
+                        <button onClick={handleHardReset} className="w-full py-4 border-2 border-red-500/50 text-red-500 rounded-xl hover:bg-red-500/10 font-bold text-xs uppercase flex items-center justify-center gap-2"><XI icon={RefreshCw} size={16}/> HARD RESET</button>
                     </div>
                 </div>
             )}

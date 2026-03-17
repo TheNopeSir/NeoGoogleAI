@@ -5,6 +5,7 @@ import { getUserAvatar } from '../services/storageService';
 import MessageReactionPicker from './MessageReactionPicker';
 import ReactionBar from './ReactionBar';
 import { renderTextWithMentions } from '../utils/textUtils';
+import XI from './XI';
 
 interface DirectChatProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -110,13 +111,13 @@ const DirectChat: React.FC<DirectChatProps> = ({
             {/* Header */}
             <div className={`flex items-center justify-between p-4 border-b rounded-t-3xl ${headerBg}`}>
                 <div className="flex items-center gap-4 min-w-0">
-                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}><ArrowLeft size={20} /></button>
+                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}><XI icon={ArrowLeft} size={20} /></button>
                     <div className="flex items-center gap-3 min-w-0">
                         <img src={getUserAvatar(partnerUsername)} className="w-10 h-10 rounded-full border border-green-500/30 flex-shrink-0 object-cover" />
                         <div className="min-w-0">
                             <div className={`font-pixel text-xs font-bold truncate ${isWinamp ? 'text-[#00ff00]' : ''}`}>@{partnerUsername}</div>
                             <div className="flex items-center gap-1 text-[8px] font-mono text-green-500 animate-pulse truncate">
-                                <Shield size={8} /> SECURE_LINK_ESTABLISHED
+                                <XI icon={Shield} size={8} /> SECURE_LINK_ESTABLISHED
                             </div>
                         </div>
                     </div>
@@ -127,7 +128,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide no-scrollbar">
                 {uniqueMessages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
-                        <MessageSquare size={48} />
+                        <XI icon={MessageSquare} size={48} />
                         <p className="font-pixel text-[10px] tracking-widest uppercase">НАЧНИТЕ ДИАЛОГ В СЕТИ</p>
                     </div>
                 ) : (
@@ -227,7 +228,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                         className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
                     />
                     <button type="submit" className="p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0">
-                        <Send size={20} />
+                        <XI icon={Send} size={20} />
                     </button>
                 </div>
             </form>

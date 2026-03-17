@@ -4,6 +4,7 @@ import { Search, Crown, Crosshair } from 'lucide-react';
 import { WishlistItem } from '../types';
 import { WISHLIST_PRIORITY_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
+import XI from './XI';
 
 interface WishlistCardProps {
   item: WishlistItem;
@@ -34,7 +35,7 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
     >
       {/* Target Overlay Effect */}
       <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
-          <Crosshair size={16} className={priorityConfig.color.split(' ')[0]} />
+          <XI icon={Crosshair} size={16} className={priorityConfig.color.split(' ')[0]} />
       </div>
 
       {/* Image Area with "Missing" vibe */}
@@ -51,7 +52,7 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
             </>
         ) : (
             <div className="w-full h-full flex items-center justify-center bg-black/20">
-                <Search size={32} className="opacity-20" />
+                <XI icon={Search} size={32} className="opacity-20" />
             </div>
         )}
         
@@ -69,7 +70,7 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
             <h3 className={`text-[10px] font-bold font-pixel leading-tight uppercase ${isGrail ? 'text-yellow-500' : isWinamp ? 'text-[#00ff00]' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
                 {item.title}
             </h3>
-            {isGrail && <Crown size={12} className="text-yellow-500 shrink-0" />}
+            {isGrail && <XI icon={Crown} size={12} className="text-yellow-500 shrink-0" />}
         </div>
         
         <div className={`text-[9px] font-mono opacity-50 mb-3 truncate ${isWinamp ? 'text-[#00ff00]' : ''}`}>{item.category}</div>

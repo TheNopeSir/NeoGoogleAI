@@ -4,6 +4,7 @@ import { FolderOpen, Share2, Heart, Layers } from 'lucide-react';
 import { Collection } from '../types';
 import { getUserAvatar } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface CollectionCardProps {
     col: Collection;
@@ -35,7 +36,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
           {isXP && (
               <div className="h-6 bg-gradient-to-r from-[#0058EE] to-[#3F8CF3] rounded-t-[4px] flex items-center justify-between px-2 shadow-sm absolute top-0 left-0 right-0 z-20">
                  <div className="flex items-center gap-1">
-                    <FolderOpen size={10} className="text-white"/>
+                    <XI icon={FolderOpen} size={10} className="text-white"/>
                     <span className="text-white font-bold text-[10px] drop-shadow-md truncate font-sans">{col.title}</span>
                  </div>
                  <div className="flex gap-1">
@@ -60,7 +61,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
               {!isXP && (
                   <div className="flex justify-between items-start">
                       <div className={`px-2 py-1 rounded-lg backdrop-blur-md border text-[9px] font-pixel flex items-center gap-1.5 uppercase tracking-widest ${isWinamp ? 'bg-black border-[#00ff00] text-[#00ff00]' : 'bg-black/40 border-white/10 text-white/90'}`}>
-                          <Layers size={10} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}/> КОЛЛЕКЦИЯ
+                          <XI icon={Layers} size={10} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}/> КОЛЛЕКЦИЯ
                       </div>
                   </div>
               )}
@@ -87,7 +88,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
                                   onClick={(e) => { e.stopPropagation(); onLike(e); }}
                                   className={`flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-sm border transition-colors ${isLiked ? 'bg-red-500/20 border-red-500/50 text-red-400' : (isXP ? 'bg-white/50 border-blue-900/10 text-blue-900 hover:bg-white' : isWinamp ? 'bg-black border-[#505050] text-[#00ff00] hover:bg-[#202020]' : 'bg-white/10 border-white/10 text-white hover:bg-white/20')}`}
                               >
-                                  <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+                                  <XI icon={Heart} size={14} fill={isLiked ? "currentColor" : "none"} />
                                   <span className="text-[10px] font-bold">{col.likes || 0}</span>
                               </button>
                           )}

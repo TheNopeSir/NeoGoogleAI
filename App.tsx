@@ -30,11 +30,13 @@ import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
+import { ThemeContext } from './components/ThemeContext';
 
 import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, ProcessedImage, AchievementProgress } from './types';
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
+import XI from './components/XI';
 
 const CACHE_VERSION = 'v6.0_CLEAN_ID';
 
@@ -625,32 +627,33 @@ export default function App() {
   const getNavIcon = (viewName: ViewState) => {
       if (theme === 'winamp') {
           switch(viewName) {
-              case 'FEED': return <ListMusic size={24} />;
-              case 'COMMUNITY_HUB': return <Radio size={24} />;
-              case 'CREATE_HUB': return <Zap size={24} />;
-              case 'ACTIVITY': return <Activity size={24} />;
+              case 'FEED': return <XI icon={ListMusic} size={24} />;
+              case 'COMMUNITY_HUB': return <XI icon={Radio} size={24} />;
+              case 'CREATE_HUB': return <XI icon={Zap} size={24} />;
+              case 'ACTIVITY': return <XI icon={Activity} size={24} />;
               default: return null; 
           }
       }
       if (theme === 'xp') {
           switch(viewName) {
-              case 'FEED': return <LayoutTemplate size={24} />;
-              case 'COMMUNITY_HUB': return <Globe size={24} />;
-              case 'CREATE_HUB': return <FilePlus2 size={24} />;
-              case 'ACTIVITY': return <Flag size={24} />;
+              case 'FEED': return <XI icon={LayoutTemplate} size={24} />;
+              case 'COMMUNITY_HUB': return <XI icon={Globe} size={24} />;
+              case 'CREATE_HUB': return <XI icon={FilePlus2} size={24} />;
+              case 'ACTIVITY': return <XI icon={Flag} size={24} />;
               default: return null;
           }
       }
       switch(viewName) {
-          case 'FEED': return <LayoutGrid size={24} />;
-          case 'COMMUNITY_HUB': return <Globe size={24} />;
-          case 'CREATE_HUB': return <Plus size={24} />;
-          case 'ACTIVITY': return <Bell size={24} />;
+          case 'FEED': return <XI icon={LayoutGrid} size={24} />;
+          case 'COMMUNITY_HUB': return <XI icon={Globe} size={24} />;
+          case 'CREATE_HUB': return <XI icon={Plus} size={24} />;
+          case 'ACTIVITY': return <XI icon={Bell} size={24} />;
           default: return null;
       }
   };
 
   return (
+    <ThemeContext.Provider value={theme}>
     <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
@@ -660,7 +663,7 @@ export default function App() {
 
         {isOffline && (
             <div className="fixed top-16 md:top-20 left-0 right-0 z-40 bg-yellow-500/90 text-black text-center py-1 px-4 text-xs font-bold font-mono flex justify-center items-center gap-2">
-                <WifiOff size={14}/> OFFLINE MODE / SYNCHRONIZING...
+                <XI icon={WifiOff} size={14}/> OFFLINE MODE / SYNCHRONIZING...
             </div>
         )}
 
@@ -675,22 +678,22 @@ export default function App() {
 
                     <div className="flex items-center gap-8">
                         <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
-                            <LayoutGrid size={18} /> ЛЕНТА
+                            <XI icon={LayoutGrid} size={18} /> ЛЕНТА
                         </button>
                         <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'COMMUNITY_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
-                            <Globe size={18} /> СЕТЬ
+                            <XI icon={Globe} size={18} /> СЕТЬ
                         </button>
                         <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'CREATE_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
-                            <PlusCircle size={18} /> СОЗДАТЬ
+                            <XI icon={PlusCircle} size={18} /> СОЗДАТЬ
                         </button>
                         <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 relative ${view === 'ACTIVITY' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
-                            <Bell size={18} /> АКТИВНОСТЬ
+                            <XI icon={Bell} size={18} /> АКТИВНОСТЬ
                             {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]" />}
                         </button>
                     </div>
 
                     <div className="flex items-center gap-6">
-                        <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><Search size={20}/></button>
+                        <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><XI icon={Search} size={20}/></button>
                         <div className="h-6 w-[1px] bg-white/10"></div>
                         <div onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className="flex items-center gap-3 cursor-pointer group">
                             <div className="text-right hidden lg:block">
@@ -707,9 +710,9 @@ export default function App() {
                     <div className="flex justify-around items-center h-16">
                         <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
                         <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
-                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><PlusCircle size={28}/></button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><XI icon={PlusCircle} size={28}/></button>
                         <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
-                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><UserCheck size={24}/>{tradeRequests.some(r => r.shipment && r.recipient === user.username && (r.shipment.status === 'IN_TRANSIT' || r.shipment.status === 'DELIVERED') && r.status !== 'COMPLETED') && <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}</button>
+                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><XI icon={UserCheck} size={24}/>{tradeRequests.some(r => r.shipment && r.recipient === user.username && (r.shipment.status === 'IN_TRANSIT' || r.shipment.status === 'DELIVERED') && r.status !== 'COMPLETED') && <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}</button>
                     </div>
                 </nav>
             </>
@@ -772,13 +775,13 @@ export default function App() {
             {view === 'CREATE_HUB' && (
                 <div className="p-6 pb-24 animate-in slide-in-from-bottom-10">
                     <div className="flex items-center justify-between mb-8">
-                        <button onClick={handleBack} className="flex items-center gap-2 opacity-50 hover:opacity-100"><ArrowLeft size={16}/> НАЗАД</button>
+                        <button onClick={handleBack} className="flex items-center gap-2 opacity-50 hover:opacity-100"><XI icon={ArrowLeft} size={16}/> НАЗАД</button>
                         <h2 className="font-pixel text-lg">СОЗДАТЬ</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
-                        <button onClick={() => navigateTo('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all"><div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><Plus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div><div className="text-xs opacity-50">Добавить предмет в коллекцию</div></div></button>
-                        <button onClick={() => navigateTo('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all"><div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><FolderPlus size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВАЯ КОЛЛЕКЦИЯ</div><div className="text-xs opacity-50">Объединить предметы в альбом</div></div></button>
-                        <button onClick={() => navigateTo('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all"><div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-500"><Search size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">В ПОИСКЕ (WISHLIST)</div><div className="text-xs opacity-50">Объявить розыск предмета</div></div></button>
+                        <button onClick={() => navigateTo('CREATE_ARTIFACT')} className="p-6 border border-green-500/30 rounded-2xl flex items-center gap-4 hover:bg-green-500/10 transition-all"><div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-500"><XI icon={Plus} size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВЫЙ АРТЕФАКТ</div><div className="text-xs opacity-50">Добавить предмет в коллекцию</div></div></button>
+                        <button onClick={() => navigateTo('CREATE_COLLECTION')} className="p-6 border border-blue-500/30 rounded-2xl flex items-center gap-4 hover:bg-blue-500/10 transition-all"><div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><XI icon={FolderPlus} size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">НОВАЯ КОЛЛЕКЦИЯ</div><div className="text-xs opacity-50">Объединить предметы в альбом</div></div></button>
+                        <button onClick={() => navigateTo('CREATE_WISHLIST')} className="p-6 border border-purple-500/30 rounded-2xl flex items-center gap-4 hover:bg-purple-500/10 transition-all"><div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-500"><XI icon={Search} size={24}/></div><div className="text-left"><div className="font-pixel text-sm font-bold">В ПОИСКЕ (WISHLIST)</div><div className="text-xs opacity-50">Объявить розыск предмета</div></div></button>
                     </div>
                 </div>
             )}
@@ -830,7 +833,7 @@ export default function App() {
                         <h3 className="font-pixel text-sm mb-4">ДОБАВИТЬ В КОЛЛЕКЦИЮ</h3>
                         <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
                             {collections.filter(c => c.owner === user.username).map(col => (
-                                <button key={col.id} onClick={async () => { if(col.exhibitIds.includes(isAddingToCollection)) return; const updated = { ...col, exhibitIds: [...col.exhibitIds, isAddingToCollection] }; await db.updateCollection(updated); const item = exhibits.find(e => e.id === isAddingToCollection); if (item && item.owner !== user.username) { db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title + " (Saved)"); } setIsAddingToCollection(null); alert('Добавлено!'); }} className="w-full p-3 text-left border border-white/10 rounded hover:bg-white/5 flex items-center gap-2"><Folder size={16}/> {col.title}</button>
+                                <button key={col.id} onClick={async () => { if(col.exhibitIds.includes(isAddingToCollection)) return; const updated = { ...col, exhibitIds: [...col.exhibitIds, isAddingToCollection] }; await db.updateCollection(updated); const item = exhibits.find(e => e.id === isAddingToCollection); if (item && item.owner !== user.username) { db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title + " (Saved)"); } setIsAddingToCollection(null); alert('Добавлено!'); }} className="w-full p-3 text-left border border-white/10 rounded hover:bg-white/5 flex items-center gap-2"><XI icon={Folder} size={16}/> {col.title}</button>
                             ))}
                             {collections.filter(c => c.owner === user.username).length === 0 && <div className="opacity-50 text-xs">Нет коллекций</div>}
                         </div>
@@ -897,5 +900,6 @@ export default function App() {
             )}
         </div>
     </div>
+    </ThemeContext.Provider>
   );
 }

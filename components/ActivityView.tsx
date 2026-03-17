@@ -5,6 +5,7 @@ import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../ty
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
 import MatrixIcon from './MatrixIcon';
+import XI from './XI';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -245,7 +246,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             <div key={trade.id} className={`p-4 rounded-xl border mb-3 ${isWinamp ? 'bg-[#191919] border-[#505050]' : isLight ? 'bg-white border-gray-200 text-gray-800' : 'bg-white/5 border-white/10'}`}>
                 <div className={`flex justify-between items-center mb-3 pb-3 border-b ${isLight ? 'border-gray-200' : 'border-white/5'}`}>
                     <div className="flex items-center gap-2">
-                        <RefreshCw size={14} className={trade.status === 'PENDING' ? 'text-blue-400' : trade.status === 'ACCEPTED' ? 'text-green-500' : 'text-gray-500'} />
+                        <XI icon={RefreshCw} size={14} className={trade.status === 'PENDING' ? 'text-blue-400' : trade.status === 'ACCEPTED' ? 'text-green-500' : 'text-gray-500'} />
                         <span className="font-pixel text-[10px] font-bold uppercase">{trade.status === 'PENDING' ? (isIncoming ? 'ВХОДЯЩИЙ ЗАПРОС' : 'ОЖИДАЕТ ОТВЕТА') : trade.status}</span>
                     </div>
                     <div className="text-[9px] font-mono opacity-50">{date}</div>
@@ -256,7 +257,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     <div className="flex-1 text-center">
                         <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.sender}</div>
                         {trade.price && !trade.isWishlistFulfillment ? (
-                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><XI icon={Wallet} size={12}/> {trade.price} ₽</div>
                         ) : (
                             <div className="flex flex-wrap justify-center gap-1">
                                 {senderItemsList.length > 0 ? senderItemsList.map(item => (
@@ -266,13 +267,13 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                         )}
                     </div>
 
-                    <ArrowRight size={16} className="opacity-30"/>
+                    <XI icon={ArrowRight} size={16} className="opacity-30"/>
 
                     {/* RECIPIENT SIDE */}
                     <div className="flex-1 text-center">
                         <div className="text-[9px] font-bold opacity-50 mb-1">@{trade.recipient}</div>
                         {trade.price && trade.isWishlistFulfillment ? (
-                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><Wallet size={12}/> {trade.price} ₽</div>
+                            <div className="text-green-500 font-pixel font-bold text-sm flex items-center justify-center gap-1"><XI icon={Wallet} size={12}/> {trade.price} ₽</div>
                         ) : (
                             <div className="flex flex-wrap justify-center gap-1">
                                 {recipientItemsList.length > 0 ? recipientItemsList.map(item => (
@@ -315,20 +316,20 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     onClick={() => setActiveTab('NOTIFICATIONS')}
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'NOTIFICATIONS' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
                 >
-                    <Bell size={14} /> ИНФО
+                    <XI icon={Bell} size={14} /> ИНФО
                     {myNotifs.some(n => !n.isRead) && <span className="w-1.5 h-1.5 bg-red-500 rounded-full"/>}
                 </button>
                 <button 
                     onClick={() => setActiveTab('MESSAGES')}
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'MESSAGES' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
                 >
-                    <MessageCircle size={14} /> ЧАТЫ
+                    <XI icon={MessageCircle} size={14} /> ЧАТЫ
                 </button>
                 <button 
                     onClick={() => setActiveTab('TRADES')}
                     className={`flex-1 pb-3 text-center font-pixel text-xs transition-colors flex items-center justify-center gap-2 ${activeTab === 'TRADES' ? 'border-b-2 border-green-500 text-green-500 font-bold' : 'opacity-50 hover:opacity-100'}`}
                 >
-                    <RefreshCw size={14} /> ОБМЕН
+                    <XI icon={RefreshCw} size={14} /> ОБМЕН
                     {pendingIncomingTrades.length > 0 && <span className="bg-blue-500 text-white text-[8px] font-bold px-1 rounded-full">{pendingIncomingTrades.length}</span>}
                 </button>
             </div>
@@ -343,11 +344,11 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                         <div className="flex gap-2">
                             {myNotifs.some(n => !n.isRead) && (
                                 <button onClick={handleMarkAllRead} className="text-[10px] text-green-500 hover:underline flex items-center gap-1 font-bold">
-                                    <CheckCheck size={14}/> Прочитать все
+                                    <XI icon={CheckCheck} size={14}/> Прочитать все
                                 </button>
                             )}
                             <button onClick={handleRefresh} className={`text-[10px] hover:text-green-500 flex items-center gap-1 ${isRefreshing ? 'animate-spin opacity-100' : 'opacity-50'}`}>
-                                <RefreshCw size={12}/>
+                                <XI icon={RefreshCw} size={12}/>
                             </button>
                         </div>
                     </div>
@@ -425,21 +426,21 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                 <div className="space-y-6">
                     {pendingIncomingTrades.length > 0 && (
                         <div>
-                            <h3 className="font-pixel text-[10px] text-blue-400 mb-3 uppercase tracking-widest flex items-center gap-2"><ArrowRight size={12}/> Входящие запросы</h3>
+                            <h3 className="font-pixel text-[10px] text-blue-400 mb-3 uppercase tracking-widest flex items-center gap-2"><XI icon={ArrowRight} size={12}/> Входящие запросы</h3>
                             <div className="space-y-2">{pendingIncomingTrades.map(renderTradeCard)}</div>
                         </div>
                     )}
 
                     {pendingOutgoingTrades.length > 0 && (
                         <div>
-                            <h3 className="font-pixel text-[10px] opacity-50 mb-3 uppercase tracking-widest flex items-center gap-2"><Clock size={12}/> Отправленные (Ожидание)</h3>
+                            <h3 className="font-pixel text-[10px] opacity-50 mb-3 uppercase tracking-widest flex items-center gap-2"><XI icon={Clock} size={12}/> Отправленные (Ожидание)</h3>
                             <div className="space-y-2">{pendingOutgoingTrades.map(renderTradeCard)}</div>
                         </div>
                     )}
 
                     {historyTrades.length > 0 && (
                         <div>
-                            <h3 className="font-pixel text-[10px] opacity-30 mb-3 uppercase tracking-widest flex items-center gap-2"><BookOpen size={12}/> История сделок</h3>
+                            <h3 className="font-pixel text-[10px] opacity-30 mb-3 uppercase tracking-widest flex items-center gap-2"><XI icon={BookOpen} size={12}/> История сделок</h3>
                             <div className="space-y-2 opacity-70 hover:opacity-100 transition-opacity">
                                 {historyTrades.map(renderTradeCard)}
                             </div>

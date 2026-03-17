@@ -16,6 +16,7 @@ import MessageReactionPicker from './MessageReactionPicker';
 import ReactionBar from './ReactionBar';
 import { renderTextWithMentions } from '../utils/textUtils';
 import { MessageReactionEmoji } from '../types';
+import XI from './XI';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -381,14 +382,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                   <button onClick={toggleCollapse} className="flex items-center gap-0.5 text-[9px] font-mono text-green-500/70 hover:text-green-400 transition-colors" title={isCollapsed ? 'Развернуть' : 'Свернуть'}>
                                       <CornerDownRight size={10} />
                                       {replies.length}
-                                      {isCollapsed ? <ChevronDown size={10} /> : <ChevronUp size={10} />}
+                                      {isCollapsed ? <XI icon={ChevronDown} size={10} /> : <XI icon={ChevronUp} size={10} />}
                                   </button>
                               )}
                           </div>
                       </div>
                       <div className="flex items-center gap-2">
                           <button onClick={() => onCommentLike(c.id)} className={`flex items-center gap-1 text-[10px] transition-colors ${isCommentLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
-                              <Heart size={12} fill={isCommentLiked ? "currentColor" : "none"} /> {c.likes > 0 && c.likes}
+                              <XI icon={Heart} size={12} fill={isCommentLiked ? "currentColor" : "none"} /> {c.likes > 0 && c.likes}
                           </button>
                           <button onClick={() => handleReply(c)} className="text-gray-500 hover:text-white transition-colors" title="Ответить">
                               <CornerDownRight size={14} />
@@ -404,7 +405,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                           )}
                           {(isAuthor || isAdmin) && (
                               <button onClick={() => onDeleteComment(exhibit.id, c.id)} className="text-gray-500 hover:text-red-500 transition-colors" title="Удалить">
-                                  <Trash2 size={14} />
+                                  <XI icon={Trash2} size={14} />
                               </button>
                           )}
                       </div>
@@ -438,7 +439,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                               СОХР
                           </button>
                           <button onClick={() => setEditingCommentId(null)} className="text-gray-500 hover:text-red-500">
-                              <X size={12} />
+                              <XI icon={X} size={12} />
                           </button>
                       </div>
                   ) : (
@@ -492,7 +493,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
               <div className={`w-full max-w-sm max-h-[80vh] flex flex-col rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050] text-[#00ff00]' : 'bg-dark-surface border-white/10 text-white'}`}>
                   <div className="flex justify-between items-center p-4 border-b border-white/10">
                       <h3 className="font-pixel text-xs font-bold uppercase">Оценили ({exhibit.likedBy?.length || 0})</h3>
-                      <button onClick={() => setShowLikesModal(false)} className="opacity-50 hover:opacity-100"><X size={18}/></button>
+                      <button onClick={() => setShowLikesModal(false)} className="opacity-50 hover:opacity-100"><XI icon={X} size={18}/></button>
                   </div>
                   <div className="overflow-y-auto p-4 space-y-2">
                       {exhibit.likedBy && exhibit.likedBy.length > 0 ? (
@@ -525,18 +526,18 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     className={`p-3 bg-black/50 rounded-full transition-all ${isLiked ? 'text-red-500 hover:bg-red-500/20' : 'text-white hover:bg-white/20'}`}
                     title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
                   >
-                    <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
+                    <XI icon={Heart} size={24} fill={isLiked ? "currentColor" : "none"} />
                   </button>
                   <div className="flex items-center gap-2 px-4 py-3 bg-black/50 text-white rounded-full text-sm font-mono">
-                    <Heart size={16} className="text-red-500" />
+                    <XI icon={Heart} size={16} className="text-red-500" />
                     <span>{exhibit.likes}</span>
                   </div>
               </div>
               <div className="absolute top-4 right-4 z-50 flex gap-4">
                   <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomIn size={24}/></button>
                   <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomOut size={24}/></button>
-                  <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-500 transition-colors" title="Сбросить"><Home size={24}/></button>
-                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors"><X size={24}/></button>
+                  <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-500 transition-colors" title="Сбросить"><XI icon={Home} size={24}/></button>
+                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors"><XI icon={X} size={24}/></button>
               </div>
 
               {zoomLevel > 1 && (
@@ -548,8 +549,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
               <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeHandlers : {})}>
                   {zoomLevel === 1 && (
                       <>
-                          <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronLeft size={48}/></button>
-                          <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><ChevronRight size={48}/></button>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><XI icon={ChevronLeft} size={48}/></button>
+                          <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><XI icon={ChevronRight} size={48}/></button>
                       </>
                   )}
 
@@ -603,7 +604,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                       <img src={slide.url} className="w-full h-full object-cover" />
                                   ) : (
                                       <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                          <Video size={16} className="text-white/60" />
+                                          <XI icon={Video} size={16} className="text-white/60" />
                                       </div>
                                   )}
                               </button>
@@ -622,7 +623,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
         {/* COMPACT BREADCRUMBS & ACTIONS */}
         <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
             <div className="flex items-center gap-2 text-[10px] font-mono opacity-50 uppercase">
-                <button onClick={onBack} className="hover:text-green-500 flex items-center gap-1"><ArrowLeft size={12}/> НАЗАД</button>
+                <button onClick={onBack} className="hover:text-green-500 flex items-center gap-1"><XI icon={ArrowLeft} size={12}/> НАЗАД</button>
                 <span className="opacity-30">/</span>
                 <span className="hover:text-white cursor-pointer">{exhibit.category}</span>
             </div>
@@ -630,18 +631,18 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
             <div className="flex items-center gap-3">
                 {(isOwner || isAdmin) && (
                     <div className="flex gap-2">
-                        {onEdit && <button onClick={() => onEdit(exhibit)} className="text-purple-400 hover:text-white transition-all"><Edit2 size={16}/></button>}
-                        {onDelete && <button onClick={() => onDelete(exhibit.id)} className="text-red-500 hover:text-white transition-all"><Trash2 size={16}/></button>}
+                        {onEdit && <button onClick={() => onEdit(exhibit)} className="text-purple-400 hover:text-white transition-all"><XI icon={Edit2} size={16}/></button>}
+                        {onDelete && <button onClick={() => onDelete(exhibit.id)} className="text-red-500 hover:text-white transition-all"><XI icon={Trash2} size={16}/></button>}
                     </div>
                 )}
                 <div className="h-4 w-[1px] bg-white/10"></div>
                 <div className="relative">
-                    <button onClick={() => setShowShareMenu(!showShareMenu)} className={`hover:text-white transition-all ${shareCopied ? 'text-green-500' : 'text-gray-400'}`}><Share2 size={16}/></button>
+                    <button onClick={() => setShowShareMenu(!showShareMenu)} className={`hover:text-white transition-all ${shareCopied ? 'text-green-500' : 'text-gray-400'}`}><XI icon={Share2} size={16}/></button>
                     {showShareMenu && (
                         <div className="absolute right-0 top-6 w-40 bg-dark-surface border border-white/10 rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2">
-                            <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><Send size={12} className="text-blue-400"/> TELEGRAM</button>
-                            <button onClick={() => handleShare('wa')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><MessageCircle size={12} className="text-green-500"/> WHATSAPP</button>
-                            <button onClick={() => handleShare('copy')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><Share2 size={12}/> COPY LINK</button>
+                            <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Send} size={12} className="text-blue-400"/> TELEGRAM</button>
+                            <button onClick={() => handleShare('wa')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={MessageCircle} size={12} className="text-green-500"/> WHATSAPP</button>
+                            <button onClick={() => handleShare('copy')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Share2} size={12}/> COPY LINK</button>
                         </div>
                     )}
                 </div>
@@ -665,7 +666,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             onClick={() => setGalleryMode('GRID')}
                             className={`flex-1 py-1.5 text-[9px] font-pixel uppercase border rounded-r-xl flex items-center justify-center gap-1 transition-all ${galleryMode === 'GRID' ? 'bg-green-500/20 border-green-500 text-green-400' : 'border-white/10 opacity-40 hover:opacity-70'}`}
                         >
-                            <LayoutGrid size={10} /> СЕТКА
+                            <XI icon={LayoutGrid} size={10} /> СЕТКА
                         </button>
                     </div>
                 )}
@@ -682,7 +683,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                     <img src={slide.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                 ) : (
                                     <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                        <Video size={24} className="text-white/60" />
+                                        <XI icon={Video} size={24} className="text-white/60" />
                                     </div>
                                 )}
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -746,7 +747,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                     <img src={slide.url} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                        <Video size={14} className="text-white/60" />
+                                        <XI icon={Video} size={14} className="text-white/60" />
                                     </div>
                                 )}
                             </button>
@@ -759,7 +760,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         onClick={() => setShowTradeModal(true)}
                         className={`w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-pixel text-[10px] uppercase font-bold hover:bg-blue-500 shadow-lg`}
                     >
-                        <RefreshCw size={14}/> ПРЕДЛОЖИТЬ ОБМЕН
+                        <XI icon={RefreshCw} size={14}/> ПРЕДЛОЖИТЬ ОБМЕН
                     </button>
                 )}
             </div>
@@ -790,7 +791,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                     className={`transition-colors cursor-pointer ${isLiked ? 'text-red-500' : 'hover:text-white'}`}
                                     title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
                                 >
-                                    <Heart size={20} className={isLiked ? "fill-current" : ""} />
+                                    <XI icon={Heart} size={20} className={isLiked ? "fill-current" : ""} />
                                 </button>
                                 
                                 {/* Likes List & Counter */}
@@ -811,12 +812,12 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1.5" title="Просмотры">
-                                <Eye size={16} /> {viewsDisplay}
+                                <XI icon={Eye} size={16} /> {viewsDisplay}
                             </div>
                             <div className="flex-1"></div>
                             {isOwner && (
                                 <button onClick={() => onAddToCollection?.(exhibit.id)} className="hover:text-blue-400 transition-colors" title="Добавить в коллекцию">
-                                    <BookmarkPlus size={18} />
+                                    <XI icon={BookmarkPlus} size={18} />
                                 </button>
                             )}
                         </div>
@@ -849,9 +850,9 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 className={`mt-2 text-[10px] font-bold uppercase flex items-center gap-1 hover:underline ${isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}`}
                             >
                                 {isDescriptionExpanded ? (
-                                    <>Свернуть <ChevronUp size={12}/></>
+                                    <>Свернуть <XI icon={ChevronUp} size={12}/></>
                                 ) : (
-                                    <>Читать далее <ChevronDown size={12}/></>
+                                    <>Читать далее <XI icon={ChevronDown} size={12}/></>
                                 )}
                             </button>
                         )}
@@ -861,7 +862,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     {nonEmptySpecs.length > 0 && (
                         <div className="mb-6">
                             <h3 className={`font-pixel text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : 'opacity-70'}`}>
-                                <Info size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
+                                <XI icon={Info} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
                             </h3>
                             <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-4 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-black/20 border-white/5'}`}>
                                 {nonEmptySpecs.map(([key, val]) => (
@@ -872,7 +873,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 ))}
                                 {exhibit.condition && (
                                     <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}><Award size={10}/> СОСТОЯНИЕ</div>
+                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
                                         <div className={`font-bold font-mono text-xs text-green-400 uppercase leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
                                     </div>
                                 )}
@@ -883,7 +884,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     {/* Linked Items */}
                     {linkedArtifacts.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-white/5">
-                            <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-3 flex items-center gap-1"><Link2 size={10}/> СВЯЗАННЫЕ ПРЕДМЕТЫ</h3>
+                            <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-3 flex items-center gap-1"><XI icon={Link2} size={10}/> СВЯЗАННЫЕ ПРЕДМЕТЫ</h3>
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                                 {linkedArtifacts.map(link => (
                                     <div key={link.id} onClick={() => onExhibitClick(link)} className="flex-shrink-0 w-20 group cursor-pointer">
@@ -903,7 +904,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     {/* Comments header with sort controls */}
                     <div className="flex items-center justify-between mb-4">
                         <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>
-                            <MessageSquare size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} />
+                            <XI icon={MessageSquare} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} />
                             ОБСУЖДЕНИЕ
                             <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-mono text-[10px] font-bold">
                                 {comments.length}
@@ -954,7 +955,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         {replyTo && (
                             <div className="flex items-center justify-between text-[10px] font-mono bg-white/5 p-2 rounded-lg border border-white/5">
                                 <span className="opacity-70">Ответ <span className="text-green-500 font-bold">@{replyTo.author}</span></span>
-                                <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><X size={12}/></button>
+                                <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><XI icon={X} size={12}/></button>
                             </div>
                         )}
                         <div className="flex gap-2 relative">
@@ -999,7 +1000,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 }}
                                 className="bg-green-500 text-black p-2.5 rounded-lg hover:scale-105 active:scale-95 transition-all"
                             >
-                                <Send size={16} />
+                                <XI icon={Send} size={16} />
                             </button>
                         </div>
                     </div>
@@ -1022,7 +1023,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
         {similarArtifacts.length > 0 && (
                 <div className="mt-12 mb-8">
-                    <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><Sparkles size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
+                    <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><XI icon={Sparkles} size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {similarArtifacts.map(sim => (
                             <ExhibitCard

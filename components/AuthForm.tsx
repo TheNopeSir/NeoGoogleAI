@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Terminal, Lock, User, ArrowRight, CheckSquare, Square, Github, Chrome, Gamepad2, Mail } from 'lucide-react';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
+import XI from './XI';
 
 interface AuthFormProps {
   theme: 'dark' | 'light';
@@ -82,7 +83,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
       }`}>
         <div className="flex justify-center mb-8">
            <div className={`p-4 rounded-full border-2 ${theme === 'dark' ? 'border-dark-primary text-dark-primary' : 'border-light-accent text-light-accent'}`}>
-             <Terminal size={32} />
+             <XI icon={Terminal} size={32} />
            </div>
         </div>
 
@@ -98,7 +99,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
           <div className="space-y-1">
             <label className="text-xs font-bold ml-1 uppercase opacity-70">Имя пользователя</label>
             <div className={`flex items-center border-b-2 px-2 py-2 ${theme === 'dark' ? 'border-dark-dim focus-within:border-dark-primary' : 'border-light-dim focus-within:border-light-accent'}`}>
-              <User size={16} className="opacity-50 mr-2" />
+              <XI icon={User} size={16} className="opacity-50 mr-2" />
               <input 
                 type="text" 
                 value={username}
@@ -114,7 +115,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
             <div className="space-y-1 animate-in slide-in-from-top-2 fade-in">
               <label className="text-xs font-bold ml-1 uppercase opacity-70">Email</label>
               <div className={`flex items-center border-b-2 px-2 py-2 ${theme === 'dark' ? 'border-dark-dim focus-within:border-dark-primary' : 'border-light-dim focus-within:border-light-accent'}`}>
-                <Mail size={16} className="opacity-50 mr-2" />
+                <XI icon={Mail} size={16} className="opacity-50 mr-2" />
                 <input 
                   type="email" 
                   value={email}
@@ -128,7 +129,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
             <div className="space-y-1 animate-in slide-in-from-top-2 fade-in">
               <label className="text-xs font-bold ml-1 uppercase opacity-70">Статус / Слоган</label>
               <div className={`flex items-center border-b-2 px-2 py-2 ${theme === 'dark' ? 'border-dark-dim focus-within:border-dark-primary' : 'border-light-dim focus:border-light-accent'}`}>
-                <Terminal size={16} className="opacity-50 mr-2" />
+                <XI icon={Terminal} size={16} className="opacity-50 mr-2" />
                 <input 
                   type="text" 
                   value={tagline}
@@ -144,7 +145,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
           <div className="space-y-1">
             <label className="text-xs font-bold ml-1 uppercase opacity-70">Пароль</label>
             <div className={`flex items-center border-b-2 px-2 py-2 ${theme === 'dark' ? 'border-dark-dim focus-within:border-dark-primary' : 'border-light-dim focus:border-light-accent'}`}>
-              <Lock size={16} className="opacity-50 mr-2" />
+              <XI icon={Lock} size={16} className="opacity-50 mr-2" />
               <input 
                 type="password" 
                 value={password}
@@ -160,7 +161,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
                 className={`flex items-center gap-2 text-xs font-bold cursor-pointer opacity-80 hover:opacity-100 ${theme === 'dark' ? 'text-dark-primary' : 'text-light-accent'}`}
                 onClick={() => setRememberMe(!rememberMe)}
             >
-                {rememberMe ? <CheckSquare size={14} /> : <Square size={14} />}
+                {rememberMe ? <XI icon={CheckSquare} size={14} /> : <XI icon={Square} size={14} />}
                 <span>ЗАПОМНИТЬ МЕНЯ</span>
             </div>
           )}
@@ -180,7 +181,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
             }`}
           >
             {isLoading ? 'СВЯЗЬ С СЕРВЕРОМ...' : (isRegister ? 'СОЗДАТЬ' : 'ВОЙТИ')} 
-            {!isLoading && <ArrowRight size={16} />}
+            {!isLoading && <XI icon={ArrowRight} size={16} />}
           </button>
         </form>
 
@@ -203,7 +204,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
                    theme === 'dark' ? 'border-dark-dim hover:border-dark-primary hover:bg-white/5' : 'border-light-dim hover:border-light-accent hover:bg-gray-50'
                 }`}
             >
-                <Chrome size={20} />
+                <XI icon={Chrome} size={20} />
                 <span className="text-[9px] font-bold uppercase">Google</span>
             </button>
 
@@ -224,7 +225,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
                 }`}
                 title="В разработке"
             >
-                 <Github size={20} />
+                 <XI icon={Github} size={20} />
                 <span className="text-[9px] font-bold uppercase">Github</span>
             </button>
             
@@ -235,7 +236,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
                 }`}
                 title="В разработке"
             >
-                 <Gamepad2 size={20} />
+                 <XI icon={Gamepad2} size={20} />
                 <span className="text-[9px] font-bold uppercase">Discord</span>
             </button>
         </div>

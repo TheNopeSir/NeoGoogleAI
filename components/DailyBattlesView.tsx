@@ -5,6 +5,7 @@ import MatrixIcon from './MatrixIcon';
 import { getArtifactTier, TIER_CONFIG, CATEGORY_SUBCATEGORIES } from '../constants';
 import { getDailyBracket, castBattleVote, getBattleHistory } from '../services/storageService';
 import { getFirstImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface DailyBattlesViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -245,16 +246,16 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                 >
                     {imgUrl
                         ? <img src={imgUrl} alt={artifact?.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                        : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Swords size={18} className="opacity-20" /></div>
+                        : <div className="w-full h-full bg-white/5 flex items-center justify-center"><XI icon={Swords} size={18} className="opacity-20" /></div>
                     }
                     {isPending && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <Lock size={14} className="text-gray-400" />
+                            <XI icon={Lock} size={14} className="text-gray-400" />
                         </div>
                     )}
                     {isWinner && (
                         <div className="absolute top-1 left-1">
-                            <Trophy size={12} className="text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.9)]" />
+                            <XI icon={Trophy} size={12} className="text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.9)]" />
                         </div>
                     )}
                     {tierCfg && (
@@ -335,15 +336,15 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         <span className="text-[7px] font-mono opacity-25 flex-shrink-0">· {label}</span>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-                        {isPending && <Lock size={8} className="opacity-30" />}
+                        {isPending && <XI icon={Lock} size={8} className="opacity-30" />}
                         {timeLeft && (
                             <div className="flex items-center gap-0.5 text-[8px] font-mono text-orange-400">
-                                <Clock size={8} />
+                                <XI icon={Clock} size={8} />
                                 {/* tickKey means only this text node re-renders */}
                                 <span key={tickKey}>{timeLeft}</span>
                             </div>
                         )}
-                        {isCompleted && <Trophy size={8} className="text-yellow-500" />}
+                        {isCompleted && <XI icon={Trophy} size={8} className="text-yellow-500" />}
                     </div>
                 </div>
 
@@ -396,7 +397,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                     <div className="flex items-center gap-1.5">
                         {isPending && (
                             <div className="flex items-center gap-1 text-[8px] font-mono opacity-35">
-                                <Lock size={8} />
+                                <XI icon={Lock} size={8} />
                                 {sf1 && sf1.status === 'ACTIVE'
                                     ? <span key={tickKey}>откроется через {formatCountdown(sf1.endTime)}</span>
                                     : <span>ждёт полуфинала</span>
@@ -405,13 +406,13 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         )}
                         {timeLeft && (
                             <div className="flex items-center gap-1 text-[8px] font-mono text-orange-400">
-                                <Clock size={9} />
+                                <XI icon={Clock} size={9} />
                                 <span key={tickKey}>{timeLeft}</span>
                             </div>
                         )}
                         {isCompleted && (
                             <div className="flex items-center gap-1 text-[8px] font-mono text-yellow-500">
-                                <Trophy size={9} /> ЗАВЕРШЁН
+                                <XI icon={Trophy} size={9} /> ЗАВЕРШЁН
                             </div>
                         )}
                     </div>
@@ -501,13 +502,13 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
             {firstLoad && !bracket ? (
                 <div className="flex items-center justify-center py-16 gap-2 opacity-40">
-                    <RefreshCw size={16} className="animate-spin" />
+                    <XI icon={RefreshCw} size={16} className="animate-spin" />
                     <span className="font-pixel text-xs">ЗАГРУЗКА...</span>
                 </div>
 
             ) : notEnough ? (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-                    <Swords size={28} className="mx-auto mb-3 opacity-20" />
+                    <XI icon={Swords} size={28} className="mx-auto mb-3 opacity-20" />
                     <div className="font-pixel text-xs opacity-40">НЕДОСТАТОЧНО АРТЕФАКТОВ</div>
                     <div className="text-[9px] font-mono opacity-25 mt-1">
                         Нужно ≥2 подкатегории с минимум 2 объектами
@@ -516,7 +517,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
             ) : !bracket ? (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-                    <Zap size={28} className="mx-auto mb-3 opacity-20" />
+                    <XI icon={Zap} size={28} className="mx-auto mb-3 opacity-20" />
                     <div className="font-pixel text-xs opacity-40">НЕТ ДАННЫХ</div>
                 </div>
 
@@ -527,7 +528,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         <div className={`mb-4 p-3 rounded-2xl border flex items-center gap-3 ${
                             isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : isDark ? 'bg-white/3 border-white/10' : 'bg-gray-100 border-gray-200'
                         }`}>
-                            <Clock size={16} className="text-orange-400 flex-shrink-0" />
+                            <XI icon={Clock} size={16} className="text-orange-400 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <div className="font-pixel text-[8px] text-orange-400 tracking-widest">ПАУЗА · СЛЕДУЮЩИЙ ЦИКЛ</div>
                                 <div className="font-mono text-sm text-orange-300" key={tickKey}>{getNextCycleCountdown()}</div>
@@ -538,7 +539,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                     {/* Champion banner */}
                     {bracket.winner && (
                         <div className="mb-4 p-3 rounded-2xl border flex items-center gap-3 bg-yellow-500/10 border-yellow-500/30">
-                            <Trophy size={22} className="text-yellow-400 flex-shrink-0" />
+                            <XI icon={Trophy} size={22} className="text-yellow-400 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <div className="font-pixel text-[8px] text-yellow-500">🏆 ЧЕМПИОН · АЧИВКА ВЫДАНА</div>
                                 <div className="font-pixel text-xs font-bold truncate">
@@ -555,7 +556,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                                 }}
                                 className="ml-auto text-yellow-400 hover:text-yellow-300 transition-colors flex-shrink-0"
                             >
-                                <ChevronRight size={14} />
+                                <XI icon={ChevronRight} size={14} />
                             </button>
                         </div>
                     )}
@@ -572,7 +573,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         {sf1 && sf2 && (
                             <div className="hidden md:flex flex-col items-center justify-center w-5 flex-shrink-0">
                                 <div className="flex-1 w-px bg-white/8" />
-                                <Swords size={10} className="opacity-15 my-1 flex-shrink-0" />
+                                <XI icon={Swords} size={10} className="opacity-15 my-1 flex-shrink-0" />
                                 <div className="flex-1 w-px bg-white/8" />
                             </div>
                         )}
@@ -583,7 +584,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                     {/* ── Divider ───────────────────────────────────────────── */}
                     <div className="flex items-center gap-3 my-4 opacity-10">
                         <div className="flex-1 h-px bg-current" />
-                        <Swords size={10} />
+                        <XI icon={Swords} size={10} />
                         <div className="flex-1 h-px bg-current" />
                     </div>
 
@@ -599,7 +600,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                             onClick={() => fetchBracket(selectedCategory, false)}
                             className="flex items-center gap-1.5 mx-auto text-[8px] font-mono opacity-15 hover:opacity-50 transition-opacity"
                         >
-                            <RefreshCw size={8} /> ОБНОВИТЬ
+                            <XI icon={RefreshCw} size={8} /> ОБНОВИТЬ
                         </button>
                     </div>
                 </>
@@ -609,7 +610,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
             {history.length > 0 && (
                 <div className="mt-4">
                     <div className={labelClass}>
-                        <Trophy size={9} className="text-yellow-500" /> ПРОШЛЫЕ ЧЕМПИОНЫ
+                        <XI icon={Trophy} size={9} className="text-yellow-500" /> ПРОШЛЫЕ ЧЕМПИОНЫ
                     </div>
                     <div
                         className="flex gap-3 overflow-x-auto pb-2"
@@ -628,7 +629,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                                 >
                                     {imgUrl
                                         ? <img src={imgUrl} alt={champion?.title} className="w-full aspect-square object-cover" />
-                                        : <div className="w-full aspect-square bg-white/5 flex items-center justify-center"><Trophy size={16} className="opacity-20" /></div>
+                                        : <div className="w-full aspect-square bg-white/5 flex items-center justify-center"><XI icon={Trophy} size={16} className="opacity-20" /></div>
                                     }
                                     <div className="p-1.5">
                                         <div className="text-[6px] font-mono opacity-25">{b.date}</div>

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Camera, CheckCircle2, Circle, X, Trash2 } from 'lucide
 import { Collection, Exhibit } from '../types';
 import { fileToBase64 } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface CreateCollectionViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -58,12 +59,12 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
         <div className={`max-w-4xl mx-auto space-y-8 animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             <div className="flex items-center justify-between">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={14} /> ОТМЕНА
+                    <XI icon={ArrowLeft} size={14} /> ОТМЕНА
                 </button>
                 <div className="flex gap-4">
                      {initialData && onDelete && (
                         <button onClick={() => { if(confirm('Удалить коллекцию?')) onDelete(initialData.id); }} className="text-red-500 hover:text-red-400 flex items-center gap-2 font-pixel text-[10px] uppercase">
-                            <Trash2 size={14} /> УДАЛИТЬ
+                            <XI icon={Trash2} size={14} /> УДАЛИТЬ
                         </button>
                     )}
                     <h2 className={`font-pixel text-lg ${isWinamp ? 'text-[#00ff00]' : ''}`}>{initialData ? 'РЕДАКТИРОВАНИЕ' : 'НОВАЯ_КОЛЛЕКЦИЯ'}</h2>
@@ -81,12 +82,12 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
                             <>
                                 <img src={getImageUrl(coverImage, 'medium')} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <Camera size={32} className="text-white"/>
+                                    <XI icon={Camera} size={32} className="text-white"/>
                                 </div>
                             </>
                         ) : (
                             <>
-                                <Camera size={32} className="opacity-50 mb-2" />
+                                <XI icon={Camera} size={32} className="opacity-50 mb-2" />
                                 <span className="text-[10px] font-pixel opacity-50">ОБЛОЖКА</span>
                             </>
                         )}
@@ -141,7 +142,7 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
                                             <span className="text-[9px] font-pixel text-white truncate">{item.title}</span>
                                         </div>
                                         <div className="absolute top-2 right-2">
-                                            {isSelected ? <CheckCircle2 size={18} className="text-green-500 bg-black rounded-full" /> : <Circle size={18} className="text-white drop-shadow-md" />}
+                                            {isSelected ? <XI icon={CheckCircle2} size={18} className="text-green-500 bg-black rounded-full" /> : <XI icon={Circle} size={18} className="text-white drop-shadow-md" />}
                                         </div>
                                     </div>
                                 );
@@ -155,7 +156,7 @@ const CreateCollectionView: React.FC<CreateCollectionViewProps> = ({
                 onClick={handleSave}
                 className="w-full py-5 bg-green-500 text-black rounded-2xl font-pixel text-sm tracking-[0.2em] hover:scale-[1.01] active:scale-95 transition-all shadow-[0_0_30px_rgba(74,222,128,0.4)] flex items-center justify-center gap-3 font-black"
             >
-                <Save size={20} /> СОХРАНИТЬ КОЛЛЕКЦИЮ
+                <XI icon={Save} size={20} /> СОХРАНИТЬ КОЛЛЕКЦИЮ
             </button>
         </div>
     );

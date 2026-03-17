@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, X } from 'lucide-react';
 import type { PickupPoint } from '../../types';
 import { getPickupPoints } from '../../services/deliveryService';
+import XI from '../XI';
 
 interface Props {
     city: string;
@@ -73,7 +74,7 @@ export default function PickupPointMap({ city, onSelect, onClose }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] shrink-0">
                 <div className="flex items-center gap-2">
-                    <MapPin size={18} className="text-[var(--color-accent)]" />
+                    <XI icon={MapPin} size={18} className="text-[var(--color-accent)]" />
                     <span className="font-semibold text-[var(--color-text-primary)]">
                         Пункты выдачи — {city}
                     </span>
@@ -82,7 +83,7 @@ export default function PickupPointMap({ city, onSelect, onClose }: Props) {
                     onClick={onClose}
                     className="p-2 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
                 >
-                    <X size={18} className="text-[var(--color-text-secondary)]" />
+                    <XI icon={X} size={18} className="text-[var(--color-text-secondary)]" />
                 </button>
             </div>
 
@@ -103,7 +104,7 @@ export default function PickupPointMap({ city, onSelect, onClose }: Props) {
             {selected && (
                 <div className="shrink-0 p-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                     <div className="flex items-start gap-3 mb-3">
-                        <MapPin size={16} className="text-[var(--color-accent)] mt-0.5 shrink-0" />
+                        <XI icon={MapPin} size={16} className="text-[var(--color-accent)] mt-0.5 shrink-0" />
                         <div>
                             <p className="text-sm font-semibold text-[var(--color-text-primary)]">{selected.name}</p>
                             <p className="text-xs text-[var(--color-text-secondary)]">{selected.address}</p>
@@ -128,7 +129,7 @@ export default function PickupPointMap({ city, onSelect, onClose }: Props) {
                             onClick={() => setSelected(pt)}
                             className="w-full flex items-start gap-3 p-3 border-b border-[var(--color-border)]/50 hover:bg-[var(--color-bg-secondary)] transition-colors text-left"
                         >
-                            <MapPin size={14} className="text-[var(--color-accent)] mt-0.5 shrink-0" />
+                            <XI icon={MapPin} size={14} className="text-[var(--color-accent)] mt-0.5 shrink-0" />
                             <div>
                                 <p className="text-sm text-[var(--color-text-primary)]">{pt.name}</p>
                                 <p className="text-xs text-[var(--color-text-secondary)]">{pt.address}</p>

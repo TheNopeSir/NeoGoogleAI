@@ -3,6 +3,7 @@ import { Mail, Lock, UserPlus, User, AlertCircle, CheckSquare, Square, Send, Wan
 import { Capacitor } from '@capacitor/core';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
+import XI from './XI';
 
 interface MatrixLoginProps {
   theme: 'dark' | 'light';
@@ -230,13 +231,13 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             <form onSubmit={handleCompleteReset} className="flex flex-col gap-4 w-full">
                 <h3 className="text-center text-white font-pixel text-xs mb-2">НОВЫЙ ПАРОЛЬ</h3>
                 <div className="flex items-center gap-2 border-b p-3 border-white/20">
-                    <Lock size={16} className="text-white/50" />
+                    <XI icon={Lock} size={16} className="text-white/50" />
                     <input value={newPassword} onChange={e => setNewPassword(e.target.value)} type={showPassword ? "text" : "password"} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="NEW PASSWORD" required />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="opacity-50 hover:opacity-100 focus:outline-none text-white">{showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
-                    <button type="button" onClick={generateSecurePassword} className="opacity-50 hover:opacity-100 text-white"><Wand2 size={14} /></button>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="opacity-50 hover:opacity-100 focus:outline-none text-white">{showPassword ? <XI icon={EyeOff} size={16}/> : <XI icon={Eye} size={16}/>}</button>
+                    <button type="button" onClick={generateSecurePassword} className="opacity-50 hover:opacity-100 text-white"><XI icon={Wand2} size={14} /></button>
                 </div>
-                {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><AlertCircle size={14}/> {error}</div>}
-                <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? '...' : <><Check size={16}/> СОХРАНИТЬ</>}</button>
+                {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><XI icon={AlertCircle} size={14}/> {error}</div>}
+                <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? '...' : <><XI icon={Check} size={16}/> СОХРАНИТЬ</>}</button>
             </form>
         )
     }
@@ -246,17 +247,17 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             <div className="flex flex-col gap-4 w-full">
                 <div className="grid grid-cols-2 gap-4">
                     <button onClick={() => { setStep('LOGIN'); resetForm(); }} className="py-8 border font-pixel text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex flex-col items-center gap-2 border-white/20 text-white/80">
-                        <Terminal size={24} /><span>ВХОД</span>
+                        <XI icon={Terminal} size={24} /><span>ВХОД</span>
                     </button>
                     <button onClick={() => { setStep('REGISTER'); resetForm(); }} className="py-8 border font-pixel text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex flex-col items-center gap-2 border-white/20 text-white/80">
-                        <UserPlus size={24} /><span>РЕГ</span>
+                        <XI icon={UserPlus} size={24} /><span>РЕГ</span>
                     </button>
                 </div>
                 
                 {/* Hide Telegram on Native Apps because of domain validation issues */}
                 {!isNative ? (
                     <button onClick={() => { setStep('TELEGRAM'); resetForm(); }} className="py-4 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
-                        <Send size={16} /> TELEGRAM
+                        <XI icon={Send} size={16} /> TELEGRAM
                     </button>
                 ) : (
                     <div className="text-[9px] text-center text-white/30 font-mono">
@@ -293,21 +294,21 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4 w-full">
                  {infoMessage && <div className="text-green-500 text-[10px] font-mono text-center mb-2 border border-green-500/50 p-2 bg-green-900/20">{infoMessage}</div>}
                  <div className="flex items-center gap-2 border-b p-3 border-white/20">
-                    <User size={16} className="text-white/50" /><input value={email} onChange={e => setEmail(e.target.value)} type="text" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="LOGIN / EMAIL" required />
+                    <XI icon={User} size={16} className="text-white/50" /><input value={email} onChange={e => setEmail(e.target.value)} type="text" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="LOGIN / EMAIL" required />
                  </div>
                  <div className="flex items-center gap-2 border-b p-3 border-white/20">
-                    <Lock size={16} className="text-white/50" />
+                    <XI icon={Lock} size={16} className="text-white/50" />
                     <input value={password} onChange={e => setPassword(e.target.value)} type={showPassword ? "text" : "password"} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="******" required />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="opacity-50 hover:opacity-100 focus:outline-none text-white">{showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="opacity-50 hover:opacity-100 focus:outline-none text-white">{showPassword ? <XI icon={EyeOff} size={16}/> : <XI icon={Eye} size={16}/>}</button>
                  </div>
                  <div className="flex justify-between items-center px-1">
                      <div onClick={() => setRememberMe(!rememberMe)} className="flex items-center gap-2 cursor-pointer opacity-70 hover:opacity-100 select-none text-white">
-                         {rememberMe ? <CheckSquare size={14} /> : <Square size={14} />}<span className="text-[10px] font-mono uppercase">СОХРАНИТЬ</span>
+                         {rememberMe ? <XI icon={CheckSquare} size={14} /> : <XI icon={Square} size={14} />}<span className="text-[10px] font-mono uppercase">СОХРАНИТЬ</span>
                      </div>
                      <button type="button" onClick={() => { setStep('RECOVERY'); setError(''); }} className="text-[10px] font-mono text-white/50 hover:text-white hover:underline uppercase">Забыли пароль?</button>
                  </div>
-                 {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><AlertCircle size={14}/> {error}</div>}
-                 <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? <Loader2 size={14} className="animate-spin" /> : 'ВОЙТИ'}</button>
+                 {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><XI icon={AlertCircle} size={14}/> {error}</div>}
+                 <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? <XI icon={Loader2} size={14} className="animate-spin" /> : 'ВОЙТИ'}</button>
                  <button type="button" onClick={() => { setStep('ENTRY'); resetForm(); }} className="text-[10px] font-mono opacity-50 hover:underline text-center text-white">НАЗАД</button>
             </form>
         )
@@ -316,14 +317,14 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
     if (step === 'REGISTER') {
         return (
             <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4 w-full">
-                <div className="flex items-center gap-2 border-b p-2 border-white/20"><Mail size={16} className="text-white/50"/><input value={email} onChange={e => setEmail(e.target.value)} type="email" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="EMAIL" required /></div>
+                <div className="flex items-center gap-2 border-b p-2 border-white/20"><XI icon={Mail} size={16} className="text-white/50"/><input value={email} onChange={e => setEmail(e.target.value)} type="email" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="EMAIL" required /></div>
                 
-                <div className="flex items-center gap-2 border-b p-2 border-white/20"><User size={16} className="text-white/50"/><input value={username} onChange={e => setUsername(e.target.value)} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="NICKNAME" required /></div>
+                <div className="flex items-center gap-2 border-b p-2 border-white/20"><XI icon={User} size={16} className="text-white/50"/><input value={username} onChange={e => setUsername(e.target.value)} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="NICKNAME" required /></div>
 
                 <div className="flex items-center gap-2 border-b p-2 border-white/20">
-                    <Lock size={16} className="text-white/50" />
+                    <XI icon={Lock} size={16} className="text-white/50" />
                     <input value={password} onChange={e => setPassword(e.target.value)} type={showPassword ? "text" : "password"} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="PASS" required />
-                    <button type="button" onClick={generateSecurePassword} className="opacity-50 hover:opacity-100 text-white"><Wand2 size={14} /></button>
+                    <button type="button" onClick={generateSecurePassword} className="opacity-50 hover:opacity-100 text-white"><XI icon={Wand2} size={14} /></button>
                 </div>
                 {password && (() => {
                     const s = [password.length >= 8, /[A-Z]/.test(password), /[0-9]/.test(password), /[^a-zA-Z0-9]/.test(password)].filter(Boolean).length;
@@ -337,7 +338,7 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
 
                 {error && <div className="text-red-500 text-[10px] font-mono text-center">{error}</div>}
                 
-                <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? <Loader2 size={14} className="animate-spin" /> : 'СОЗДАТЬ'}</button>
+                <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? <XI icon={Loader2} size={14} className="animate-spin" /> : 'СОЗДАТЬ'}</button>
                 <div className="flex justify-between items-center">
                     <button type="button" onClick={() => { setStep('ENTRY'); resetForm(); }} className="text-[10px] font-mono opacity-50 hover:underline text-white">НАЗАД</button>
                     {showRecoverOption && (
@@ -353,15 +354,15 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             <form onSubmit={handleRecoverySubmit} className="flex flex-col gap-4 w-full animate-in fade-in">
                 <h3 className="text-white font-pixel text-xs text-center mb-2">ВОССТАНОВЛЕНИЕ ДОСТУПА</h3>
                 <div className="flex items-center gap-2 border-b p-3 border-white/20">
-                   <Mail size={16} className="text-white/50" />
+                   <XI icon={Mail} size={16} className="text-white/50" />
                    <input value={email} onChange={e => setEmail(e.target.value)} type="email" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="ВАШ EMAIL" required />
                 </div>
                 <p className="text-[10px] font-mono text-white/50 text-center">Ссылка для сброса будет отправлена на Email.</p>
                 
-                {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><AlertCircle size={14}/> {error}</div>}
+                {error && <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono justify-center"><XI icon={AlertCircle} size={14}/> {error}</div>}
                 
                 <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">
-                    {isLoading ? '...' : <><RefreshCw size={14}/> ОТПРАВИТЬ</>}
+                    {isLoading ? '...' : <><XI icon={RefreshCw} size={14}/> ОТПРАВИТЬ</>}
                 </button>
                 <button type="button" onClick={() => { setStep('LOGIN'); resetForm(); }} className="text-[10px] font-mono opacity-50 hover:underline text-center text-white">ОТМЕНА</button>
             </form>

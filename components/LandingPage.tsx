@@ -3,6 +3,7 @@ import { Archive, ArrowLeftRight, Users, ArrowRight, ChevronDown, Smartphone, Za
 import MatrixRain from './MatrixRain';
 import CRTOverlay from './CRTOverlay';
 import SEO from './SEO';
+import XI from './XI';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -146,7 +147,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               className="p-1.5 text-white/30 hover:text-white/60 transition-colors"
               aria-label="Закрыть"
             >
-              <X size={14} />
+              <XI icon={X} size={14} />
             </button>
           </div>
         </div>
@@ -201,7 +202,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               onClick={handleInstall}
               className="flex items-center gap-2 mt-2 text-[11px] font-mono text-green-400/70 hover:text-green-400 transition-colors underline underline-offset-4"
             >
-              <Smartphone size={12} />
+              <XI icon={Smartphone} size={12} />
               Установить приложение бесплатно
             </button>
           )}
@@ -210,7 +211,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
         {/* Scroll hint */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-30 animate-bounce z-10">
           <span className="text-[10px] font-mono uppercase tracking-widest">Узнать больше</span>
-          <ChevronDown size={16} />
+          <XI icon={ChevronDown} size={16} />
         </div>
       </section>
 
@@ -278,7 +279,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
             onClick={onRegister}
             className="flex items-center gap-3 px-10 py-4 bg-green-500 text-black font-pixel text-xs uppercase tracking-widest hover:bg-green-400 transition-all shadow-[0_0_30px_rgba(74,222,128,0.4)]"
           >
-            ЗАРЕГИСТРИРОВАТЬСЯ <ArrowRight size={16} />
+            ЗАРЕГИСТРИРОВАТЬСЯ <XI icon={ArrowRight} size={16} />
           </button>
           <button
             onClick={onLogin}
@@ -300,7 +301,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-green-500/30 bg-green-500/5 mb-6">
-                <Smartphone size={14} className="text-green-400" />
+                <XI icon={Smartphone} size={14} className="text-green-400" />
                 <span className="font-mono text-[11px] text-green-400 uppercase tracking-widest">Мобильное приложение</span>
               </div>
               <h2 className="font-pixel text-xl sm:text-2xl tracking-widest text-white mb-2 uppercase">
@@ -335,7 +336,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 <div className="space-y-4 text-left">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                      <Share size={15} className="text-white/50" />
+                      <XI icon={Share} size={15} className="text-white/50" />
                     </div>
                     <p className="font-mono text-xs text-white/60">Нажмите кнопку <span className="text-white">«Поделиться»</span> в Safari</p>
                   </div>
@@ -358,7 +359,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   onClick={handleInstall}
                   className="inline-flex items-center gap-3 px-10 py-4 bg-green-500 text-black font-pixel text-xs uppercase tracking-widest hover:bg-green-400 transition-all shadow-[0_0_30px_rgba(74,222,128,0.35)] hover:shadow-[0_0_40px_rgba(74,222,128,0.55)]"
                 >
-                  <Smartphone size={16} />
+                  <XI icon={Smartphone} size={16} />
                   УСТАНОВИТЬ ПРИЛОЖЕНИЕ
                 </button>
                 <p className="font-mono text-[10px] text-white/25 mt-4">Работает на Android, Windows, macOS, Linux</p>
@@ -374,7 +375,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                      <Smartphone size={15} className="text-white/50" />
+                      <XI icon={Smartphone} size={15} className="text-white/50" />
                     </div>
                     <p className="font-mono text-xs text-white/60">Выберите <span className="text-white">«Добавить на главный экран»</span> или <span className="text-white">«Установить приложение»</span></p>
                   </div>
@@ -401,7 +402,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                      <Smartphone size={15} className="text-white/50" />
+                      <XI icon={Smartphone} size={15} className="text-white/50" />
                     </div>
                     <p className="font-mono text-xs text-white/60">На Android: меню <span className="text-white">«⋮»</span> → <span className="text-white">«Добавить на главный экран»</span></p>
                   </div>

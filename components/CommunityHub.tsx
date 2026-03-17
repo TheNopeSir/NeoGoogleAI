@@ -6,6 +6,7 @@ import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
 import { getFirstImageUrl } from '../utils/imageUtils';
 import SEO from './SEO';
+import XI from './XI';
 
 interface CommunityHubProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -35,7 +36,7 @@ const WinampWindow = ({ title, children, className = '' }: { title: string, chil
 
 // Medal colors for top collectors
 const MEDAL = [
-    { bg: 'bg-yellow-500', text: 'text-black', ring: 'ring-yellow-400', glow: 'shadow-yellow-500/50', icon: <Crown size={8} /> },
+    { bg: 'bg-yellow-500', text: 'text-black', ring: 'ring-yellow-400', glow: 'shadow-yellow-500/50', icon: <XI icon={Crown} size={8} /> },
     { bg: 'bg-gray-300', text: 'text-black', ring: 'ring-gray-300', glow: 'shadow-gray-300/30', icon: null },
     { bg: 'bg-amber-600', text: 'text-white', ring: 'ring-amber-600', glow: 'shadow-amber-600/30', icon: null },
 ];
@@ -214,30 +215,30 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
             {/* Header */}
             {isWinamp ? (
                 <WinampWindow title="COMMUNITY NETWORK">
-                    <h1 className="text-xl font-winamp text-wa-gold flex items-center gap-2 mb-2"><Users size={24} /> ГЛОБАЛЬНАЯ СЕТЬ</h1>
+                    <h1 className="text-xl font-winamp text-wa-gold flex items-center gap-2 mb-2"><XI icon={Users} size={24} /> ГЛОБАЛЬНАЯ СЕТЬ</h1>
                     <p className="text-[12px] opacity-80">Активные узлы: {users.length}</p>
                 </WinampWindow>
             ) : (
                 <div className={`p-6 pb-4 border-b ${isLight ? 'border-gray-200' : isXP ? 'border-[#8592B5]' : 'border-white/10'}`}>
-                    <h1 className="text-2xl font-pixel font-bold flex items-center gap-3"><Users size={28} /> СООБЩЕСТВО</h1>
+                    <h1 className="text-2xl font-pixel font-bold flex items-center gap-3"><XI icon={Users} size={28} /> СООБЩЕСТВО</h1>
                     <p className="text-xs opacity-60 mt-1 font-mono">Рейтинги, люди и торговая площадка.</p>
                 </div>
             )}
 
             {/* Community Stats Bar */}
             <div className="px-4 py-3 grid grid-cols-4 gap-2">
-                {renderStatCard(<Users size={14} />, stats.totalUsers, 'коллекц.')}
-                {renderStatCard(<Package size={14} />, stats.totalExhibits, 'предметов')}
-                {renderStatCard(<Sparkles size={14} />, stats.newToday, 'сегодня')}
-                {renderStatCard(<ShoppingBag size={14} />, stats.onMarket, 'на рынке')}
+                {renderStatCard(<XI icon={Users} size={14} />, stats.totalUsers, 'коллекц.')}
+                {renderStatCard(<XI icon={Package} size={14} />, stats.totalExhibits, 'предметов')}
+                {renderStatCard(<XI icon={Sparkles} size={14} />, stats.newToday, 'сегодня')}
+                {renderStatCard(<XI icon={ShoppingBag} size={14} />, stats.onMarket, 'на рынке')}
             </div>
 
             {/* Navigation */}
             <div className={`flex mb-6 sticky top-0 md:top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-b border-[#8592B5]' : isLight ? 'bg-white/90 border-b border-gray-200 backdrop-blur-md' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
-                {renderTabButton('TRENDS', <TrendingUp size={20} />, 'ТРЕНДЫ')}
-                {renderTabButton('PEOPLE', <Users size={20} />, 'ЛЮДИ')}
-                {renderTabButton('TRADE', <RefreshCw size={20} />, 'ОБМЕН')}
-                {renderTabButton('BATTLES', <Swords size={20} />, 'БИТВЫ')}
+                {renderTabButton('TRENDS', <XI icon={TrendingUp} size={20} />, 'ТРЕНДЫ')}
+                {renderTabButton('PEOPLE', <XI icon={Users} size={20} />, 'ЛЮДИ')}
+                {renderTabButton('TRADE', <XI icon={RefreshCw} size={20} />, 'ОБМЕН')}
+                {renderTabButton('BATTLES', <XI icon={Swords} size={20} />, 'БИТВЫ')}
             </div>
 
             {/* Content Area */}
@@ -249,7 +250,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
 
                         {/* Top Collectors */}
                         <div className={`p-4 rounded-2xl border ${isWinamp ? 'bg-[#292929] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#8592B5]' : isLight ? 'bg-yellow-50 border-yellow-200' : 'bg-gradient-to-r from-yellow-900/10 to-transparent border-yellow-500/20'}`}>
-                            <h3 className={`${sectionLabel} ${isWinamp ? 'text-wa-gold' : 'text-yellow-500'}`}><Trophy size={14} /> ТОП КОЛЛЕКЦИОНЕРЫ</h3>
+                            <h3 className={`${sectionLabel} ${isWinamp ? 'text-wa-gold' : 'text-yellow-500'}`}><XI icon={Trophy} size={14} /> ТОП КОЛЛЕКЦИОНЕРЫ</h3>
                             <div
                                 className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide"
                                 onTouchStart={e => e.stopPropagation()}
@@ -306,7 +307,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         {/* Trending Exhibits */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className={`${sectionLabel} mb-0`}><Star size={14} className="text-red-400" /> СЕЙЧАС ПОПУЛЯРНО</h3>
+                                <h3 className={`${sectionLabel} mb-0`}><XI icon={Star} size={14} className="text-red-400" /> СЕЙЧАС ПОПУЛЯРНО</h3>
                                 <div className={`flex rounded-lg overflow-hidden border text-[9px] font-pixel ${isWinamp ? 'border-[#505050]' : isLight ? 'border-gray-200' : 'border-white/20'}`}>
                                     {(['48H', 'ALL'] as const).map(w => (
                                         <button
@@ -343,7 +344,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         {/* New Today */}
                         {newExhibits.length > 0 && (
                             <div>
-                                <h3 className={sectionLabel}><Sparkles size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ</h3>
+                                <h3 className={sectionLabel}><XI icon={Sparkles} size={14} className="text-cyan-400" /> НОВИНКИ СЕТИ</h3>
                                 <div
                                     className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
                                     onTouchStart={e => e.stopPropagation()}
@@ -363,7 +364,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                         <img src={img} alt={item.title} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-gray-100' : 'bg-white/5'}`}>
-                                                            <Package size={24} className="opacity-20" />
+                                                            <XI icon={Package} size={24} className="opacity-20" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -384,7 +385,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         {/* Search + Sort */}
                         <div className="flex gap-2">
                             <div className="relative flex-1">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+                                <XI icon={Search} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
                                 <input
                                     type="text"
                                     placeholder="Поиск по нику..."
@@ -449,7 +450,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                         : (isWinamp ? 'border-wa-gold text-wa-gold hover:bg-wa-gold hover:text-black' : isLight ? 'border-blue-400 text-blue-600 hover:bg-blue-600 hover:text-white' : 'border-green-500 text-green-400 hover:bg-green-500 hover:text-black')
                                                         }`}
                                                 >
-                                                    {following ? <><UserCheck size={10} /> ПОД.</> : <><UserPlus size={10} /> +ПОДП.</>}
+                                                    {following ? <><XI icon={UserCheck} size={10} /> ПОД.</> : <><XI icon={UserPlus} size={10} /> +ПОДП.</>}
                                                 </button>
                                             )}
                                         </div>
@@ -475,7 +476,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         {/* WANTED Section */}
                         {tradeFilter === 'ALL' && wantedExhibits.length > 0 && (
                             <div>
-                                <h3 className={sectionLabel}><Search size={14} className="text-purple-400" /> РАЗЫСКИВАЕТСЯ</h3>
+                                <h3 className={sectionLabel}><XI icon={Search} size={14} className="text-purple-400" /> РАЗЫСКИВАЕТСЯ</h3>
                                 <div
                                     className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
                                     onTouchStart={e => e.stopPropagation()}
@@ -495,7 +496,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                         <img src={img} alt={item.title} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-purple-50' : 'bg-purple-500/10'}`}>
-                                                            <Search size={24} className="text-purple-400 opacity-50" />
+                                                            <XI icon={Search} size={24} className="text-purple-400 opacity-50" />
                                                         </div>
                                                     )}
                                                     <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-purple-600/90 text-white text-[8px] font-bold rounded">ИЩУТ</div>
@@ -512,10 +513,10 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                         {/* Filter Chips */}
                         <div className={`flex gap-2 flex-wrap`}>
                             {([
-                                { id: 'ALL', label: 'ВСЕ', icon: <RefreshCw size={10} /> },
-                                { id: 'SALE', label: 'ПРОДАЖА', icon: <ShoppingBag size={10} /> },
-                                { id: 'TRADE', label: 'ОБМЕН', icon: <ArrowLeftRight size={10} /> },
-                                { id: 'GIFT', label: 'ДАРЮ', icon: <Gift size={10} /> },
+                                { id: 'ALL', label: 'ВСЕ', icon: <XI icon={RefreshCw} size={10} /> },
+                                { id: 'SALE', label: 'ПРОДАЖА', icon: <XI icon={ShoppingBag} size={10} /> },
+                                { id: 'TRADE', label: 'ОБМЕН', icon: <XI icon={ArrowLeftRight} size={10} /> },
+                                { id: 'GIFT', label: 'ДАРЮ', icon: <XI icon={Gift} size={10} /> },
                             ] as const).map(({ id, label, icon }) => (
                                 <button
                                     key={id}

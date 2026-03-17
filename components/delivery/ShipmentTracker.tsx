@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle, Circle, Clock, Package, Truck, X } from 'lucide-react';
 import type { ShipmentInfo, ShipmentStatus } from '../../types';
 import { shipmentStatusLabel, trackShipment } from '../../services/deliveryService';
+import XI from '../XI';
 
 interface Props {
     shipment: ShipmentInfo;
@@ -11,10 +12,10 @@ interface Props {
 }
 
 const STEPS: { status: ShipmentStatus; label: string; icon: React.ReactNode }[] = [
-    { status: 'PENDING', label: 'Ожидает передачи', icon: <Clock size={16} /> },
-    { status: 'CREATED', label: 'Передан курьеру', icon: <Package size={16} /> },
-    { status: 'IN_TRANSIT', label: 'В пути', icon: <Truck size={16} /> },
-    { status: 'DELIVERED', label: 'Доставлен', icon: <CheckCircle size={16} /> },
+    { status: 'PENDING', label: 'Ожидает передачи', icon: <XI icon={Clock} size={16} /> },
+    { status: 'CREATED', label: 'Передан курьеру', icon: <XI icon={Package} size={16} /> },
+    { status: 'IN_TRANSIT', label: 'В пути', icon: <XI icon={Truck} size={16} /> },
+    { status: 'DELIVERED', label: 'Доставлен', icon: <XI icon={CheckCircle} size={16} /> },
 ];
 
 const STATUS_ORDER: ShipmentStatus[] = ['PENDING', 'CREATED', 'IN_TRANSIT', 'DELIVERED'];
@@ -61,7 +62,7 @@ export default function ShipmentTracker({ shipment, isRecipient, onConfirmDelive
                         )}
                     </div>
                     <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors">
-                        <X size={18} className="text-[var(--color-text-secondary)]" />
+                        <XI icon={X} size={18} className="text-[var(--color-text-secondary)]" />
                     </button>
                 </div>
 
@@ -82,7 +83,7 @@ export default function ShipmentTracker({ shipment, isRecipient, onConfirmDelive
                                                 : 'border-[var(--color-accent)] bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
                                             : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]'
                                     }`}>
-                                        {done && !active ? <CheckCircle size={14} /> : step.icon}
+                                        {done && !active ? <XI icon={CheckCircle} size={14} /> : step.icon}
                                     </div>
                                     {!isLast && (
                                         <div className={`w-0.5 h-6 mt-1 mb-1 rounded-full ${

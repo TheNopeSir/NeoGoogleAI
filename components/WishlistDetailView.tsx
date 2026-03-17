@@ -5,6 +5,7 @@ import { WishlistItem, UserProfile, Exhibit } from '../types';
 import { WISHLIST_PRIORITY_CONFIG } from '../constants';
 import { getUserAvatar, getFullDatabase } from '../services/storageService';
 import TradeOfferModal from './TradeOfferModal';
+import XI from './XI';
 
 interface WishlistDetailViewProps {
     item: WishlistItem;
@@ -46,14 +47,14 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
 
             <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={14} /> НАЗАД
+                    <XI icon={ArrowLeft} size={14} /> НАЗАД
                 </button>
                 {isOwner && onDelete && (
                     <button 
                         onClick={() => onDelete(item.id)} 
                         className="text-red-500 hover:text-red-400 transition-all flex items-center gap-2 font-pixel text-[10px] uppercase"
                     >
-                        <Trash2 size={14} /> УДАЛИТЬ ЗАПРОС
+                        <XI icon={Trash2} size={14} /> УДАЛИТЬ ЗАПРОС
                     </button>
                 )}
             </div>
@@ -74,7 +75,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                             <img src={item.referenceImageUrl} className="w-full h-full object-contain" alt={item.title} />
                         ) : (
                             <div className="flex flex-col items-center opacity-30">
-                                <Search size={48} />
+                                <XI icon={Search} size={48} />
                                 <span className="font-pixel text-[10px] mt-2">НЕТ РЕФЕРЕНСА</span>
                             </div>
                         )}
@@ -92,7 +93,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                     {/* Notes Box */}
                     <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-gray-100 border-black/5'}`}>
                         <h3 className="font-pixel text-[10px] opacity-50 mb-3 flex items-center gap-2 uppercase tracking-widest">
-                            <Target size={14} /> Параметры поиска / Заметки
+                            <XI icon={Target} size={14} /> Параметры поиска / Заметки
                         </h3>
                         <p className={`font-mono text-sm leading-relaxed whitespace-pre-wrap italic ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                             {item.notes || "Автор не оставил дополнительных примечаний к поиску."}
@@ -117,7 +118,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                                 onClick={() => setShowTradeModal(true)} 
                                 className="w-full px-6 py-4 bg-green-600 text-white font-pixel text-xs font-bold rounded-xl hover:bg-green-500 transition-transform shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 uppercase tracking-widest"
                             >
-                                <Sparkles size={16}/> Есть у меня! Предложить
+                                <XI icon={Sparkles} size={16}/> Есть у меня! Предложить
                             </button>
                             <button onClick={() => onAuthorClick(item.owner)} className="text-[10px] font-bold text-purple-400 hover:underline uppercase">
                                 Написать сообщение

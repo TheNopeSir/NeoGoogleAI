@@ -4,6 +4,7 @@ import { Trophy, ArrowLeft, Lock, CheckCircle2 } from 'lucide-react';
 import { BADGE_CONFIG } from '../constants';
 import { AchievementProgress } from '../types';
 import MatrixIcon from './MatrixIcon';
+import XI from './XI';
 
 interface HallOfFameProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -18,7 +19,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
   return (
     <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
         <button onClick={onBack} className={`flex items-center gap-2 mb-8 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-             <ArrowLeft size={16} /> НАЗАД
+             <XI icon={ArrowLeft} size={16} /> НАЗАД
         </button>
 
         <div className="text-center mb-12">
@@ -79,7 +80,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                         </div>
                         
                         {!progress.unlocked && (
-                            <div className="absolute top-4 right-4"><Lock size={14} className="opacity-20" /></div>
+                            <div className="absolute top-4 right-4"><XI icon={Lock} size={14} className="opacity-20" /></div>
                         )}
                     </div>
                 );

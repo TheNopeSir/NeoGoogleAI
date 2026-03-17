@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowLeft, User, UserPlus, UserCheck } from 'lucide-react';
 import { getUserAvatar, getFullDatabase, toggleFollow } from '../services/storageService';
+import XI from './XI';
 
 interface SocialListViewProps {
     type: 'followers' | 'following';
@@ -20,7 +21,7 @@ const SocialListView: React.FC<SocialListViewProps> = ({
     
     if (!targetUser) return (
         <div className="p-8 text-center font-pixel">
-            <button onClick={onBack} className="mb-4 flex items-center gap-2 mx-auto"><ArrowLeft size={16}/> НАЗАД</button>
+            <button onClick={onBack} className="mb-4 flex items-center gap-2 mx-auto"><XI icon={ArrowLeft} size={16}/> НАЗАД</button>
             ПОЛЬЗОВАТЕЛЬ НЕ НАЙДЕН
         </div>
     );
@@ -50,7 +51,7 @@ const SocialListView: React.FC<SocialListViewProps> = ({
         <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
              <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
                 <button onClick={onBack} className={`opacity-70 hover:opacity-100 flex items-center gap-2 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={16} /> НАЗАД
+                    <XI icon={ArrowLeft} size={16} /> НАЗАД
                 </button>
                 <h2 className={`font-pixel text-lg font-bold ${isWinamp ? 'text-[#00ff00]' : ''}`}>{title} <span className="text-green-500">@{username}</span></h2>
              </div>
@@ -93,7 +94,7 @@ const SocialListView: React.FC<SocialListViewProps> = ({
                                         onClick={(e) => handleFollowToggle(e, uName)}
                                         className={`p-2 rounded-lg transition-all ${alreadyFollowing ? 'bg-transparent border border-white/20 opacity-50' : 'bg-green-500 text-black shadow-[0_0_10px_rgba(74,222,128,0.3)]'}`}
                                     >
-                                        {alreadyFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
+                                        {alreadyFollowing ? <XI icon={UserCheck} size={16} /> : <XI icon={UserPlus} size={16} />}
                                     </button>
                                 )}
                             </div>

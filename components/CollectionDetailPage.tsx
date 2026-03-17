@@ -3,6 +3,7 @@ import { ArrowLeft, Share2, FolderOpen, Grid, User, Edit3, Trash2 } from 'lucide
 import { Collection, Exhibit } from '../types';
 import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
+import XI from './XI';
 
 interface CollectionDetailPageProps {
     collection: Collection;
@@ -27,7 +28,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
         <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={14} /> НАЗАД
+                    <XI icon={ArrowLeft} size={14} /> НАЗАД
                 </button>
                 <div className="flex gap-4">
                     {isOwner && onDelete && (
@@ -35,15 +36,15 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                             onClick={() => { if(confirm('Вы уверены, что хотите удалить эту коллекцию?')) onDelete(collection.id); }} 
                             className="text-red-500 hover:text-red-400 transition-all flex items-center gap-2 font-pixel text-[10px] uppercase"
                         >
-                            <Trash2 size={16} /> УДАЛИТЬ
+                            <XI icon={Trash2} size={16} /> УДАЛИТЬ
                         </button>
                     )}
                     {isOwner && onEdit && (
                         <button onClick={onEdit} className="text-purple-400 hover:text-purple-300 transition-all flex items-center gap-2 font-pixel text-[10px] uppercase">
-                            <Edit3 size={16} /> РЕДАКТИРОВАТЬ
+                            <XI icon={Edit3} size={16} /> РЕДАКТИРОВАТЬ
                         </button>
                     )}
-                    <button className="opacity-70 hover:opacity-100 transition-all"><Share2 size={18} /></button>
+                    <button className="opacity-70 hover:opacity-100 transition-all"><XI icon={Share2} size={18} /></button>
                 </div>
             </div>
 
@@ -53,7 +54,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                 </div>
                 <div className="flex-1 space-y-4">
                     <div className="flex items-center gap-2 font-pixel text-[10px] text-blue-500 tracking-widest">
-                        <FolderOpen size={14}/> КОЛЛЕКЦИЯ
+                        <XI icon={FolderOpen} size={14}/> КОЛЛЕКЦИЯ
                     </div>
                     <h1 className={`text-3xl md:text-5xl font-pixel font-black leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{collection.title}</h1>
                     <p className="font-mono text-sm opacity-70 max-w-2xl leading-relaxed">{collection.description || 'Нет описания для этой коллекции.'}</p>
@@ -79,7 +80,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
 
             <div className="space-y-6">
                 <h3 className="font-pixel text-xs opacity-50 uppercase tracking-[0.3em] flex items-center gap-2">
-                    <Grid size={14} /> СОСТАВ_ЭКСПОЗИЦИИ
+                    <XI icon={Grid} size={14} /> СОСТАВ_ЭКСПОЗИЦИИ
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {artifacts.map(item => (

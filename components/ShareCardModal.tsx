@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
 import { Exhibit, UserProfile } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface ShareCardModalProps {
     exhibit: Exhibit;
@@ -176,7 +177,7 @@ const ShareCardModal: React.FC<ShareCardModalProps> = ({ exhibit, user, onClose 
             <div className="bg-[#111] border border-green-500/50 p-4 rounded-xl max-w-lg w-full flex flex-col gap-4 shadow-[0_0_50px_rgba(0,255,0,0.1)]">
                 <div className="flex justify-between items-center text-green-500 border-b border-green-500/30 pb-2">
                     <h3 className="font-pixel text-xs tracking-widest">ГЕНЕРАТОР ДОСЬЕ</h3>
-                    <button onClick={onClose}><X size={20} /></button>
+                    <button onClick={onClose}><XI icon={X} size={20} /></button>
                 </div>
                 
                 <div className="relative aspect-[3/4] bg-black border border-white/10 w-full flex items-center justify-center overflow-hidden">
@@ -185,9 +186,9 @@ const ShareCardModal: React.FC<ShareCardModalProps> = ({ exhibit, user, onClose 
                 </div>
 
                 <div className="flex gap-2">
-                    <button onClick={generateCard} className="p-3 border border-green-500/30 text-green-500 rounded hover:bg-green-500/10"><RefreshCw size={20}/></button>
+                    <button onClick={generateCard} className="p-3 border border-green-500/30 text-green-500 rounded hover:bg-green-500/10"><XI icon={RefreshCw} size={20}/></button>
                     <button onClick={handleDownload} className="flex-1 py-3 bg-green-600 text-black font-bold font-pixel text-xs rounded hover:bg-green-500 flex items-center justify-center gap-2">
-                        <Download size={16}/> DOWNLOAD_DOSSIER.PNG
+                        <XI icon={Download} size={16}/> DOWNLOAD_DOSSIER.PNG
                     </button>
                 </div>
             </div>

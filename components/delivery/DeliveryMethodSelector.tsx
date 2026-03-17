@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Package, Truck } from 'lucide-react';
 import type { DeliveryMethod, DeliveryTariff, ShippingAddress } from '../../types';
 import { calculateTariffs, isMockMode } from '../../services/deliveryService';
+import XI from '../XI';
 
 interface Props {
     fromCity: string;
@@ -54,9 +55,9 @@ export default function DeliveryMethodSelector({ fromCity, toCity, selected, onS
                 >
                     <div className={`p-2 rounded-lg ${selected === t.method ? 'bg-[var(--color-accent)]/20' : 'bg-[var(--color-bg-tertiary)]'}`}>
                         {t.method === 'COURIER' ? (
-                            <Truck size={18} className={selected === t.method ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'} />
+                            <XI icon={Truck} size={18} className={selected === t.method ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'} />
                         ) : (
-                            <Package size={18} className={selected === t.method ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'} />
+                            <XI icon={Package} size={18} className={selected === t.method ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'} />
                         )}
                     </div>
                     <div className="flex-1 min-w-0">

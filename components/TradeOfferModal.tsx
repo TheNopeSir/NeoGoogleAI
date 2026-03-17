@@ -6,6 +6,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import DeliveryMethodSelector from './delivery/DeliveryMethodSelector';
 import ShippingAddressForm, { validateAddress } from './delivery/ShippingAddressForm';
 import PickupPointMap from './delivery/PickupPointMap';
+import XI from './XI';
 
 interface TradeOfferModalProps {
     targetItem?: Exhibit; // If initiated from an item (Target inventory)
@@ -184,28 +185,28 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
             <h3 className="font-pixel text-center text-lg mb-6 text-white">ВЫБЕРИТЕ ТИП СДЕЛКИ</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onClick={() => setTradeType('DIRECT')} className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all ${tradeType === 'DIRECT' ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-white/30'}`}>
-                    <RefreshCw size={24} className={tradeType === 'DIRECT' ? 'text-blue-500' : 'opacity-50'}/>
+                    <XI icon={RefreshCw} size={24} className={tradeType === 'DIRECT' ? 'text-blue-500' : 'opacity-50'}/>
                     <div className="text-left">
                         <div className="font-bold text-sm text-white">ПРЯМОЙ ОБМЕН</div>
                         <div className="text-[10px] opacity-50 mt-1">1 предмет ⇄ 1 предмет</div>
                     </div>
                 </button>
                 <button onClick={() => setTradeType('MULTI')} className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all ${tradeType === 'MULTI' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-white/30'}`}>
-                    <ArrowRightLeft size={24} className={tradeType === 'MULTI' ? 'text-purple-500' : 'opacity-50'}/>
+                    <XI icon={ArrowRightLeft} size={24} className={tradeType === 'MULTI' ? 'text-purple-500' : 'opacity-50'}/>
                     <div className="text-left">
                         <div className="font-bold text-sm text-white">МУЛЬТИ-ТРЕЙД</div>
                         <div className="text-[10px] opacity-50 mt-1">Много ⇄ Много</div>
                     </div>
                 </button>
                 <button onClick={() => setTradeType('MONEY')} className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all ${tradeType === 'MONEY' ? 'border-green-500 bg-green-500/10' : 'border-white/10 hover:border-white/30'}`}>
-                    <Wallet size={24} className={tradeType === 'MONEY' ? 'text-green-500' : 'opacity-50'}/>
+                    <XI icon={Wallet} size={24} className={tradeType === 'MONEY' ? 'text-green-500' : 'opacity-50'}/>
                     <div className="text-left">
                         <div className="font-bold text-sm text-white">ЗА ДЕНЬГИ (RUB)</div>
                         <div className="text-[10px] opacity-50 mt-1">{isWishlist ? 'Продать предмет' : 'Купить предмет'}</div>
                     </div>
                 </button>
                 <button onClick={() => setTradeType('GIFT')} className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all ${tradeType === 'GIFT' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-white/30'}`}>
-                    <Gift size={24} className={tradeType === 'GIFT' ? 'text-pink-500' : 'opacity-50'}/>
+                    <XI icon={Gift} size={24} className={tradeType === 'GIFT' ? 'text-pink-500' : 'opacity-50'}/>
                     <div className="text-left">
                         <div className="font-bold text-sm text-white">ПОДАРОК</div>
                         <div className="text-[10px] opacity-50 mt-1">Безвозмездно</div>
@@ -220,7 +221,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
             {/* Money Input Section */}
             {tradeType === 'MONEY' && (
                 <div className="mb-4 p-4 bg-green-900/20 border border-green-500/30 rounded-xl flex items-center gap-4">
-                    <DollarSign size={24} className="text-green-500"/>
+                    <XI icon={DollarSign} size={24} className="text-green-500"/>
                     <div className="flex-1">
                         <label className="text-[10px] font-bold text-green-500 uppercase block mb-1">Сумма сделки (RUB)</label>
                         <input 
@@ -245,7 +246,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                         {availableMyItems.map(item => (
                             <div key={item.id} onClick={() => toggleMyItem(item.id)} className={`relative aspect-square border-2 rounded cursor-pointer ${mySelectedItems.includes(item.id) ? 'border-green-500' : 'border-white/10 hover:border-white/30'}`}>
                                 <img src={getImageUrl(item.imageUrls[0])} className="w-full h-full object-cover rounded-sm"/>
-                                {mySelectedItems.includes(item.id) && <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center"><Check className="text-green-500 font-bold"/></div>}
+                                {mySelectedItems.includes(item.id) && <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center"><XI icon={Check} className="text-green-500 font-bold"/></div>}
                             </div>
                         ))}
                         {availableMyItems.length === 0 && <div className="col-span-3 text-center text-xs opacity-30 py-4 text-white">Инвентарь пуст</div>}
@@ -264,7 +265,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                                 <div onClick={() => toggleTheirItem(targetItem.id)} className={`relative aspect-square border-2 rounded cursor-pointer ${theirSelectedItems.includes(targetItem.id) ? 'border-blue-500' : 'border-white/10 hover:border-white/30'}`}>
                                     <img src={getImageUrl(targetItem.imageUrls[0])} className="w-full h-full object-cover rounded-sm"/>
                                     <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[8px] px-1 font-bold">ЦЕЛЬ</div>
-                                    {theirSelectedItems.includes(targetItem.id) && <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center"><Check className="text-blue-500 font-bold"/></div>}
+                                    {theirSelectedItems.includes(targetItem.id) && <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center"><XI icon={Check} className="text-blue-500 font-bold"/></div>}
                                 </div>
                             )}
                             {/* If we aren't showing target item (e.g. general trade or wishlist fulfillment where we select nothing from them yet) */}
@@ -301,7 +302,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                         <div className="text-lg font-pixel text-white">{mySelectedItems.length} <span className="text-xs">ПРЕДМ.</span></div>
                     )}
                 </div>
-                <div className="flex flex-col items-center opacity-50 text-white"><ArrowRightLeft/></div>
+                <div className="flex flex-col items-center opacity-50 text-white"><XI icon={ArrowRightLeft}/></div>
                 <div className="text-center flex-1">
                     <div className="text-[10px] font-bold text-blue-500 mb-1 uppercase">ПОЛУЧАЕТЕ</div>
                     {tradeType === 'MONEY' && isWishlist ? (
@@ -319,7 +320,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
             )}
 
             <div className="text-center text-[10px] opacity-50 font-mono text-white">
-                <AlertCircle size={12} className="inline mr-1"/>
+                <XI icon={AlertCircle} size={12} className="inline mr-1"/>
                 После подтверждения предложение будет отправлено. Сделка завершится только после согласия второй стороны.
             </div>
         </div>
@@ -328,7 +329,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
     const renderStep4_Delivery = () => (
         <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] p-1 custom-scrollbar">
             <div className="flex items-center gap-2 mb-2">
-                <Truck size={18} className="text-green-500" />
+                <XI icon={Truck} size={18} className="text-green-500" />
                 <h3 className="font-pixel text-sm text-white uppercase">Способ Доставки</h3>
             </div>
 
@@ -391,13 +392,13 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
                 {/* Header */}
                 <div className="bg-[#222] p-4 flex justify-between items-center border-b border-white/5 flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <RefreshCw size={20} className="text-green-500" />
+                        <XI icon={RefreshCw} size={20} className="text-green-500" />
                         <div>
                             <div className="font-bold text-sm tracking-widest uppercase font-pixel text-white">ТОРГОВЫЙ ТЕРМИНАЛ</div>
                             <div className="text-[10px] opacity-50 text-white">Сделка с @{recipient.username}</div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="hover:text-red-500 transition-colors text-white"><X size={24} /></button>
+                    <button onClick={onClose} className="hover:text-red-500 transition-colors text-white"><XI icon={X} size={24} /></button>
                 </div>
 
                 {/* Progress Bar */}
@@ -426,7 +427,7 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
 
                     {!isLastStep ? (
                         <button onClick={handleNext} className="px-8 py-3 bg-green-600 text-black font-bold rounded-xl text-xs uppercase hover:bg-green-500 flex items-center gap-2">
-                            Далее <ChevronRight size={16}/>
+                            Далее <XI icon={ChevronRight} size={16}/>
                         </button>
                     ) : (
                         <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-3 bg-green-600 text-black font-bold rounded-xl text-xs uppercase hover:bg-green-500 flex items-center gap-2 shadow-lg shadow-green-900/50">

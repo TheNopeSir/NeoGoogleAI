@@ -4,6 +4,7 @@ import { ArrowLeft, Search, Share2, Radar } from 'lucide-react';
 import { WishlistItem, UserProfile } from '../types';
 import WishlistCard from './WishlistCard';
 import { getUserAvatar } from '../services/storageService';
+import XI from './XI';
 
 interface UserWishlistViewProps {
     ownerUsername: string;
@@ -33,10 +34,10 @@ const UserWishlistView: React.FC<UserWishlistViewProps> = ({
         <div className={`max-w-4xl mx-auto animate-in fade-in pb-32 pt-4 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                    <ArrowLeft size={14} /> НАЗАД
+                    <XI icon={ArrowLeft} size={14} /> НАЗАД
                 </button>
                 <button onClick={handleShare} className={`flex items-center gap-2 font-pixel text-[10px] uppercase tracking-widest transition-all ${copied ? 'text-green-500' : 'opacity-70 hover:opacity-100'}`}>
-                    <Share2 size={14} /> {copied ? 'ССЫЛКА СКОПИРОВАНА' : 'ПОДЕЛИТЬСЯ'}
+                    <XI icon={Share2} size={14} /> {copied ? 'ССЫЛКА СКОПИРОВАНА' : 'ПОДЕЛИТЬСЯ'}
                 </button>
             </div>
 
@@ -44,7 +45,7 @@ const UserWishlistView: React.FC<UserWishlistViewProps> = ({
                 <div className="inline-block relative mb-4">
                     <img src={getUserAvatar(ownerUsername)} className={`w-20 h-20 rounded-full border-4 ${isWinamp ? 'border-[#505050]' : 'border-purple-500/30'}`} />
                     <div className="absolute -bottom-2 -right-2 bg-black text-white p-2 rounded-full border border-white/10">
-                        <Radar size={16} className={isWinamp ? 'text-[#00ff00]' : 'text-purple-400'} />
+                        <XI icon={Radar} size={16} className={isWinamp ? 'text-[#00ff00]' : 'text-purple-400'} />
                     </div>
                 </div>
                 <h1 className={`text-2xl md:text-4xl font-pixel font-black uppercase mb-2 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
@@ -57,7 +58,7 @@ const UserWishlistView: React.FC<UserWishlistViewProps> = ({
 
             {wishlistItems.length === 0 ? (
                 <div className={`p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center opacity-50 ${isWinamp ? 'border-[#505050]' : 'border-white/10'}`}>
-                    <Search size={48} className="mb-4 opacity-50" />
+                    <XI icon={Search} size={48} className="mb-4 opacity-50" />
                     <p className="font-mono text-sm uppercase">Список желаемого пуст</p>
                 </div>
             ) : (

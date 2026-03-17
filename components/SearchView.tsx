@@ -5,6 +5,7 @@ import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
 import { getUserAvatar } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import XI from './XI';
 
 interface SearchViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -57,10 +58,10 @@ const SearchView: React.FC<SearchViewProps> = ({
         <div className="max-w-4xl mx-auto animate-in fade-in pb-32">
             <div className={`flex items-center gap-4 mb-6 sticky top-20 z-30 pt-4 pb-4 border-b backdrop-blur-md ${isWinamp ? 'bg-[#282828]/90 border-[#505050]' : 'bg-transparent border-white/10'}`}>
                 <button onClick={onBack} className={`p-2 rounded-full transition-colors ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}>
-                    <ArrowLeft size={20} className={isWinamp ? 'text-[#00ff00]' : ''}/>
+                    <XI icon={ArrowLeft} size={20} className={isWinamp ? 'text-[#00ff00]' : ''}/>
                 </button>
                 <div className={`flex-1 flex items-center px-4 py-3 rounded-2xl border ${isWinamp ? 'bg-black border-[#505050] text-[#00ff00]' : theme === 'dark' ? 'bg-black/40 border-white/20' : 'bg-white border-black/10'}`}>
-                    <Search size={18} className="opacity-50 mr-3" />
+                    <XI icon={Search} size={18} className="opacity-50 mr-3" />
                     <input 
                         autoFocus
                         type="text" 
@@ -74,15 +75,15 @@ const SearchView: React.FC<SearchViewProps> = ({
 
             <div className={`flex mb-8 border-b ${isWinamp ? 'border-[#505050]' : 'border-gray-500/30'}`}>
                 <button onClick={() => setActiveTab('ARTIFACTS')} className={`flex-1 pb-3 text-xs font-pixel flex justify-center items-center gap-2 ${activeTab === 'ARTIFACTS' ? (isWinamp ? 'text-[#00ff00] border-b-2 border-[#00ff00]' : 'text-green-500 border-b-2 border-green-500') : 'opacity-50'}`}>
-                    <Grid size={14} /> АРТЕФАКТЫ
+                    <XI icon={Grid} size={14} /> АРТЕФАКТЫ
                     {query && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">{filteredArtifacts.length}</span>}
                 </button>
                 <button onClick={() => setActiveTab('COLLECTIONS')} className={`flex-1 pb-3 text-xs font-pixel flex justify-center items-center gap-2 ${activeTab === 'COLLECTIONS' ? (isWinamp ? 'text-[#00ff00] border-b-2 border-[#00ff00]' : 'text-green-500 border-b-2 border-green-500') : 'opacity-50'}`}>
-                    <FolderPlus size={14} /> КОЛЛЕКЦИИ
+                    <XI icon={FolderPlus} size={14} /> КОЛЛЕКЦИИ
                     {query && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">{filteredCollections.length}</span>}
                 </button>
                 <button onClick={() => setActiveTab('USERS')} className={`flex-1 pb-3 text-xs font-pixel flex justify-center items-center gap-2 ${activeTab === 'USERS' ? (isWinamp ? 'text-[#00ff00] border-b-2 border-[#00ff00]' : 'text-green-500 border-b-2 border-green-500') : 'opacity-50'}`}>
-                    <Users size={14} /> ЛЮДИ
+                    <XI icon={Users} size={14} /> ЛЮДИ
                     {query && <span className="bg-white/10 px-1.5 rounded-full text-[9px]">{filteredUsers.length}</span>}
                 </button>
             </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Search, Camera, Flame, Star, Circle, Crown } from 'luc
 import { DefaultCategory, WISHLIST_PRIORITY_CONFIG } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { WishlistItem, WishlistPriority } from '../types';
+import XI from './XI';
 
 interface CreateWishlistItemViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -46,9 +47,9 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
     <div className={`max-w-4xl mx-auto space-y-8 animate-in fade-in pb-32 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
       <div className="flex items-center justify-between border-b border-dashed border-white/10 pb-4">
         <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-          <ArrowLeft size={14} /> ОТМЕНА
+          <XI icon={ArrowLeft} size={14} /> ОТМЕНА
         </button>
-        <h2 className={`font-pixel text-lg flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : ''}`}><Search size={18} /> НОВОЕ ЖЕЛАНИЕ</h2>
+        <h2 className={`font-pixel text-lg flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : ''}`}><XI icon={Search} size={18} /> НОВОЕ ЖЕЛАНИЕ</h2>
       </div>
 
       <div className="space-y-6">
@@ -65,7 +66,7 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
                 </>
             ) : (
                 <>
-                    <Camera size={32} className="opacity-50 mb-2" />
+                    <XI icon={Camera} size={32} className="opacity-50 mb-2" />
                     <span className="text-[10px] font-pixel opacity-50">ДОБАВИТЬ РЕФЕРЕНС (ФОТО)</span>
                 </>
             )}
@@ -128,7 +129,7 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
             onClick={handleSubmit}
             className="w-full py-5 bg-purple-500 text-white rounded-2xl font-pixel text-sm tracking-[0.2em] hover:scale-[1.01] active:scale-95 transition-all shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center justify-center gap-3 font-black"
         >
-            <Search size={20} /> ДОБАВИТЬ В ВИШЛИСТ
+            <XI icon={Search} size={20} /> ДОБАВИТЬ В ВИШЛИСТ
         </button>
 
       </div>

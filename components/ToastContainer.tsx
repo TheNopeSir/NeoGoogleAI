@@ -4,6 +4,7 @@ import { X, Bell, MessageSquare, Heart, RefreshCw, UserPlus, BookOpen } from 'lu
 import { Notification } from '../types';
 import { subscribeToToasts } from '../services/storageService';
 import MatrixIcon from './MatrixIcon';
+import XI from './XI';
 
 const TOAST_TTL = 5000; // ms до авто-скрытия
 
@@ -130,7 +131,7 @@ const ToastContainer: React.FC = () => {
                                 onClick={() => removeToast(toast.actor)}
                                 className="opacity-40 hover:opacity-100 transition-opacity ml-2"
                             >
-                                <X size={12} />
+                                <XI icon={X} size={12} />
                             </button>
                         </div>
 
