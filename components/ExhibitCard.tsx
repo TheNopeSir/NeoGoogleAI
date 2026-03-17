@@ -6,6 +6,7 @@ import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants'
 import { getUserAvatar } from '../services/storageService';
 import ProgressiveImage from './ProgressiveImage';
 import { getImageUrl } from '../utils/imageUtils';
+import MatrixIcon from './MatrixIcon';
 
 interface ExhibitCardProps {
   item: Exhibit;
@@ -525,17 +526,17 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
 
             <div className="flex items-center gap-2 shrink-0">
               <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
-                <Eye size={11} /> <span>{uniqueViews}</span>
+                <MatrixIcon icon={Eye} size={11} theme={theme} glow={0} /> <span>{uniqueViews}</span>
               </div>
               <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
-                <MessageSquare size={11} /> <span>{commentCount}</span>
+                <MatrixIcon icon={MessageSquare} size={11} color="#60a5fa" theme={theme} glow={0} /> <span>{commentCount}</span>
               </div>
               <button
                 type="button"
                 onClick={handleLike}
                 className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-400' : isLight ? 'text-gray-400 hover:text-red-400' : 'text-white/40 hover:text-red-400'}`}
               >
-                <Heart size={11} fill={isLiked ? "currentColor" : "none"} />
+                <MatrixIcon icon={Heart} size={11} color="#f87171" theme={theme} glow={isLiked ? 1 : 0} />
                 <span>{likeCount}</span>
               </button>
             </div>
@@ -558,9 +559,9 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             <img src={firstImage} className="w-full h-full object-cover" alt={item.title} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <div className="absolute bottom-2 left-2 flex gap-3 text-[9px] font-mono text-white/70">
-              <span className="flex items-center gap-1"><Eye size={10}/> {uniqueViews}</span>
-              <span className="flex items-center gap-1"><Heart size={10}/> {likeCount}</span>
-              <span className="flex items-center gap-1"><MessageSquare size={10}/> {commentCount}</span>
+              <span className="flex items-center gap-1"><MatrixIcon icon={Eye} size={10} theme="dark" glow={0} /> {uniqueViews}</span>
+              <span className="flex items-center gap-1"><MatrixIcon icon={Heart} size={10} color="#f87171" theme="dark" glow={1} /> {likeCount}</span>
+              <span className="flex items-center gap-1"><MatrixIcon icon={MessageSquare} size={10} color="#60a5fa" theme="dark" glow={1} /> {commentCount}</span>
             </div>
             <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[7px] font-pixel font-bold border border-white/10 ${config.badge}`}>
               <Icon size={8} /> {config.name}

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Bell, MessageSquare, Heart, RefreshCw, UserPlus, BookOpen } from 'lucide-react';
 import { Notification } from '../types';
 import { subscribeToToasts } from '../services/storageService';
+import MatrixIcon from './MatrixIcon';
 
 const TOAST_TTL = 5000; // ms до авто-скрытия
 
@@ -28,13 +29,13 @@ function describeTypes(types: Set<string>, count: number): string {
 }
 
 function getIcon(types: Set<string>) {
-    if (types.has('FOLLOW'))        return <UserPlus   size={16} className="text-green-400" />;
-    if (types.has('COMMENT'))       return <MessageSquare size={16} className="text-blue-400" />;
-    if (types.has('LIKE'))          return <Heart      size={16} className="text-red-400" />;
+    if (types.has('FOLLOW'))        return <MatrixIcon icon={UserPlus}      size={16} color="#4ade80" theme="dark" />;
+    if (types.has('COMMENT'))       return <MatrixIcon icon={MessageSquare} size={16} color="#60a5fa" theme="dark" />;
+    if (types.has('LIKE'))          return <MatrixIcon icon={Heart}         size={16} color="#f87171" theme="dark" />;
     if (types.has('TRADE_OFFER') || types.has('TRADE_ACCEPTED'))
-                                    return <RefreshCw  size={16} className="text-yellow-400" />;
-    if (types.has('GUESTBOOK'))     return <BookOpen   size={16} className="text-yellow-400" />;
-    return <Bell size={16} className="text-white" />;
+                                    return <MatrixIcon icon={RefreshCw}     size={16} color="#fbbf24" theme="dark" />;
+    if (types.has('GUESTBOOK'))     return <MatrixIcon icon={BookOpen}      size={16} color="#fbbf24" theme="dark" />;
+    return <MatrixIcon icon={Bell} size={16} theme="dark" />;
 }
 
 const ToastContainer: React.FC = () => {

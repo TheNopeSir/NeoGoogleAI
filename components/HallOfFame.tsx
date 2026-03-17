@@ -3,6 +3,7 @@ import React from 'react';
 import { Trophy, ArrowLeft, Lock, CheckCircle2 } from 'lucide-react';
 import { BADGE_CONFIG } from '../constants';
 import { AchievementProgress } from '../types';
+import MatrixIcon from './MatrixIcon';
 
 interface HallOfFameProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
@@ -22,7 +23,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
 
         <div className="text-center mb-12">
             <h1 className={`text-3xl md:text-5xl font-pixel font-black mb-4 flex items-center justify-center gap-4 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                <Trophy size={40} className="text-yellow-500" /> ЗАЛ СЛАВЫ
+                <MatrixIcon icon={Trophy} size={40} color="#fbbf24" glow={2} theme={theme} /> ЗАЛ СЛАВЫ
             </h1>
             {username && (
                 <p className="font-mono text-xs opacity-40 mb-1 tracking-widest">@{username}</p>
@@ -49,12 +50,15 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                     >
                         <div className="flex items-start gap-4 mb-6">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${progress.unlocked ? config.color : 'bg-white/10'} text-black shadow-lg`}>
-                                 <config.icon size={28} className={progress.unlocked ? 'text-black' : 'text-white/30'} />
+                                 {progress.unlocked
+                                     ? <MatrixIcon icon={config.icon} size={28} color="#000000" glow={0} theme={theme} />
+                                     : <config.icon size={28} className="text-white/30" />
+                                 }
                             </div>
                             <div className="flex-1">
                                 <h3 className={`font-pixel text-sm font-black mb-1 flex items-center gap-2 ${isWinamp && progress.unlocked ? 'text-[#00ff00]' : ''}`}>
                                     {config.label}
-                                    {progress.unlocked && <CheckCircle2 size={14} className="text-green-400" />}
+                                    {progress.unlocked && <MatrixIcon icon={CheckCircle2} size={14} color="#4ade80" glow={1} theme={theme} />}
                                 </h3>
                                 <p className="font-mono text-[10px] opacity-60 leading-relaxed uppercase">{config.desc}</p>
                             </div>

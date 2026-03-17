@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Swords, Trophy, Clock, Lock, ChevronRight, RefreshCw, Zap } from 'lucide-react';
 import { Exhibit, ArtifactBattle, DailyBracket } from '../types';
+import MatrixIcon from './MatrixIcon';
 import { getArtifactTier, TIER_CONFIG, CATEGORY_SUBCATEGORIES } from '../constants';
 import { getDailyBracket, castBattleVote, getBattleHistory } from '../services/storageService';
 import { getFirstImageUrl } from '../utils/imageUtils';
@@ -389,7 +390,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
             <div className={`rounded-xl border p-3 ${finalBg}`}>
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        <Swords size={12} className="text-yellow-400" />
+                        <MatrixIcon icon={Swords} size={12} color="#fbbf24" glow={2} theme={theme} />
                         <span className="font-pixel text-[10px] text-yellow-400">⚔ ФИНАЛ</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -456,7 +457,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <Swords size={16} className="text-orange-400" />
+                    <MatrixIcon icon={Swords} size={16} color="#fb923c" theme={theme} glow={2} />
                     <h2 className="font-pixel text-sm tracking-widest">БИТВЫ</h2>
                     <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">3Д + 1Д ПАУЗА</span>
                 </div>
@@ -561,7 +562,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
                     {/* ── Semi-finals: 4-in-a-row ──────────────────────────── */}
                     <div className={labelClass}>
-                        <Swords size={9} className="text-green-500" /> ПОЛУФИНАЛЫ · 36Ч
+                        <MatrixIcon icon={Swords} size={9} color="#4ade80" theme={theme} /> ПОЛУФИНАЛЫ · 36Ч
                     </div>
 
                     <div className="flex flex-col md:flex-row items-stretch gap-2 mb-4">
@@ -588,7 +589,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
                     {/* ── Final ─────────────────────────────────────────────── */}
                     <div className={`${labelClass} text-yellow-400/50`}>
-                        <Trophy size={9} className="text-yellow-500" /> ФИНАЛ · 36Ч
+                        <MatrixIcon icon={Trophy} size={9} color="#fbbf24" glow={2} theme={theme} /> ФИНАЛ · 36Ч
                     </div>
                     {final && renderFinal(final)}
 

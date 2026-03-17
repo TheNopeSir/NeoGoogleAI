@@ -4,6 +4,7 @@ import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, User
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import MatrixIcon from './MatrixIcon';
 
 interface ActivityViewProps {
     notifications: Notification[];
@@ -141,13 +142,13 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     const getIconForType = (type: string) => {
         switch (type) {
-            case 'LIKE': return <Heart size={16} className="text-red-500 fill-current" />;
-            case 'COMMENT': return <MessageSquare size={16} className="text-blue-500 fill-current" />;
-            case 'FOLLOW': return <UserPlus size={16} className="text-green-500" />;
-            case 'GUESTBOOK': return <BookOpen size={16} className="text-yellow-500" />;
-            case 'TRADE_OFFER': return <RefreshCw size={16} className="text-blue-400" />;
-            case 'TRADE_ACCEPTED': return <Check size={16} className="text-green-400" />;
-            default: return <Bell size={16} />;
+            case 'LIKE':           return <MatrixIcon icon={Heart}         size={16} color="#f87171" glow={2} theme={theme} />;
+            case 'COMMENT':        return <MatrixIcon icon={MessageSquare} size={16} color="#60a5fa" theme={theme} />;
+            case 'FOLLOW':         return <MatrixIcon icon={UserPlus}      size={16} color="#4ade80" theme={theme} />;
+            case 'GUESTBOOK':      return <MatrixIcon icon={BookOpen}      size={16} color="#fbbf24" theme={theme} />;
+            case 'TRADE_OFFER':    return <MatrixIcon icon={RefreshCw}     size={16} color="#fbbf24" theme={theme} />;
+            case 'TRADE_ACCEPTED': return <MatrixIcon icon={Check}         size={16} color="#4ade80" theme={theme} />;
+            default:               return <MatrixIcon icon={Bell}          size={16} theme={theme} />;
         }
     };
 
