@@ -1,5 +1,6 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
+import XpIcon from './XpIcon';
 
 type Theme = 'dark' | 'light' | 'xp' | 'winamp';
 
@@ -57,7 +58,20 @@ const MatrixIcon: React.FC<MatrixIconProps> = ({
 }) => {
   const isNeon = theme === 'dark' || theme === 'winamp';
 
-  // В светлых темах — просто рендерим иконку без изменений
+  // XP тема — спрайтовые иконки Win XP
+  if (theme === 'xp') {
+    return (
+      <XpIcon
+        icon={Icon}
+        size={size}
+        className={className}
+        style={style}
+        onClick={onClick}
+      />
+    );
+  }
+
+  // Светлая тема — рендерим иконку без изменений
   if (!isNeon) {
     return (
       <Icon
