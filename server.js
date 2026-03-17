@@ -139,6 +139,69 @@ const registerLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+const messageLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 20,
+    message: { error: 'Слишком много сообщений. Подождите минуту.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const guestbookLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // 10 минут
+    max: 10,
+    message: { error: 'Слишком много записей в гостевой книге. Попробуйте позже.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const contentCreateLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // 10 минут
+    max: 15,
+    message: { error: 'Слишком много операций создания. Попробуйте позже.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const notificationLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 60,
+    message: { error: 'Слишком много запросов.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// --- ANTI-SPAM CONTENT FILTER ---
+const spamFilter = (req, res, next) => {
+    const text = req.body?.text || req.body?.description || req.body?.notes || '';
+    if (typeof text !== 'string' || !text.trim()) return next();
+
+    const trimmed = text.trim();
+
+    if (trimmed.length > 2000)
+        return res.status(400).json({ error: 'Сообщение слишком длинное (максимум 2000 символов).' });
+
+    // Повторяющиеся символы: "аааааааааа", "!!!!!!!!!"
+    if (/(.)\1{9,}/u.test(trimmed))
+        return res.status(400).json({ error: 'Обнаружен спам: слишком много повторяющихся символов.' });
+
+    // Всё заглавными (кириллица + латиница через Unicode \p{Lu})
+    if (trimmed.length > 15) {
+        const letters = trimmed.match(/[\p{L}]/gu) || [];
+        const upper = trimmed.match(/[\p{Lu}]/gu) || [];
+        if (letters.length > 10 && upper.length / letters.length > 0.85)
+            return res.status(400).json({ error: 'Не используйте CAPS LOCK.' });
+    }
+
+    // Слишком много ссылок
+    if ((trimmed.match(/https?:\/\//gi) || []).length > 3)
+        return res.status(400).json({ error: 'Слишком много ссылок в сообщении.' });
+
+    // Защита от дублей (60 секунд, по IP + содержимому)
+    const dupKey = `spam_dup:${req.ip}:${trimmed.toLowerCase().replace(/\s+/g, ' ')}`;
+    if (cache.get(dupKey))
+        return res.status(429).json({ error: 'Такое сообщение уже было отправлено недавно.' });
+    cache.set(dupKey, true, 60);
+
+    next();
+};
 
 // ==========================================
 // 📧 EMAIL (EmailJS REST API)
@@ -1040,6 +1103,15 @@ const createCrud = (router, table) => {
     });
 };
 
+// --- ANTI-SPAM ROUTE BINDINGS ---
+// Должны быть зарегистрированы ДО createCrud, чтобы middleware выполнялся первым (порядок регистрации в Express).
+api.post('/messages',       messageLimiter,       spamFilter);
+api.post('/guestbook',      guestbookLimiter,     spamFilter);
+api.post('/collections',    contentCreateLimiter);
+api.post('/wishlist',       contentCreateLimiter);
+api.post('/trade_requests', contentCreateLimiter);
+api.post('/notifications',  notificationLimiter);
+
 ['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'].forEach(t => createCrud(api, t));
 
 // Special Route for marking notifications read
@@ -1060,7 +1132,7 @@ api.post('/notifications/read-all', async (req, res) => {
 });
 
 // Special Exhibits Handler (POST)
-api.post('/exhibits', async (req, res) => {
+api.post('/exhibits', contentCreateLimiter, async (req, res) => {
     try {
         const { id, imageUrls } = req.body;
         let processedData = { ...req.body };

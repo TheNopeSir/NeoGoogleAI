@@ -4,7 +4,7 @@ import { UserProfile, Message, MessageReactionEmoji } from '../types';
 import { getUserAvatar } from '../services/storageService';
 import MessageReactionPicker from './MessageReactionPicker';
 import ReactionBar from './ReactionBar';
-import { renderTextWithMentions } from '../utils/textUtils';
+import { renderTextWithMentions, validateMessageText } from '../utils/textUtils';
 import XI from './XI';
 
 interface DirectChatProps {
@@ -31,6 +31,9 @@ const DirectChat: React.FC<DirectChatProps> = ({
     // doesn't fire a synthetic click that lands on the picker's backdrop.
     const longPressFiredRef = useRef(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
+    const lastSendRef = useRef<number>(0);
 
     // CRITICAL: Filter and sort uniquely to prevent double rendering
     const uniqueMessages = useMemo(() => {
@@ -62,6 +65,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const text = e.target.value;
         setInput(text);
+        setSendError(null);
         const lastWord = text.split(' ').pop();
         if (lastWord && lastWord.startsWith('@')) setMentionQuery(lastWord.slice(1));
         else setMentionQuery(null);
@@ -76,10 +80,19 @@ const DirectChat: React.FC<DirectChatProps> = ({
 
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim() || isSending) return;
+        if (Date.now() - lastSendRef.current < 500) return;
+
+        const err = validateMessageText(input);
+        if (err) { setSendError(err); return; }
+
+        lastSendRef.current = Date.now();
+        setIsSending(true);
+        setSendError(null);
         onSendMessage(input);
         setInput('');
         setMentionQuery(null);
+        setTimeout(() => setIsSending(false), 500);
     };
 
     const openReactionPicker = (messageId: string, x: number, y: number) => {
@@ -220,6 +233,9 @@ const DirectChat: React.FC<DirectChatProps> = ({
                         ))}
                     </div>
                 )}
+                {sendError && (
+                    <p className="text-red-400 text-[10px] font-mono px-1 pb-1">{sendError}</p>
+                )}
                 <div className="flex gap-2">
                     <input
                         value={input}
@@ -227,7 +243,11 @@ const DirectChat: React.FC<DirectChatProps> = ({
                         placeholder="ВВЕСТИ СООБЩЕНИЕ..."
                         className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
                     />
-                    <button type="submit" className="p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0">
+                    <button
+                        type="submit"
+                        disabled={isSending}
+                        className={`p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                         <XI icon={Send} size={20} />
                     </button>
                 </div>

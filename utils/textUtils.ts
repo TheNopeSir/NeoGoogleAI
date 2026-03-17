@@ -39,3 +39,11 @@ export const renderTextWithMentions = (
         return part;
     });
 };
+
+export const validateMessageText = (text: string): string | null => {
+    const t = text.trim();
+    if (t.length > 2000) return 'Сообщение слишком длинное (максимум 2000 символов).';
+    if (/(.)\1{9,}/u.test(t)) return 'Не используйте повторяющиеся символы.';
+    if ((t.match(/https?:\/\//gi) || []).length > 3) return 'Слишком много ссылок.';
+    return null;
+};
