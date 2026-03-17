@@ -849,11 +849,23 @@ export const markSingleNotificationRead = async (id: string, username: string) =
 
 export const toggleFollow = async (me:string, them:string) => {
     const myUser = hotCache.users.find(u => u.username === me);
+    const theirUser = hotCache.users.find(u => u.username === them);
     if(myUser) {
         if(myUser.following.includes(them)) {
             myUser.following = myUser.following.filter(u => u !== them);
+            if(theirUser) {
+                theirUser.followers = (theirUser.followers || []).filter(u => u !== me);
+                await updateUserProfile(theirUser);
+            }
         } else {
             myUser.following.push(them);
+            if(theirUser) {
+                if(!theirUser.followers) theirUser.followers = [];
+                if(!theirUser.followers.includes(me)) {
+                    theirUser.followers.push(me);
+                    await updateUserProfile(theirUser);
+                }
+            }
         }
         await updateUserProfile(myUser);
     }
