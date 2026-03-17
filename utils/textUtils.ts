@@ -47,3 +47,13 @@ export const validateMessageText = (text: string): string | null => {
     if ((t.match(/https?:\/\//gi) || []).length > 3) return 'Слишком много ссылок.';
     return null;
 };
+
+export const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/;
+
+export const validateUsername = (username: string): string | null => {
+    const u = username.trim();
+    if (u.length < 3)  return 'Имя пользователя должно быть не короче 3 символов.';
+    if (u.length > 30) return 'Имя пользователя не может быть длиннее 30 символов.';
+    if (!USERNAME_REGEX.test(u)) return 'Только латинские буквы, цифры, _ и - (без пробелов).';
+    return null;
+};

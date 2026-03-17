@@ -4,6 +4,7 @@ import { Terminal, Lock, User, ArrowRight, CheckSquare, Square, Github, Chrome, 
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 import XI from './XI';
+import { validateUsername } from '../utils/textUtils';
 
 interface AuthFormProps {
   theme: 'dark' | 'light';
@@ -30,6 +31,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
     }
 
     if (isRegister) {
+        const usernameError = validateUsername(username);
+        if (usernameError) { setError(usernameError); return; }
         if (!tagline) {
              setError('УКАЖИТЕ СТАТУС');
              return;
@@ -100,15 +103,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
             <label className="text-xs font-bold ml-1 uppercase opacity-70">Имя пользователя</label>
             <div className={`flex items-center border-b-2 px-2 py-2 ${theme === 'dark' ? 'border-dark-dim focus-within:border-dark-primary' : 'border-light-dim focus-within:border-light-accent'}`}>
               <XI icon={User} size={16} className="opacity-50 mr-2" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30))}
                 className="bg-transparent w-full focus:outline-none"
                 placeholder="USER_ID"
               />
             </div>
           </div>
+          {isRegister && (
+            <p className="text-[9px] opacity-40 font-mono ml-1 -mt-2">
+              Латиница, цифры, _ и - · 3–30 символов
+            </p>
+          )}
 
           {isRegister && (
             <>

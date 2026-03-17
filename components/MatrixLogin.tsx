@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 import XI from './XI';
+import { validateUsername } from '../utils/textUtils';
 
 interface MatrixLoginProps {
   theme: 'dark' | 'light';
@@ -177,14 +178,16 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || !username) { setError('ЗАПОЛНИТЕ ВСЕ ПОЛЯ'); return; }
-    
-    setIsLoading(true); setError(''); setShowRecoverOption(false);
-    
-    // Trim everything
-    const cleanEmail = email.trim().toLowerCase();
+
+    const cleanEmail    = email.trim().toLowerCase();
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
     const defaultTagline = 'Новый пользователь';
+
+    const usernameError = validateUsername(cleanUsername);
+    if (usernameError) { setError(usernameError); return; }
+
+    setIsLoading(true); setError(''); setShowRecoverOption(false);
 
     try { 
         await db.registerUser(cleanUsername, cleanPassword, defaultTagline, cleanEmail); 
@@ -319,7 +322,8 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
             <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4 w-full">
                 <div className="flex items-center gap-2 border-b p-2 border-white/20"><XI icon={Mail} size={16} className="text-white/50"/><input value={email} onChange={e => setEmail(e.target.value)} type="email" className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="EMAIL" required /></div>
                 
-                <div className="flex items-center gap-2 border-b p-2 border-white/20"><XI icon={User} size={16} className="text-white/50"/><input value={username} onChange={e => setUsername(e.target.value)} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="NICKNAME" required /></div>
+                <div className="flex items-center gap-2 border-b p-2 border-white/20"><XI icon={User} size={16} className="text-white/50"/><input value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30))} className="bg-transparent w-full focus:outline-none font-mono text-sm text-white placeholder-white/30" placeholder="NICKNAME" required /></div>
+                <p className="text-[9px] text-white/30 font-mono px-1 -mt-2">Латиница, цифры, _ и - · 3–30 символов</p>
 
                 <div className="flex items-center gap-2 border-b p-2 border-white/20">
                     <XI icon={Lock} size={16} className="text-white/50" />

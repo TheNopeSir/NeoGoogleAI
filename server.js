@@ -408,6 +408,10 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
     try {
         const { username, password, tagline, email } = req.body;
         if (!username || !password || !email) return res.status(400).json({ error: "Заполните все поля" });
+        const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
+        if (!usernameRegex.test(username)) {
+            return res.status(400).json({ error: "Имя пользователя: только латинские буквы, цифры, _ и - (3–30 символов)." });
+        }
 
         // Проверяем, не занят ли username/email уже в users (раздельно для точных ошибок)
         const checkUser = await query(`SELECT username FROM users WHERE username = $1`, [username]);
