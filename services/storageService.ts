@@ -167,7 +167,12 @@ export const subscribeToToasts = (listener: ToastListener) => {
     toastListeners.push(listener);
     return () => { const i = toastListeners.indexOf(listener); if(i > -1) toastListeners.splice(i, 1); };
 };
-const notifyListeners = () => listeners.forEach(l => l());
+let _notifying = false;
+const notifyListeners = () => {
+    if (_notifying) return;
+    _notifying = true;
+    try { listeners.forEach(l => l()); } finally { _notifying = false; }
+};
 
 // --- API HELPER WITH TIMEOUT ---
 const pendingRequests = new Map<string, Promise<any>>();
@@ -233,7 +238,7 @@ const hydrateCritical = async () => {
     try {
         const db = await Promise.race([
             getDB(),
-            new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 2000))
+            new Promise<IDBPDatabase<NeoArchiveDB>>((_, reject) => setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), 5000))
         ]);
         const [users, notifications, messages] = await Promise.all([
             db.getAll('users'),

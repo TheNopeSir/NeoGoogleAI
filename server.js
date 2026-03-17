@@ -1316,6 +1316,13 @@ api.post('/battles/vote', async (req, res) => {
         if (!rows[0]) return res.status(404).json({ error: 'Bracket not found' });
 
         const bracket = rows[0].data;
+
+        // Ensure bracket state is up-to-date (activates final if both semi-finals are done)
+        const stateChanged = finalizeBracket(bracket, new Date());
+        if (stateChanged) {
+            await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
+        }
+
         const battle = bracket.battles.find(b => b.id === battleId);
         if (!battle) return res.status(404).json({ error: 'Battle not found' });
         if (battle.status !== 'ACTIVE') return res.status(400).json({ error: 'Battle is not active' });
