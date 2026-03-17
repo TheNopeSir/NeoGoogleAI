@@ -59,11 +59,9 @@ const getEnvVar = (key: string): string | undefined => {
     return undefined;
 };
 
-// ⚠️ HARDCODED SERVER IP FOR ANDROID ⚠️
-// Если VITE_API_URL не задан в .env, используем этот IP.
-// 5.42.101.48 - это IP вашего сервера из конфигов. Порт 3002 из server.js.
-// Важно: На Android 'http' трафик должен быть разрешен в capacitor.config.json (cleartext: true)
-const REMOTE_SERVER_URL = 'http://5.42.101.48:3002/api';
+// Fallback server URL for Android (must use HTTPS in production)
+// Set VITE_API_URL in .env to override this value
+const REMOTE_SERVER_URL = 'https://neoarchive.ru/api';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -177,7 +175,7 @@ const notifyListeners = () => {
 // --- API HELPER WITH TIMEOUT ---
 const pendingRequests = new Map<string, Promise<any>>();
 
-const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
+const apiCall = async (endpoint: string, method: string = 'GET', body?: any, extraHeaders?: Record<string, string>) => {
     const cacheKey = method === 'GET' ? `${method}:${endpoint}` : null;
     if (cacheKey && pendingRequests.has(cacheKey)) {
         return pendingRequests.get(cacheKey)!;
@@ -188,7 +186,7 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
 
     const requestPromise = (async () => {
         try {
-            const headers: any = { 'Content-Type': 'application/json' };
+            const headers: any = { 'Content-Type': 'application/json', ...extraHeaders };
             const options: RequestInit = {
                 method,
                 headers,
@@ -652,7 +650,7 @@ export const updateUserProfile = async (u: UserProfile) => {
     await db.put('users', u);
     
     try {
-        const res = await apiCall('/users', 'POST', { id: u.username, ...u });
+        const res = await apiCall('/users', 'POST', { id: u.username, ...u }, { 'X-Requested-By': u.username });
         if (res && res.success) {
             let updated = { ...u };
             if (res.avatarUrl) updated.avatarUrl = res.avatarUrl;

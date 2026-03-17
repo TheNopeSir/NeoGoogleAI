@@ -15,12 +15,28 @@ const __dirname = path.dirname(__filename);
 // Папка старых изображений (если они еще остались на диске)
 const LEGACY_IMAGES_DIR = path.join(__dirname, 'uploads', 'images');
 
+// ==========================================
+// 🔐 Admin authentication middleware
+// Requires X-Admin-Key header matching ADMIN_API_KEY env var
+// ==========================================
+const adminAuth = (req, res, next) => {
+    const key = req.headers['x-admin-key'];
+    const expected = process.env.ADMIN_API_KEY;
+    if (!expected) {
+        return res.status(503).json({ error: 'Admin API not configured' });
+    }
+    if (!key || key !== expected) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+};
+
 export function setupAdminAPI(app, query, cache) {
 
     // ==========================================
     // 📊 Статистика изображений
     // ==========================================
-    app.get('/api/admin/image-stats', async (req, res) => {
+    app.get('/api/admin/image-stats', adminAuth, async (req, res) => {
         try {
             const result = await query('SELECT id, data FROM exhibits');
 
@@ -82,7 +98,7 @@ export function setupAdminAPI(app, query, cache) {
     // ==========================================
     // 🔄 Migrate Images (Convert to WebP Base64/S3 in DB)
     // ==========================================
-    app.post('/api/admin/migrate-images', async (req, res) => {
+    app.post('/api/admin/migrate-images', adminAuth, async (req, res) => {
         try {
             console.log('[AdminAPI] Starting comprehensive image migration...');
 
@@ -240,7 +256,7 @@ export function setupAdminAPI(app, query, cache) {
     // ==========================================
     // 💾 Создание резервной копии (JSON)
     // ==========================================
-    app.post('/api/admin/create-backup', async (req, res) => {
+    app.post('/api/admin/create-backup', adminAuth, async (req, res) => {
         try {
             console.log('[AdminAPI] Creating backup...');
             const result = await query('SELECT id, data, updated_at FROM exhibits ORDER BY updated_at DESC');
@@ -262,7 +278,7 @@ export function setupAdminAPI(app, query, cache) {
     // ==========================================
     // 🧹 Clean up broken paths (Legacy)
     // ==========================================
-    app.post('/api/admin/cleanup-broken', async (req, res) => {
+    app.post('/api/admin/cleanup-broken', adminAuth, async (req, res) => {
          res.json({ success: true, message: "Use migrate-images to fix broken file paths by converting to DB storage." });
     });
 

@@ -32,8 +32,8 @@ const __dirname = path.dirname(__filename);
 // ==========================================
 // 🔐 ADMIN & CRITICAL CONFIG
 // ==========================================
-const ADMIN_USER = 'Truester';
-const ADMIN_EMAIL = 'kennyornope@gmail.com';
+const ADMIN_USER = process.env.ADMIN_USERNAME || 'Truester';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'kennyornope@gmail.com';
 const ADMIN_EMAILS = [ADMIN_EMAIL];
 const ADMIN_USERNAMES = [ADMIN_USER];
 const APP_URL = process.env.APP_URL || 'https://neoarchive.ru';
@@ -100,8 +100,29 @@ app.disable('x-powered-by');
 // Timeweb использует nginx reverse proxy → доверяем первому proxy для корректной работы rate-limiter
 app.set('trust proxy', 1);
 app.use(compression());
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '50mb' }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://neoarchive.ru').split(',').map(o => o.trim());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+
+// --- SECURITY HEADERS ---
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https:; frame-src https://oauth.telegram.org"
+    );
+    next();
+});
 
 // --- RATE LIMITING ---
 const authLimiter = rateLimit({
@@ -197,7 +218,7 @@ const pool = new Pool({
     host: dbHost, 
     port: 5432, 
     database: dbName,
-    ssl: { rejectUnauthorized: false },
+    ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
     max: 20,
     keepAlive: true
 });
@@ -369,7 +390,7 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -414,7 +435,7 @@ api.post('/auth/login', authLimiter, async (req, res) => {
         res.json(user);
     } catch (e) {
         console.error("Login Error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -451,13 +472,37 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+// Verify Telegram login data using HMAC-SHA256 as per Telegram Bot API spec
+const verifyTelegramHash = (data) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return false;
+    const { hash, ...rest } = data;
+    if (!hash) return false;
+    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    const dataCheckString = Object.keys(rest)
+        .filter(k => rest[k] !== null && rest[k] !== undefined)
+        .sort()
+        .map(k => `${k}=${rest[k]}`)
+        .join('\n');
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    return hmac === hash;
+};
 
 api.post('/auth/telegram', async (req, res) => {
     try {
         const tgUser = req.body;
+
+        // Verify Telegram data integrity (requires TELEGRAM_BOT_TOKEN in .env)
+        if (process.env.TELEGRAM_BOT_TOKEN) {
+            if (!verifyTelegramHash(tgUser)) {
+                return res.status(401).json({ error: 'Неверная подпись Telegram данных' });
+            }
+        }
+
         const username = tgUser.username || `tg_${tgUser.id}`;
         
         const result = await query(`SELECT * FROM users WHERE username = $1`, [username]);
@@ -480,7 +525,7 @@ api.post('/auth/telegram', async (req, res) => {
         await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
         res.json(newUser);
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -521,7 +566,7 @@ api.post('/auth/verify-email', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Verify email error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -549,7 +594,7 @@ api.post('/auth/complete-reset', async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -583,7 +628,7 @@ api.post('/auth/change-password', authLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Change password request error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -620,7 +665,7 @@ api.post('/auth/confirm-password-change', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Confirm password change error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -652,7 +697,7 @@ api.post('/auth/change-email', authLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Change email request error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -685,7 +730,7 @@ api.post('/auth/confirm-email-change', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error("Confirm email change error:", e);
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -697,7 +742,7 @@ api.post('/push/subscribe', async (req, res) => {
         await query(`INSERT INTO push_subscriptions (username, endpoint, auth, p256dh) VALUES ($1, $2, $3, $4) ON CONFLICT (endpoint) DO UPDATE SET username = $1, created_at = NOW()`, [username, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -708,7 +753,7 @@ api.delete('/push/subscribe', async (req, res) => {
         await query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -764,7 +809,7 @@ api.post('/follow', authLimiter, async (req, res) => {
         });
     } catch (e) {
         console.error('[FOLLOW] Error:', e);
-        res.status(500).json({ error: e?.message || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -795,7 +840,7 @@ api.get('/health', async (req, res) => {
         health.totalUsers = parseInt(result.rows[0].count);
     } catch (e) {
         health.status = 'error';
-        health.dbError = e.message || String(e);
+        health.dbError = 'Database connection failed';
         return res.status(500).json(health);
     }
     res.json(health);
@@ -809,7 +854,7 @@ api.get('/feed', async (req, res) => {
         const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -822,7 +867,7 @@ api.get('/sync', async (req, res) => {
             tradeRequests: tradeRequests.rows.map(mapRow)
         });
     } catch(e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -834,7 +879,7 @@ api.get('/users', async (req, res) => {
         const result = await query('SELECT * FROM users ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -842,6 +887,13 @@ api.post('/users', async (req, res) => {
     const { id, username } = req.body;
     const targetKey = username || id;
     if (!targetKey) return res.status(400).json({ error: "Username required" });
+
+    // Verify the requester claims ownership: X-Requested-By header must match the target username
+    const requestedBy = req.headers['x-requested-by'];
+    if (!requestedBy || requestedBy !== targetKey) {
+        return res.status(403).json({ error: "Нет прав для изменения этого профиля" });
+    }
+
     try {
         // IMAGE PROCESSING FOR AVATAR/COVER
         if (req.body.avatarUrl && isBase64DataUri(req.body.avatarUrl)) {
@@ -855,7 +907,7 @@ api.post('/users', async (req, res) => {
         try { await query(`UPDATE users SET id = username WHERE username = $1`, [targetKey]); } catch(e){}
         res.json({ success: true, avatarUrl: req.body.avatarUrl, coverUrl: req.body.coverUrl });
     } catch(e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -867,7 +919,7 @@ api.get('/exhibits', async (req, res) => {
         const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
         res.json(result.rows.map(mapRow));
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -877,21 +929,20 @@ api.get('/exhibits/:id', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
         res.json(mapRow(result.rows[0]));
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
 api.delete('/exhibits/:id', async (req, res) => {
     try {
         const { username } = req.query;
-        if (username) {
-            const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
-            if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
-        }
+        if (!username) return res.status(400).json({ error: "Username required" });
+        const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
+        if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -918,11 +969,12 @@ const createCrud = (router, table) => {
                 }
             });
             if (conditions.length > 0) q += ` WHERE ${conditions.join(' AND ')}`;
-            const limit = parseInt(req.query.limit) || 100;
-            q += ` ORDER BY updated_at DESC LIMIT ${limit}`;
+            const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 500);
+            q += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
+            params.push(limit);
             const r = await query(q, params);
             res.json(r.rows.map(mapRow));
-        } catch (e) { res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' }); }
+        } catch (e) { res.status(500).json({ error: 'Internal Server Error' }); }
     });
 
     router.get(`/${table}/:id`, async (req, res) => {
@@ -931,7 +983,7 @@ const createCrud = (router, table) => {
             if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
             res.json(mapRow(r.rows[0]));
         } catch (e) {
-            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
@@ -968,21 +1020,22 @@ const createCrud = (router, table) => {
             res.json({ success: true, data: req.body });
         } catch (e) {
             console.error(`Error saving to ${table}:`, e);
-            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             const { username } = req.query;
-            if (username && (table === 'collections' || table === 'wishlist')) {
+            if (table === 'collections' || table === 'wishlist') {
+                if (!username) return res.status(400).json({ error: "Username required" });
                 const check = await query(`SELECT id FROM "${table}" WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
                 if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
             }
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
             res.json({ success: true });
         } catch (e) {
-            res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 };
@@ -1002,7 +1055,7 @@ api.post('/notifications/read-all', async (req, res) => {
         `, [username]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -1019,7 +1072,7 @@ api.post('/exhibits', async (req, res) => {
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
         res.json({ success: true, imageUrls: processedData.imageUrls });
-    } catch (e) { res.status(500).json({ error: e?.message || String(e) || 'Internal Server Error' }); }
+    } catch (e) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 
 // ─── Delivery Proxy (Yandex Delivery) ────────────────────────────────────────
@@ -1073,7 +1126,7 @@ api.post('/delivery/tariffs', async (req, res) => {
         });
         res.json(data);
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Delivery API error' });
+        res.status(500).json({ error: 'Delivery API error' });
     }
 });
 
@@ -1085,7 +1138,7 @@ api.post('/delivery/pickup-points', async (req, res) => {
         const data = await yandexPost('/pickup-points', { city });
         res.json(data);
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Delivery API error' });
+        res.status(500).json({ error: 'Delivery API error' });
     }
 });
 
@@ -1106,7 +1159,7 @@ api.post('/delivery/create', async (req, res) => {
         });
         res.json({ trackingId: data.id });
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Delivery API error' });
+        res.status(500).json({ error: 'Delivery API error' });
     }
 });
 
@@ -1126,7 +1179,7 @@ api.get('/delivery/track/:trackingId', async (req, res) => {
         const data = await r.json();
         res.json({ status: data.status });
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Delivery API error' });
+        res.status(500).json({ error: 'Delivery API error' });
     }
 });
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1357,7 +1410,7 @@ api.get('/battles', async (req, res) => {
         }
         res.json({ bracket });
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Battle fetch error' });
+        res.status(500).json({ error: 'Battle fetch error' });
     }
 });
 
@@ -1395,7 +1448,7 @@ api.post('/battles/vote', async (req, res) => {
         await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
         res.json({ battle });
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'Vote error' });
+        res.status(500).json({ error: 'Vote error' });
     }
 });
 
@@ -1411,7 +1464,7 @@ api.get('/battles/history', async (req, res) => {
         );
         res.json({ history: rows.map(r => r.data) });
     } catch (e) {
-        res.status(500).json({ error: e?.message || 'History fetch error' });
+        res.status(500).json({ error: 'History fetch error' });
     }
 });
 
