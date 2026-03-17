@@ -789,8 +789,30 @@ export const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-export const startLiveUpdates = () => {};
-export const stopLiveUpdates = () => {};
+let _liveUpdateInterval: ReturnType<typeof setInterval> | null = null;
+
+export const startLiveUpdates = () => {
+    if (_liveUpdateInterval) return;
+    _liveUpdateInterval = setInterval(async () => {
+        try {
+            const data = await apiCall('/users');
+            if (!Array.isArray(data)) return;
+            hotCache.users = mergeUniqueUsers(hotCache.users, data);
+            notifyListeners();
+            const db = await getDB();
+            const tx = db.transaction('users', 'readwrite');
+            data.forEach((u: UserProfile) => tx.store.put(u));
+            await tx.done;
+        } catch (e) {}
+    }, 30000);
+};
+
+export const stopLiveUpdates = () => {
+    if (_liveUpdateInterval) {
+        clearInterval(_liveUpdateInterval);
+        _liveUpdateInterval = null;
+    }
+};
 
 export const getStorageEstimate = async (): Promise<StorageEstimate | undefined> => {
     if (navigator.storage && navigator.storage.estimate) {

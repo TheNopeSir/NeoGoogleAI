@@ -441,14 +441,13 @@ api.post('/auth/recover', authLimiter, async (req, res) => {
 
         const resetLink = `${APP_URL}/?code=${code}&type=RESET`;
         const username = mapRow(result.rows[0]).username;
-        // Fire-and-forget — код уже в БД
-        sendMailWithRetry({
+        await sendMailWithRetry({
             type: 'reset',
             to: email,
             subject: 'Сброс пароля — NeoArchive',
             html: resetPasswordTemplate(username, resetLink),
             params: { username, verification_link: resetLink },
-        }).catch(e => console.error("[EMAIL] Reset email failed:", e.message));
+        });
 
         res.json({ success: true });
     } catch (e) {
