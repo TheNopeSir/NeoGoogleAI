@@ -7,12 +7,13 @@ import { AchievementProgress } from '../types';
 interface HallOfFameProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
   achievements: AchievementProgress[];
+  username?: string;
   onBack: () => void;
 }
 
-const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, onBack }) => {
+const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, onBack }) => {
   const isWinamp = theme === 'winamp';
-  
+
   return (
     <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
         <button onClick={onBack} className={`flex items-center gap-2 mb-8 hover:underline opacity-70 font-pixel text-xs ${isWinamp ? 'text-[#00ff00]' : ''}`}>
@@ -23,6 +24,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, onBack }) 
             <h1 className={`text-3xl md:text-5xl font-pixel font-black mb-4 flex items-center justify-center gap-4 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                 <Trophy size={40} className="text-yellow-500" /> ЗАЛ СЛАВЫ
             </h1>
+            {username && (
+                <p className="font-mono text-xs opacity-40 mb-1 tracking-widest">@{username}</p>
+            )}
             <p className="font-mono text-sm opacity-60 uppercase tracking-widest">Прогресс синхронизации нейронных узлов.</p>
         </div>
 

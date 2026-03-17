@@ -52,8 +52,22 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
     setCategory(cat);
     setCategorySearch(cat);
     setSubcategory('');
+    setSubcategorySearch('');
     setCondition('');
     setShowCategorySuggestions(false);
+  };
+
+  // Subcategory autocomplete
+  const [subcategorySearch, setSubcategorySearch] = useState<string>(initialData?.subcategory || '');
+  const [showSubcategorySuggestions, setShowSubcategorySuggestions] = useState(false);
+  const availableSubcategories: string[] = CATEGORY_SUBCATEGORIES[category] ?? [];
+  const subcategorySuggestions = subcategorySearch.trim()
+    ? availableSubcategories.filter(sub => sub.toLowerCase().includes(subcategorySearch.toLowerCase()))
+    : availableSubcategories;
+  const handleSubcategorySelect = (sub: string) => {
+    setSubcategory(sub);
+    setSubcategorySearch(sub);
+    setShowSubcategorySuggestions(false);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,17 +342,39 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Подкатегория</label>
-                  <select 
-                    value={subcategory} 
-                    onChange={e => setSubcategory(e.target.value)}
-                    className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none appearance-none disabled:opacity-30 ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                    disabled={!CATEGORY_SUBCATEGORIES[category]}
-                  >
-                    <option value="">Не выбрано</option>
-                    {CATEGORY_SUBCATEGORIES[category]?.map(sub => <option key={sub} value={sub}>{sub}</option>)}
-                  </select>
+                  <input
+                    value={subcategorySearch}
+                    onChange={e => { setSubcategorySearch(e.target.value); setShowSubcategorySuggestions(true); }}
+                    onFocus={() => { if (availableSubcategories.length > 0) setShowSubcategorySuggestions(true); }}
+                    onBlur={() => setTimeout(() => setShowSubcategorySuggestions(false), 150)}
+                    disabled={availableSubcategories.length === 0}
+                    className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors disabled:opacity-30 ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                    placeholder={availableSubcategories.length === 0 ? 'Сначала выберите категорию' : 'Начните вводить подкатегорию...'}
+                    autoComplete="off"
+                  />
+                  {showSubcategorySuggestions && subcategorySuggestions.length > 0 && (
+                    <div className={`absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border shadow-xl ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-zinc-900 border-white/20'}`}>
+                      <button
+                        type="button"
+                        onMouseDown={() => handleSubcategorySelect('')}
+                        className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors border-b border-white/5 opacity-50 hover:opacity-100 ${isWinamp ? 'hover:bg-[#252525]' : 'hover:bg-white/10'}`}
+                      >
+                        — Не выбрано
+                      </button>
+                      {subcategorySuggestions.map(sub => (
+                        <button
+                          key={sub}
+                          type="button"
+                          onMouseDown={() => handleSubcategorySelect(sub)}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors border-b border-white/5 last:border-0 ${sub === subcategory ? 'text-green-400 bg-green-500/10' : 'hover:bg-white/10'} ${isWinamp ? 'text-[#00ff00] hover:bg-[#252525]' : ''}`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                     <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><Award size={12}/> Грейд / Состояние</label>

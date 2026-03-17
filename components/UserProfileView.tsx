@@ -32,7 +32,7 @@ interface UserProfileViewProps {
     onAuthorClick: (author: string) => void;
     onCollectionClick: (col: Collection) => void;
     onShareCollection: (col: Collection) => void;
-    onViewHallOfFame: () => void;
+    onViewHallOfFame: (username: string) => void;
     onGuestbookPost: (text: string) => void;
     refreshData: () => void;
     isEditingProfile: boolean;
@@ -275,7 +275,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <div className="flex items-center gap-6 border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'followers')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.followers?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Фолловеры</span></button>
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'following')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.following?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Подписки</span></button>
-                                            <button onClick={onViewHallOfFame} className="flex flex-col items-center group"><Trophy size={18} className="group-hover:text-yellow-500" /><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Награды</span></button>
+                                            <button onClick={() => onViewHallOfFame(viewedProfileUsername)} className="flex flex-col items-center group"><Trophy size={18} className="group-hover:text-yellow-500" /><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Награды</span></button>
                                         </div>
                                     </div>
                                 </div>

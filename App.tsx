@@ -32,7 +32,7 @@ import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, ProcessedImage } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, ProcessedImage, AchievementProgress } from './types';
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 
@@ -59,6 +59,7 @@ export default function App() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [selectedWishlistItem, setSelectedWishlistItem] = useState<WishlistItem | null>(null);
   const [viewedProfileUsername, setViewedProfileUsername] = useState<string>('');
+  const [hallOfFameUsername, setHallOfFameUsername] = useState<string>('');
   const [highlightCommentId, setHighlightCommentId] = useState<string | undefined>(undefined);
 
   // Verification Logic
@@ -112,72 +113,75 @@ export default function App() {
       })).slice(0, 15);
   }, [user, exhibits]);
 
-  // --- ACHIEVEMENTS CHECKER ---
+  // --- PURE ACHIEVEMENT COMPUTATION (works for ANY username) ---
+  const computeAchievementsForUser = useCallback((username: string): AchievementProgress[] => {
+      // HELLO_WORLD — всегда выполнено у любого зарегистрированного пользователя
+      const hw: AchievementProgress = { id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true };
+
+      // UPLOADER
+      const uploadCount = exhibits.filter(e => e.owner === username && !e.isDraft).length;
+      const uploader: AchievementProgress = {
+          id: 'UPLOADER', current: uploadCount,
+          target: BADGE_CONFIG.UPLOADER.target,
+          unlocked: uploadCount >= BADGE_CONFIG.UPLOADER.target,
+      };
+
+      // INFLUENCER
+      const totalLikes = exhibits.filter(e => e.owner === username).reduce((acc, e) => acc + (e.likes || 0), 0);
+      const influencer: AchievementProgress = {
+          id: 'INFLUENCER', current: totalLikes,
+          target: BADGE_CONFIG.INFLUENCER.target,
+          unlocked: totalLikes >= BADGE_CONFIG.INFLUENCER.target,
+      };
+
+      // CRITIC
+      let commentsMade = 0;
+      exhibits.forEach(e => { if (e.comments) commentsMade += e.comments.filter(c => c.author === username).length; });
+      const critic: AchievementProgress = {
+          id: 'CRITIC', current: commentsMade,
+          target: BADGE_CONFIG.CRITIC.target,
+          unlocked: commentsMade >= BADGE_CONFIG.CRITIC.target,
+      };
+
+      // COLLECTOR
+      const collectionCount = collections.filter(c => c.owner === username).length;
+      const collector: AchievementProgress = {
+          id: 'COLLECTOR', current: collectionCount,
+          target: BADGE_CONFIG.COLLECTOR.target,
+          unlocked: collectionCount >= BADGE_CONFIG.COLLECTOR.target,
+      };
+
+      // LEGEND — владеет хотя бы одним артефактом уровня LEGENDARY
+      const hasLegendary = exhibits.some(e => e.owner === username && !e.isDraft && getArtifactTier(e) === 'LEGENDARY');
+      const legend: AchievementProgress = { id: 'LEGEND', current: hasLegendary ? 1 : 0, target: 1, unlocked: hasLegendary };
+
+      // BATTLE_CHAMPION — хранится в профиле (выдаётся системой битв)
+      const allUsers = db.getFullDatabase().users;
+      const targetUser = allUsers.find(u => u.username === username);
+      const storedChampion = targetUser?.achievements?.find(a => a.id === 'BATTLE_CHAMPION');
+      const champion: AchievementProgress = storedChampion || { id: 'BATTLE_CHAMPION', current: 0, target: 1, unlocked: false };
+
+      return [hw, uploader, influencer, critic, collector, legend, champion];
+  }, [exhibits, collections]);
+
+  // --- ACHIEVEMENTS CHECKER (сохраняет актуальные данные в профиле залогиненного) ---
   const checkAchievements = useCallback(async (currentUser: UserProfile) => {
       if (!currentUser) return;
-      let hasUpdates = false;
-      const newAchievements = [...(currentUser.achievements || [])];
+      const fresh = computeAchievementsForUser(currentUser.username);
 
-      // 1. UPLOADER (Count non-draft exhibits)
-      const uploadCount = exhibits.filter(e => e.owner === currentUser.username && !e.isDraft).length;
-      const uploaderBadge = newAchievements.find(a => a.id === 'UPLOADER') || { id: 'UPLOADER', current: 0, target: BADGE_CONFIG.UPLOADER.target, unlocked: false };
-      if (uploadCount !== uploaderBadge.current) {
-          uploaderBadge.current = uploadCount;
-          if (uploadCount >= uploaderBadge.target && !uploaderBadge.unlocked) uploaderBadge.unlocked = true;
-          hasUpdates = true;
-          // Ensure it's in the array
-          const idx = newAchievements.findIndex(a => a.id === 'UPLOADER');
-          if (idx === -1) newAchievements.push(uploaderBadge); else newAchievements[idx] = uploaderBadge;
-      }
-
-      // 2. INFLUENCER (Total Likes Received)
-      const totalLikes = exhibits
-          .filter(e => e.owner === currentUser.username)
-          .reduce((acc, curr) => acc + (curr.likes || 0), 0);
-      
-      const influencerBadge = newAchievements.find(a => a.id === 'INFLUENCER') || { id: 'INFLUENCER', current: 0, target: BADGE_CONFIG.INFLUENCER.target, unlocked: false };
-      if (totalLikes !== influencerBadge.current) {
-          influencerBadge.current = totalLikes;
-          if (totalLikes >= influencerBadge.target && !influencerBadge.unlocked) influencerBadge.unlocked = true;
-          hasUpdates = true;
-          const idx = newAchievements.findIndex(a => a.id === 'INFLUENCER');
-          if (idx === -1) newAchievements.push(influencerBadge); else newAchievements[idx] = influencerBadge;
-      }
-
-      // 3. CRITIC (Comments Made)
-      // This is expensive to calc from all exhibits, usually should be stored on user, but for now scan:
-      let commentsMade = 0;
-      exhibits.forEach(e => {
-          if (e.comments) {
-              commentsMade += e.comments.filter(c => c.author === currentUser.username).length;
-          }
+      // Сохраняем только если данные изменились
+      const prev = currentUser.achievements || [];
+      const changed = fresh.some(f => {
+          const old = prev.find(p => p.id === f.id);
+          return !old || old.current !== f.current || old.unlocked !== f.unlocked;
       });
-      const criticBadge = newAchievements.find(a => a.id === 'CRITIC') || { id: 'CRITIC', current: 0, target: BADGE_CONFIG.CRITIC.target, unlocked: false };
-      if (commentsMade !== criticBadge.current) {
-          criticBadge.current = commentsMade;
-          if (commentsMade >= criticBadge.target && !criticBadge.unlocked) criticBadge.unlocked = true;
-          hasUpdates = true;
-          const idx = newAchievements.findIndex(a => a.id === 'CRITIC');
-          if (idx === -1) newAchievements.push(criticBadge); else newAchievements[idx] = criticBadge;
-      }
 
-      // 4. COLLECTOR (Collections Created)
-      const collectionCount = collections.filter(c => c.owner === currentUser.username).length;
-      const collectorBadge = newAchievements.find(a => a.id === 'COLLECTOR') || { id: 'COLLECTOR', current: 0, target: BADGE_CONFIG.COLLECTOR.target, unlocked: false };
-      if (collectionCount !== collectorBadge.current) {
-          collectorBadge.current = collectionCount;
-          if (collectionCount >= collectorBadge.target && !collectorBadge.unlocked) collectorBadge.unlocked = true;
-          hasUpdates = true;
-          const idx = newAchievements.findIndex(a => a.id === 'COLLECTOR');
-          if (idx === -1) newAchievements.push(collectorBadge); else newAchievements[idx] = collectorBadge;
-      }
-
-      if (hasUpdates) {
-          const updatedUser = { ...currentUser, achievements: newAchievements };
+      if (changed) {
+          const updatedUser = { ...currentUser, achievements: fresh };
           setUser(updatedUser);
           await db.updateUserProfile(updatedUser);
       }
-  }, [exhibits, collections]);
+  }, [computeAchievementsForUser]);
 
   // --- ROUTING LOGIC ---
   const syncFromUrl = useCallback(async () => {
@@ -852,7 +856,7 @@ export default function App() {
                     onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} 
                     onCollectionClick={(c) => { setSelectedCollection(c); setView('COLLECTION_DETAIL'); }} 
                     onShareCollection={() => {}} 
-                    onViewHallOfFame={() => setView('HALL_OF_FAME')} 
+                    onViewHallOfFame={(username) => { setHallOfFameUsername(username); setView('HALL_OF_FAME'); }}
                     onGuestbookPost={async (text) => { if (!user) return; const entry: GuestbookEntry = { id: crypto.randomUUID(), author: user.username, targetUser: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveGuestbookEntry(entry); if(viewedProfileUsername !== user.username) db.createNotification(viewedProfileUsername, 'GUESTBOOK', user.username); }} 
                     refreshData={refreshData} 
                     isEditingProfile={isEditingProfile} 
@@ -884,7 +888,12 @@ export default function App() {
             )}
 
             {view === 'HALL_OF_FAME' && user && (
-                 <HallOfFame theme={theme} achievements={user.achievements} onBack={handleBack} />
+                 <HallOfFame
+                     theme={theme}
+                     achievements={computeAchievementsForUser(hallOfFameUsername || user.username)}
+                     username={hallOfFameUsername || user.username}
+                     onBack={handleBack}
+                 />
             )}
         </div>
     </div>
