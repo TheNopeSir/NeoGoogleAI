@@ -41,6 +41,21 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Category autocomplete
+  const [categorySearch, setCategorySearch] = useState<string>(initialData?.category || DefaultCategory.PHONES);
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const allCategories = Object.values(DefaultCategory);
+  const categorySuggestions = categorySearch.trim()
+    ? allCategories.filter(cat => cat.toLowerCase().includes(categorySearch.toLowerCase()))
+    : allCategories;
+  const handleCategorySelect = (cat: string) => {
+    setCategory(cat);
+    setCategorySearch(cat);
+    setSubcategory('');
+    setCondition('');
+    setShowCategorySuggestions(false);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newImages = [...images];
@@ -287,15 +302,31 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               </div>}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
+                <div className="relative">
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Категория</label>
-                  <select 
-                    value={category} 
-                    onChange={e => { setCategory(e.target.value); setSubcategory(''); setCondition(''); }}
-                    className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none appearance-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                  >
-                    {Object.values(DefaultCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
+                  <input
+                    value={categorySearch}
+                    onChange={e => { setCategorySearch(e.target.value); setShowCategorySuggestions(true); }}
+                    onFocus={() => setShowCategorySuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 150)}
+                    className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                    placeholder="Начните вводить категорию..."
+                    autoComplete="off"
+                  />
+                  {showCategorySuggestions && categorySuggestions.length > 0 && (
+                    <div className={`absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border shadow-xl ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-zinc-900 border-white/20'}`}>
+                      {categorySuggestions.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onMouseDown={() => handleCategorySelect(cat)}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors border-b border-white/5 last:border-0 ${cat === category ? 'text-green-400 bg-green-500/10' : 'hover:bg-white/10'} ${isWinamp ? 'text-[#00ff00] hover:bg-[#252525]' : ''}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Подкатегория</label>

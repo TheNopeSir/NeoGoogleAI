@@ -791,7 +791,7 @@ export default function App() {
                           ...item, 
                           id: item.id || crypto.randomUUID(), 
                           owner: ownerToSet,
-                          timestamp: item.id ? (item.timestamp || new Date().toLocaleString()) : new Date().toLocaleString(), 
+                          timestamp: item.id ? (item.timestamp || new Date().toISOString()) : new Date().toISOString(),
                           likes: item.likes || 0, 
                           views: item.views || 0 
                         }; 

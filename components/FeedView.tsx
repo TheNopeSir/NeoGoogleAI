@@ -179,8 +179,14 @@ const FeedView: React.FC<FeedViewProps> = ({
 
       return [...items].sort((a, b) => {
           if (sortMode === 'NEW') {
-              const tsDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-              return tsDiff !== 0 ? tsDiff : b.id.localeCompare(a.id);
+              const tsA = new Date(a.timestamp).getTime();
+              const tsB = new Date(b.timestamp).getTime();
+              const aValid = !isNaN(tsA);
+              const bValid = !isNaN(tsB);
+              if (!aValid && !bValid) return 0;
+              if (!aValid) return 1;
+              if (!bValid) return -1;
+              return tsB !== tsA ? tsB - tsA : b.id.localeCompare(a.id);
           }
           if (sortMode === 'POPULAR') {
               return ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views);

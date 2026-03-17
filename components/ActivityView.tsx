@@ -23,6 +23,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
     const isLight = theme === 'light';
     const isWinamp = theme === 'winamp';
@@ -47,17 +48,31 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     const handleMarkAllRead = () => { markNotificationsRead(currentUser.username); };
 
-    const handleNotificationClick = (group: any) => {
-        // Mark all in this group as read
+    const markGroupRead = (group: any) => {
         group.items.forEach((n: Notification) => {
             if (!n.isRead) markSingleNotificationRead(n.id, currentUser.username);
         });
-        // If it's a specific target, navigate
-        if (group.targets.length > 0) {
-            onExhibitClick(group.targets[0].id);
-        } else {
-            onAuthorClick(group.actor);
-        }
+    };
+
+    const handleNotificationClick = (group: any) => {
+        markGroupRead(group);
+        onAuthorClick(group.actor);
+    };
+
+    const handleTargetClick = (e: React.MouseEvent, group: any, targetId: string) => {
+        e.stopPropagation();
+        markGroupRead(group);
+        onExhibitClick(targetId);
+    };
+
+    const toggleGroupExpand = (e: React.MouseEvent, groupId: string) => {
+        e.stopPropagation();
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
     };
 
     const handleRefresh = async () => {
@@ -148,37 +163,61 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         else if (first.type.includes('TRADE')) actionText = 'обновил статус сделки';
         else actionText = 'взаимодействует с вами';
 
-        const uniqueTargets = group.targets.filter((t: any) => t.id && t.title).slice(0, 3); // Show max 3 previews
+        // Deduplicate targets by id using Map
+        const allValidTargets: { id: string; title: string }[] = Array.from(
+            new Map(
+                group.items
+                    .filter((n: any) => n.targetId && n.targetPreview)
+                    .map((n: any) => [n.targetId, { id: n.targetId, title: n.targetPreview }])
+            ).values()
+        );
+
+        const isExpanded = expandedGroups.has(group.id);
+        const visibleTargets = isExpanded ? allValidTargets : allValidTargets.slice(0, 3);
+        const hiddenCount = allValidTargets.length - 3;
 
         return (
-            <div 
-                key={group.id} 
+            <div
+                key={group.id}
                 onClick={() => handleNotificationClick(group)}
-                className={`p-4 border-b transition-all flex gap-4 cursor-pointer 
-                    ${isUnread 
-                        ? (isLight ? 'bg-green-50 border-green-200' : 'bg-green-900/10 border-green-500/30') 
-                        : (isWinamp ? 'border-[#505050] bg-[#191919] hover:bg-[#252525]' : isLight ? 'bg-white border-gray-100 hover:bg-gray-50' : 'border-white/5 bg-transparent hover:bg-white/5')}`
-            }
+                className={`p-4 border-b transition-all flex gap-4 cursor-pointer
+                    ${isUnread
+                        ? (isLight ? 'bg-green-50 border-green-200' : 'bg-green-900/10 border-green-500/30')
+                        : (isWinamp ? 'border-[#505050] bg-[#191919] hover:bg-[#252525]' : isLight ? 'bg-white border-gray-100 hover:bg-gray-50' : 'border-white/5 bg-transparent hover:bg-white/5')}`}
             >
                 <div className="pt-1">{getIconForType(first.type)}</div>
                 <div className="flex-1">
                     <div className={`text-sm font-mono mb-2 ${isLight ? 'text-gray-800' : ''}`}>
-                        <span className="font-bold text-green-500 hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(group.actor); }}>@{group.actor}</span> 
+                        <span className="font-bold text-green-500 hover:underline" onClick={(e) => { e.stopPropagation(); onAuthorClick(group.actor); }}>@{group.actor}</span>
                         <span className="opacity-70"> {actionText}</span>
                     </div>
-                    
-                    {uniqueTargets.length > 0 && (
+
+                    {visibleTargets.length > 0 && (
                         <div className="flex flex-col gap-1 mt-1">
-                            {uniqueTargets.map((t: any, idx: number) => (
-                                <div 
-                                    key={idx}
-                                    className={`text-xs font-bold font-pixel opacity-80 transition-colors border-l-2 pl-2 truncate ${isLight ? 'border-gray-300 text-gray-700' : 'border-white/20 hover:text-green-400'}`}
+                            {visibleTargets.map((t) => (
+                                <div
+                                    key={t.id}
+                                    onClick={(e) => handleTargetClick(e, group, t.id)}
+                                    className={`text-xs font-bold font-pixel opacity-80 transition-colors border-l-2 pl-2 truncate cursor-pointer hover:opacity-100 ${isLight ? 'border-gray-300 text-gray-700 hover:text-green-600 hover:border-green-400' : 'border-white/20 hover:text-green-400 hover:border-green-500/50'}`}
                                 >
                                     "{t.title}"
                                 </div>
                             ))}
-                            {group.targets.length > 3 && (
-                                <div className="text-[9px] opacity-40 pl-2">...и еще {group.targets.length - 3}</div>
+                            {!isExpanded && hiddenCount > 0 && (
+                                <div
+                                    onClick={(e) => toggleGroupExpand(e, group.id)}
+                                    className="text-[9px] pl-2 cursor-pointer text-green-500/60 hover:text-green-400 transition-colors font-mono"
+                                >
+                                    ...и ещё {hiddenCount} →
+                                </div>
+                            )}
+                            {isExpanded && allValidTargets.length > 3 && (
+                                <div
+                                    onClick={(e) => toggleGroupExpand(e, group.id)}
+                                    className="text-[9px] pl-2 cursor-pointer opacity-40 hover:opacity-70 transition-opacity font-mono"
+                                >
+                                    свернуть ↑
+                                </div>
                             )}
                         </div>
                     )}

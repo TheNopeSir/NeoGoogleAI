@@ -564,12 +564,12 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         <Swords size={9} className="text-green-500" /> ПОЛУФИНАЛЫ · 36Ч
                     </div>
 
-                    <div className="flex items-stretch gap-2 mb-4">
+                    <div className="flex flex-col md:flex-row items-stretch gap-2 mb-4">
                         {sf1 && renderSfPair(sf1, 'СФ1')}
 
-                        {/* Vertical divider with sword icon */}
+                        {/* Vertical divider with sword icon — desktop only */}
                         {sf1 && sf2 && (
-                            <div className="flex flex-col items-center justify-center w-5 flex-shrink-0">
+                            <div className="hidden md:flex flex-col items-center justify-center w-5 flex-shrink-0">
                                 <div className="flex-1 w-px bg-white/8" />
                                 <Swords size={10} className="opacity-15 my-1 flex-shrink-0" />
                                 <div className="flex-1 w-px bg-white/8" />

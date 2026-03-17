@@ -392,13 +392,15 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             >
               {actionMode === 'NONE' && (
                 <div className="flex gap-2 p-2 bg-black/85 backdrop-blur-sm">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setActionMode('COLLECTION_PICKER'); }}
-                    className="flex-1 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-[9px] font-bold text-blue-300 hover:bg-blue-500/30 transition-colors interactive flex items-center justify-center gap-1"
-                  >
-                    <FolderPlus size={10} /> Коллекция
-                  </button>
+                  {item.owner === currentUsername && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActionMode('COLLECTION_PICKER'); }}
+                      className="flex-1 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-[9px] font-bold text-blue-300 hover:bg-blue-500/30 transition-colors interactive flex items-center justify-center gap-1"
+                    >
+                      <FolderPlus size={10} /> Коллекция
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setActionMode('WISHLIST_PICKER'); }}
