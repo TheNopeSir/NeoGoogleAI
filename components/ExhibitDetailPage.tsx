@@ -224,8 +224,9 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const similarArtifacts = useMemo(() => {
       if (!allExhibits) return [];
-      return getSimilarArtifacts(exhibit, allExhibits);
-  }, [exhibit, allExhibits]);
+      const othersExhibits = allExhibits.filter(e => e.owner !== currentUser);
+      return getSimilarArtifacts(exhibit, othersExhibits);
+  }, [exhibit, allExhibits, currentUser]);
 
   const linkedArtifacts = useMemo(() => {
       if (!exhibit.relatedIds || !allExhibits) return [];

@@ -573,8 +573,8 @@ export const saveExhibit = async (e: Exhibit) => {
 
 export const updateExhibit = async (e: Exhibit) => {
     const idx = hotCache.exhibits.findIndex(x => x.id === e.id);
-    if (idx !== -1) hotCache.exhibits[idx] = e;
-    else hotCache.exhibits.unshift(e);
+    if (idx !== -1) hotCache.exhibits = hotCache.exhibits.map(x => x.id === e.id ? e : x);
+    else hotCache.exhibits = [e, ...hotCache.exhibits];
     
     notifyListeners();
     

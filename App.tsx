@@ -805,9 +805,9 @@ export default function App() {
                           views: item.views || 0 
                         }; 
                         if (newItem.adminOwner) delete newItem.adminOwner;
-                        if (item.id) await db.updateExhibit(newItem); 
-                        else await db.saveExhibit(newItem); 
-                        handleBack(); 
+                        if (item.id) db.updateExhibit(newItem);
+                        else db.saveExhibit(newItem);
+                        handleBack();
                       }} 
                       initialData={selectedExhibit} 
                       userArtifacts={exhibits.filter(e => e.owner === user?.username)}
