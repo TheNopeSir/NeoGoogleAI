@@ -674,21 +674,21 @@ export default function App() {
                 {/* DESKTOP NAV */}
                 <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
-                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
+                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'xp' ? 'border-[#ECE9D8] bg-[#ECE9D8] text-[#003C74]' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
                         <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
                     </div>
 
                     <div className="flex items-center gap-8">
-                        <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                        <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
                             <XI icon={LayoutGrid} size={18} /> ЛЕНТА
                         </button>
-                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'COMMUNITY_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'COMMUNITY_HUB' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
                             <XI icon={Globe} size={18} /> СЕТЬ
                         </button>
-                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'CREATE_HUB' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'CREATE_HUB' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
                             <XI icon={PlusCircle} size={18} /> СОЗДАТЬ
                         </button>
-                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 relative ${view === 'ACTIVITY' ? 'text-green-500' : 'opacity-60 hover:opacity-100'}`}>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 relative ${view === 'ACTIVITY' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
                             <XI icon={Bell} size={18} /> АКТИВНОСТЬ
                             {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]" />}
                         </button>

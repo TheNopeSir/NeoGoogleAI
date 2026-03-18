@@ -219,7 +219,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           </div>
         </div>
 
-        <div className="relative aspect-[4/3] overflow-hidden bg-black/20">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gray-200">
           <ProgressiveImage
             imageData={firstImage}
             alt={item.title}
@@ -235,13 +235,13 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             {isWanted ? <><XI icon={Search} size={9} /> РАЗЫСКИВАЕТСЯ</> : <><Icon size={10} /> {config.name}</>}
           </div>
           {!isWanted && tradeStatus !== 'NONE' && (
-            <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-zinc-900/95 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+            <div className={`absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-bold tracking-wide shadow-lg uppercase border !bg-[#003C74] backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
               {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 12, strokeWidth: 2.5 })}
               {tradeConfig.badge}
             </div>
           )}
           {photoCount > 1 && (
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 text-white px-1.5 py-0.5 rounded">
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-[#003C74]/80 text-white px-1.5 py-0.5 rounded">
               <XI icon={Camera} size={9} /> {photoCount}
             </div>
           )}

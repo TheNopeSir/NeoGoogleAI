@@ -70,7 +70,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                     </div>
 
                     {/* Image Area */}
-                    <div className={`aspect-video rounded-xl overflow-hidden border-2 relative flex items-center justify-center ${isWinamp ? 'border-[#505050] bg-black' : theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-black/10 bg-gray-50'}`}>
+                    <div className={`aspect-video rounded-xl overflow-hidden border-2 relative flex items-center justify-center ${isWinamp ? 'border-[#505050] bg-black' : isXP ? 'border-[#8592B5] bg-white' : theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-black/10 bg-gray-50'}`}>
                         {item.referenceImageUrl ? (
                             <img src={item.referenceImageUrl} className="w-full h-full object-contain" alt={item.title} />
                         ) : (
@@ -91,7 +91,7 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                     </div>
 
                     {/* Notes Box */}
-                    <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-gray-100 border-black/5'}`}>
+                    <div className={`p-6 rounded-xl border ${isWinamp ? 'bg-black border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#8592B5]' : theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-gray-100 border-black/5'}`}>
                         <h3 className="font-pixel text-[10px] opacity-50 mb-3 flex items-center gap-2 uppercase tracking-widest">
                             <XI icon={Target} size={14} /> Параметры поиска / Заметки
                         </h3>
@@ -101,8 +101,8 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                     </div>
 
                     {/* Author Footer */}
-                    <div className="flex items-center justify-center pt-4 border-t border-dashed border-white/10">
-                        <div onClick={() => onAuthorClick(item.owner)} className="flex items-center gap-3 cursor-pointer group p-2 hover:bg-white/5 rounded-xl transition-all">
+                    <div className={`flex items-center justify-center pt-4 border-t border-dashed ${isXP ? 'border-gray-300' : 'border-white/10'}`}>
+                        <div onClick={() => onAuthorClick(item.owner)} className={`flex items-center gap-3 cursor-pointer group p-2 rounded-xl transition-all ${isXP ? 'hover:bg-[#D4D0C8]' : 'hover:bg-white/5'}`}>
                             <img src={getUserAvatar(item.owner)} className="w-10 h-10 rounded-full border-2 border-purple-500/30" />
                             <div className="text-left">
                                 <div className="font-pixel text-[9px] opacity-50 uppercase">Ищет агент</div>

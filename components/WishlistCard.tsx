@@ -51,7 +51,7 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%)] bg-[length:100%_4px] pointer-events-none opacity-50" />
             </>
         ) : (
-            <div className="w-full h-full flex items-center justify-center bg-black/20">
+            <div className={`w-full h-full flex items-center justify-center ${isXP ? 'bg-gray-200' : 'bg-black/20'}`}>
                 <XI icon={Search} size={32} className="opacity-20" />
             </div>
         )}
@@ -79,7 +79,7 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
         <div className={`mt-auto pt-2 flex items-center justify-between border-t border-dashed ${isXP ? 'border-gray-300' : isWinamp ? 'border-[#505050]' : 'border-white/10'}`}>
             {onUserClick ? (
                 <div onClick={(e) => { e.stopPropagation(); onUserClick(item.owner); }} className="flex items-center gap-2 cursor-pointer group/author w-full">
-                    <img src={getUserAvatar(item.owner)} className="w-4 h-4 rounded-full border border-white/20" />
+                    <img src={getUserAvatar(item.owner)} className={`w-4 h-4 rounded-full border ${isXP ? 'border-gray-400' : 'border-white/20'}`} />
                     <span className={`text-[9px] font-pixel opacity-50 group-hover/author:opacity-100 transition-opacity truncate flex-1 ${isWinamp ? 'text-[#00ff00]' : ''}`}>@{item.owner}</span>
                 </div>
             ) : ( <div className="h-4"></div> )}

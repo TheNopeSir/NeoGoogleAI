@@ -184,7 +184,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                                     }}
                                 >
                                     {renderTextWithMentions(msg.text, () => {}, users)}
-                                    <div className={`text-[9px] mt-2 opacity-50 ${isMe ? 'text-black/60' : 'text-white/40'}`}>
+                                    <div className={`text-[9px] mt-2 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
                                         {msg.timestamp.split(',')[1] || msg.timestamp}
                                     </div>
                                 </div>
@@ -225,7 +225,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                                 key={u.username}
                                 type="button"
                                 onClick={() => selectMention(u.username)}
-                                className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors"
+                                className={`w-full flex items-center gap-2 p-2 text-left transition-colors ${isXP ? 'hover:bg-[#D4D0C8] text-gray-900' : 'hover:bg-white/10'}`}
                             >
                                 <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
                                 <span className="font-bold text-[10px]">@{u.username}</span>
