@@ -132,6 +132,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
       return;
     }
     onSave({
+      ...initialData,
       id: initialData?.id,
       title,
       description,
