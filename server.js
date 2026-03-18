@@ -281,7 +281,7 @@ const pool = new Pool({
     host: dbHost, 
     port: 5432, 
     database: dbName,
-    ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
+    ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true' },
     max: 20,
     keepAlive: true
 });
