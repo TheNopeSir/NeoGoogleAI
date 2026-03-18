@@ -590,13 +590,17 @@ export const updateExhibit = async (e: Exhibit) => {
 };
 
 export const deleteExhibit = async (id: string) => {
-    hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
-    notifyListeners();
-    const db = await getDB();
-    await db.delete('exhibits', id);
     const username = await getActiveUsername();
     const qs = username ? `?username=${encodeURIComponent(username)}` : '';
-    await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
+    const result = await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
+    if (result && result.success) {
+        hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
+        notifyListeners();
+        const db = await getDB();
+        await db.delete('exhibits', id);
+    } else {
+        throw new Error(result?.error || 'Нет прав для удаления');
+    }
 };
 
 export const saveCollection = async (c: Collection) => {

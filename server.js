@@ -1004,8 +1004,14 @@ api.delete('/exhibits/:id', async (req, res) => {
     try {
         const { username } = req.query;
         if (!username) return res.status(400).json({ error: "Username required" });
-        const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
-        if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
+        const isAdminUser = ADMIN_USERNAMES.includes(username);
+        if (isAdminUser) {
+            const check = await query(`SELECT id FROM exhibits WHERE id = $1`, [req.params.id]);
+            if (check.rows.length === 0) return res.status(404).json({ error: "Артефакт не найден" });
+        } else {
+            const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
+            if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
+        }
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (e) {
