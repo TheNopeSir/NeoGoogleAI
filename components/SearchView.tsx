@@ -43,7 +43,7 @@ const SearchView: React.FC<SearchViewProps> = ({
     const filteredCollections = useMemo(() => {
         if (!query) return [];
         const lower = query.toLowerCase();
-        return collections.filter(c => c.title.toLowerCase().includes(lower) || c.description.toLowerCase().includes(lower) || c.owner.toLowerCase().includes(lower));
+        return collections.filter(c => c.title.toLowerCase().includes(lower) || c.description.toLowerCase().includes(lower) || c.owner.toLowerCase().includes(lower) || (c.tags || []).some(t => t.toLowerCase().includes(lower)));
     }, [query, collections]);
 
     const filteredUsers = useMemo(() => {

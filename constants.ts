@@ -1,6 +1,6 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority } from './types';
-import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Trophy } from 'lucide-react';
+import { Exhibit, TierType, TradeStatus, WishlistPriority, WishlistItemStatus, CollectionVisibility } from './types';
+import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Trophy, CheckCircle, PauseCircle, Globe, UserCheck } from 'lucide-react';
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
@@ -51,6 +51,18 @@ export const WISHLIST_PRIORITY_CONFIG: Record<WishlistPriority, any> = {
     'MEDIUM': { label: 'ИНТЕРЕС', desc: 'Куплю при случае', color: 'text-blue-400 border-blue-500 bg-blue-500/10', icon: Search, border: 'border-blue-500' },
     'HIGH': { label: 'ОХОТА', desc: 'Активно ищу', color: 'text-orange-400 border-orange-500 bg-orange-500/10', icon: Target, border: 'border-orange-500' },
     'GRAIL': { label: 'ГРААЛЬ', desc: 'Мечта коллекции', color: 'text-yellow-400 border-yellow-500 bg-yellow-500/10 animate-pulse', icon: Crown, glow: true, border: 'border-yellow-500' },
+};
+
+export const WISHLIST_STATUS_CONFIG: Record<WishlistItemStatus, any> = {
+    'SEARCHING': { label: 'ПОИСК', desc: 'Активно ищу', color: 'text-blue-400 border-blue-500 bg-blue-500/10', icon: Search },
+    'ACQUIRED':  { label: 'НАШЕЛ', desc: 'Уже в коллекции', color: 'text-green-400 border-green-500 bg-green-500/10', icon: CheckCircle },
+    'PAUSED':    { label: 'ПАУЗА', desc: 'Приостановил поиск', color: 'text-gray-400 border-gray-500 bg-gray-500/10', icon: PauseCircle },
+};
+
+export const COLLECTION_VISIBILITY_CONFIG: Record<CollectionVisibility, any> = {
+    'PUBLIC':    { label: 'ПУБЛИЧНАЯ', desc: 'Видят все', color: 'text-green-400 border-green-500 bg-green-500/10', icon: Globe },
+    'FOLLOWERS': { label: 'ПОДПИСЧИКИ', desc: 'Только подписчики', color: 'text-blue-400 border-blue-500 bg-blue-500/10', icon: UserCheck },
+    'PRIVATE':   { label: 'ЛИЧНАЯ', desc: 'Только я', color: 'text-gray-400 border-gray-500 bg-gray-500/10', icon: Lock },
 };
 
 export const BADGE_CONFIG = {

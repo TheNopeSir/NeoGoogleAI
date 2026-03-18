@@ -31,12 +31,15 @@ export type TradeStatus = 'NONE' | 'FOR_TRADE' | 'FOR_SALE' | 'GIFT' | 'NOT_FOR_
 
 export type WishlistPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'GRAIL';
 
+export type WishlistItemStatus = 'SEARCHING' | 'ACQUIRED' | 'PAUSED';
+
 export interface WishlistItem {
     id: string;
     title: string;
     category: string;
     owner: string;
     priority: WishlistPriority;
+    status?: WishlistItemStatus;
     notes?: string;
     referenceImageUrl?: string; // Image of what user wants
     timestamp: string;
@@ -83,6 +86,8 @@ export interface Exhibit {
   postType?: 'ARTIFACT' | 'WANTED'; // 'WANTED' = public "looking for" request
 }
 
+export type CollectionVisibility = 'PUBLIC' | 'PRIVATE' | 'FOLLOWERS';
+
 export interface Collection {
   id: string;
   slug?: string;
@@ -94,9 +99,11 @@ export interface Collection {
   timestamp: string;
   likes: number;
   likedBy: string[];
+  visibility?: CollectionVisibility;
+  tags?: string[];
 }
 
-export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'GUESTBOOK' | 'LIKE_COMMENT' | 'MENTION' | 'TRADE_OFFER' | 'TRADE_ACCEPTED' | 'TRADE_DECLINED' | 'TRADE_COMPLETED' | 'TRADE_CANCELLED' | 'TRADE_COUNTER';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'GUESTBOOK' | 'LIKE_COMMENT' | 'MENTION' | 'TRADE_OFFER' | 'TRADE_ACCEPTED' | 'TRADE_DECLINED' | 'TRADE_COMPLETED' | 'TRADE_CANCELLED' | 'TRADE_COUNTER' | 'WISHLIST_MATCH' | 'WISHLIST_ACQUIRED';
 
 export interface Notification {
   id: string;

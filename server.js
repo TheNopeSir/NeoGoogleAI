@@ -1163,6 +1163,48 @@ api.post('/exhibits', contentCreateLimiter, async (req, res) => {
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
         res.json({ success: true, imageUrls: processedData.imageUrls });
+
+        // Fire-and-forget: wishlist match detection
+        (async () => {
+            try {
+                const exhibitOwner = processedData.owner;
+                const exhibitCategory = processedData.category;
+                const exhibitTitle = (processedData.title || '').toLowerCase();
+                if (!exhibitOwner || !exhibitCategory || !exhibitTitle) return;
+
+                const matches = await query(`
+                    SELECT id, data->>'owner' as owner, data->>'title' as wtitle
+                    FROM wishlist
+                    WHERE data->>'owner' != $1
+                      AND (data->>'status' IS NULL OR data->>'status' = 'SEARCHING')
+                      AND data->>'category' = $2
+                      AND $3 ILIKE '%' || (data->>'title') || '%'
+                    LIMIT 20
+                `, [exhibitOwner, exhibitCategory, exhibitTitle]);
+
+                for (const row of matches.rows) {
+                    const notifId = `wm_${id}_${row.id}`;
+                    const notif = {
+                        id: notifId,
+                        type: 'WISHLIST_MATCH',
+                        actor: exhibitOwner,
+                        recipient: row.owner,
+                        targetId: id,
+                        targetPreview: processedData.title,
+                        contextId: row.id,
+                        timestamp: new Date().toISOString(),
+                        isRead: false
+                    };
+                    await query(
+                        `INSERT INTO notifications (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO NOTHING`,
+                        [notifId, notif]
+                    );
+                    sendPushToUser(row.owner, 'Найдено совпадение', `@${exhibitOwner} добавил: ${processedData.title}`, '/activity');
+                }
+            } catch (e) {
+                console.error('[wishlist-match]', e.message);
+            }
+        })();
     } catch (e) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet } from 'lucide-react';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy } from 'lucide-react';
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
@@ -147,9 +147,11 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             case 'COMMENT':        return <MatrixIcon icon={MessageSquare} size={16} color="#60a5fa" theme={theme} />;
             case 'FOLLOW':         return <MatrixIcon icon={UserPlus}      size={16} color="#4ade80" theme={theme} />;
             case 'GUESTBOOK':      return <MatrixIcon icon={BookOpen}      size={16} color="#fbbf24" theme={theme} />;
-            case 'TRADE_OFFER':    return <MatrixIcon icon={RefreshCw}     size={16} color="#fbbf24" theme={theme} />;
-            case 'TRADE_ACCEPTED': return <MatrixIcon icon={Check}         size={16} color="#4ade80" theme={theme} />;
-            default:               return <MatrixIcon icon={Bell}          size={16} theme={theme} />;
+            case 'TRADE_OFFER':       return <MatrixIcon icon={RefreshCw} size={16} color="#fbbf24" theme={theme} />;
+            case 'TRADE_ACCEPTED':    return <MatrixIcon icon={Check}     size={16} color="#4ade80" theme={theme} />;
+            case 'WISHLIST_MATCH':    return <MatrixIcon icon={Radar}     size={16} color="#a78bfa" glow={2} theme={theme} />;
+            case 'WISHLIST_ACQUIRED': return <MatrixIcon icon={Trophy}    size={16} color="#fbbf24" glow={2} theme={theme} />;
+            default:                  return <MatrixIcon icon={Bell}      size={16} theme={theme} />;
         }
     };
 
@@ -162,6 +164,8 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         if (first.type === 'LIKE') actionText = count > 1 ? `оценил ${count} ваших экспонатов` : 'оценил ваш экспонат';
         else if (first.type === 'COMMENT') actionText = count > 1 ? `оставил ${count} комментариев` : 'прокомментировал';
         else if (first.type === 'FOLLOW') actionText = 'подписался на вас';
+        else if (first.type === 'WISHLIST_MATCH') actionText = 'добавил артефакт из вашего вишлиста';
+        else if (first.type === 'WISHLIST_ACQUIRED') actionText = '— вишлист-айтем получен!';
         else if (first.type.includes('TRADE')) actionText = 'обновил статус сделки';
         else actionText = 'взаимодействует с вами';
 

@@ -33,7 +33,7 @@ import LandingPage from './components/LandingPage';
 import { ThemeContext } from './components/ThemeContext';
 
 import * as db from './services/storageService';
-import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, ProcessedImage, AchievementProgress } from './types';
+import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, WishlistItemStatus, ProcessedImage, AchievementProgress } from './types';
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
 import XI from './components/XI';
@@ -473,6 +473,36 @@ export default function App() {
     // which triggers the subscription in useEffect -> refreshData.
   };
 
+  const handleLikeCollection = async (collectionId: string) => {
+    if (!user) return;
+    const colIndex = collections.findIndex(c => c.id === collectionId);
+    if (colIndex === -1) return;
+    const col = collections[colIndex];
+    const likedBy = new Set(col.likedBy || []);
+    const isLiked = likedBy.has(user.username);
+    if (isLiked) likedBy.delete(user.username);
+    else likedBy.add(user.username);
+    const newLikedBy = Array.from(likedBy);
+    const updated = { ...col, likes: newLikedBy.length, likedBy: newLikedBy };
+    const newCollections = [...collections];
+    newCollections[colIndex] = updated;
+    setCollections(newCollections);
+    if (selectedCollection?.id === collectionId) setSelectedCollection(updated);
+    await db.updateCollection(updated);
+    if (!isLiked && col.owner !== user.username) {
+      db.createNotification(col.owner, 'LIKE', user.username, col.id, col.title);
+    }
+  };
+
+  const handleShareCollection = (col: Collection) => {
+    const url = `${window.location.origin}/collection/${col.id}`;
+    if (navigator.share) {
+      navigator.share({ title: col.title, text: col.description, url });
+    } else {
+      navigator.clipboard.writeText(url);
+    }
+  };
+
   const handleEditComment = async (exhibitId: string, commentId: string, newText: string) => {
     if (!user) return;
     const exhibit = exhibits.find(e => e.id === exhibitId);
@@ -722,7 +752,16 @@ export default function App() {
 
         <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : {})}>
             {view === 'FEED' && user && (
-                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} />
+                <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
+                    if (c.owner === user.username) return true;
+                    if (!c.visibility || c.visibility === 'PUBLIC') return true;
+                    if (c.visibility === 'PRIVATE') return false;
+                    if (c.visibility === 'FOLLOWERS') {
+                        const owner = allUsers.find(u => u.username === c.owner);
+                        return owner?.followers?.includes(user.username) ?? false;
+                    }
+                    return true;
+                })} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} />
             )}
 
             {view === 'ACTIVITY' && user && (
@@ -741,12 +780,47 @@ export default function App() {
 
             {view === 'COLLECTION_DETAIL' && selectedCollection && (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
-                    <CollectionDetailPage collection={selectedCollection} artifacts={exhibits.filter(e => selectedCollection.exhibitIds.includes(e.id))} theme={theme} onBack={handleBack} onExhibitClick={handleExhibitClick} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} currentUser={user?.username || ''} onDelete={async (id) => { await db.deleteCollection(id); handleBack(); }} onLike={async (id) => { }} />
+                    <CollectionDetailPage
+                        collection={selectedCollection}
+                        artifacts={selectedCollection.exhibitIds.map(id => exhibits.find(e => e.id === id)).filter(Boolean) as Exhibit[]}
+                        theme={theme}
+                        onBack={handleBack}
+                        onExhibitClick={handleExhibitClick}
+                        onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
+                        currentUser={user?.username || ''}
+                        onEdit={() => navigateTo('CREATE_COLLECTION', { initialData: selectedCollection })}
+                        onDelete={async (id) => { await db.deleteCollection(id); handleBack(); }}
+                        onLike={handleReaction}
+                        onLikeCollection={() => handleLikeCollection(selectedCollection.id)}
+                        isCollectionLiked={selectedCollection.likedBy?.includes(user?.username || '') ?? false}
+                        onShareCollection={() => handleShareCollection(selectedCollection)}
+                        wishlistMatches={(() => {
+                            const cats = new Set(selectedCollection.exhibitIds.map(id => exhibits.find(e => e.id === id)?.category).filter(Boolean));
+                            return wishlist.filter(w => w.owner !== user?.username && cats.has(w.category) && (!w.status || w.status === 'SEARCHING'));
+                        })()}
+                        onOfferTrade={(ownerUsername) => navigateTo('DIRECT_CHAT', { username: ownerUsername })}
+                    />
                 </div>
             )}
 
             {view === 'WISHLIST_DETAIL' && selectedWishlistItem && user && (
-                <WishlistDetailView item={selectedWishlistItem} theme={theme} onBack={handleBack} currentUser={user.username} onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })} onDelete={async (id) => { await db.deleteWishlistItem(id); handleBack(); }} userInventory={exhibits.filter(e => e.owner === user.username)} />
+                <WishlistDetailView
+                    item={selectedWishlistItem}
+                    theme={theme}
+                    onBack={handleBack}
+                    currentUser={user.username}
+                    onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
+                    onDelete={async (id) => { await db.deleteWishlistItem(id); handleBack(); }}
+                    onStatusChange={async (id, status) => {
+                        const item = wishlist.find(w => w.id === id);
+                        if (!item) return;
+                        const updated = { ...item, status };
+                        setWishlist(prev => prev.map(w => w.id === id ? updated : w));
+                        setSelectedWishlistItem(updated);
+                        await db.saveWishlistItem(updated);
+                    }}
+                    userInventory={exhibits.filter(e => e.owner === user.username)}
+                />
             )}
 
             {view === 'USER_WISHLIST' && (

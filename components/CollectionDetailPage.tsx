@@ -1,6 +1,7 @@
-import React from 'react';
-import { ArrowLeft, Share2, FolderOpen, Grid, User, Edit3, Trash2 } from 'lucide-react';
-import { Collection, Exhibit } from '../types';
+import React, { useState } from 'react';
+import { ArrowLeft, Share2, FolderOpen, Grid, Edit3, Trash2, Heart, Tag, Lock, Radar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collection, Exhibit, WishlistItem } from '../types';
+import { WISHLIST_PRIORITY_CONFIG } from '../constants';
 import { ExhibitCard } from './ExhibitCard';
 import { getUserAvatar } from '../services/storageService';
 import XI from './XI';
@@ -16,13 +17,34 @@ interface CollectionDetailPageProps {
     onEdit?: () => void;
     onDelete?: (id: string) => void;
     onLike: (id: string, e?: React.MouseEvent) => void;
+    onLikeCollection?: () => void;
+    isCollectionLiked?: boolean;
+    onShareCollection?: () => void;
+    wishlistMatches?: WishlistItem[];
+    onOfferTrade?: (ownerUsername: string) => void;
 }
 
-const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({ 
-    collection, artifacts, theme, onBack, onExhibitClick, onAuthorClick, currentUser, onEdit, onDelete, onLike 
+const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
+    collection, artifacts, theme, onBack, onExhibitClick, onAuthorClick, currentUser, onEdit, onDelete, onLike, wishlistMatches = [], onOfferTrade,
+    onLikeCollection, isCollectionLiked, onShareCollection
 }) => {
     const isOwner = currentUser === collection.owner;
     const isWinamp = theme === 'winamp';
+    const isPrivateBlocked = collection.visibility === 'PRIVATE' && !isOwner;
+    const [agentsExpanded, setAgentsExpanded] = useState(true);
+
+    if (isPrivateBlocked) {
+        return (
+            <div className="max-w-4xl mx-auto p-4 pb-24 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+                <button onClick={onBack} className="self-start flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest mb-8">
+                    <XI icon={ArrowLeft} size={14} /> НАЗАД
+                </button>
+                <XI icon={Lock} size={48} className="opacity-30" />
+                <h2 className="font-pixel text-xl">ДОСТУП ЗАПРЕЩЕН</h2>
+                <p className="font-mono text-sm opacity-50">Эта коллекция приватна</p>
+            </div>
+        );
+    }
 
     return (
         <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
@@ -44,7 +66,18 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                             <XI icon={Edit3} size={16} /> РЕДАКТИРОВАТЬ
                         </button>
                     )}
-                    <button className="opacity-70 hover:opacity-100 transition-all"><XI icon={Share2} size={18} /></button>
+                    {onLikeCollection && (
+                        <button
+                            onClick={onLikeCollection}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all font-pixel text-[10px] ${isCollectionLiked ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'opacity-70 hover:opacity-100 border-white/10 hover:border-red-500/30 hover:text-red-400'}`}
+                        >
+                            <XI icon={Heart} size={14} fill={isCollectionLiked ? "currentColor" : "none"} />
+                            <span>{collection.likes || 0}</span>
+                        </button>
+                    )}
+                    {onShareCollection && (
+                        <button onClick={onShareCollection} className="opacity-70 hover:opacity-100 transition-all"><XI icon={Share2} size={18} /></button>
+                    )}
                 </div>
             </div>
 
@@ -57,6 +90,15 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                         <XI icon={FolderOpen} size={14}/> КОЛЛЕКЦИЯ
                     </div>
                     <h1 className={`text-3xl md:text-5xl font-pixel font-black leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{collection.title}</h1>
+                    {collection.tags && collection.tags.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                            {collection.tags.map(t => (
+                                <span key={t} className="flex items-center gap-1 px-2 py-1 bg-blue-500/10 border border-blue-500/30 rounded text-[9px] font-pixel text-blue-300">
+                                    <XI icon={Tag} size={9} /> {t}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     <p className="font-mono text-sm opacity-70 max-w-2xl leading-relaxed">{collection.description || 'Нет описания для этой коллекции.'}</p>
                     
                     <div className="pt-4 flex items-center gap-6">
@@ -98,6 +140,54 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                          <div className="col-span-full py-12 text-center border-2 border-dashed border-white/5 rounded-2xl opacity-40 font-pixel text-[10px] uppercase">Экспозиция пуста</div>
                     )}
                 </div>
+            </div>
+
+            {/* АГЕНТЫ ИЩУТ panel */}
+            <div className={`mt-10 rounded-2xl border ${isWinamp ? 'border-[#505050]' : 'border-purple-500/20 bg-purple-500/5'}`}>
+                <button
+                    onClick={() => setAgentsExpanded(v => !v)}
+                    className="w-full flex items-center justify-between p-4 font-pixel text-xs uppercase tracking-widest text-purple-400"
+                >
+                    <div className="flex items-center gap-2">
+                        <XI icon={Radar} size={14} /> АГЕНТЫ ИЩУТ ({wishlistMatches.length})
+                    </div>
+                    <XI icon={agentsExpanded ? ChevronUp : ChevronDown} size={14} />
+                </button>
+
+                {agentsExpanded && (
+                    <div className="px-4 pb-4 space-y-2">
+                        {wishlistMatches.length === 0 ? (
+                            <div className="py-6 text-center font-mono text-xs opacity-40 uppercase">
+                                Никто не ищет предметы из этой коллекции
+                            </div>
+                        ) : (
+                            wishlistMatches.map(w => {
+                                const priCfg = WISHLIST_PRIORITY_CONFIG[w.priority];
+                                return (
+                                    <div key={w.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isWinamp ? 'border-[#505050]' : 'border-white/10 bg-black/20'}`}>
+                                        <img src={getUserAvatar(w.owner)} className="w-8 h-8 rounded-full border border-white/20 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-pixel text-[10px] truncate">{w.title}</div>
+                                            <div className="font-mono text-[9px] opacity-50">@{w.owner}</div>
+                                        </div>
+                                        <div className={`px-2 py-0.5 rounded border text-[8px] font-pixel font-bold flex items-center gap-1 shrink-0 ${priCfg.color}`}>
+                                            {React.createElement(priCfg.icon, { size: 8 })}
+                                            {priCfg.label}
+                                        </div>
+                                        {onOfferTrade && currentUser !== w.owner && (
+                                            <button
+                                                onClick={() => onOfferTrade(w.owner)}
+                                                className="px-2 py-1 bg-green-600/20 border border-green-600/40 text-green-400 text-[8px] font-pixel rounded hover:bg-green-600/30 transition-colors shrink-0"
+                                            >
+                                                ОБМЕН
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

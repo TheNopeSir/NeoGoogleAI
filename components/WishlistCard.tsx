@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Search, Crown, Crosshair } from 'lucide-react';
+import { Search, Crown, Crosshair, CheckCircle } from 'lucide-react';
 import { WishlistItem } from '../types';
-import { WISHLIST_PRIORITY_CONFIG } from '../constants';
+import { WISHLIST_PRIORITY_CONFIG, WISHLIST_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
 import XI from './XI';
 
@@ -16,21 +16,26 @@ interface WishlistCardProps {
 
 const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUserClick, onClick }) => {
   const priorityConfig = WISHLIST_PRIORITY_CONFIG[item.priority];
+  const statusConfig = item.status ? WISHLIST_STATUS_CONFIG[item.status] : null;
   const isXP = theme === 'xp';
   const isWinamp = theme === 'winamp';
   const isGrail = item.priority === 'GRAIL';
+  const isAcquired = item.status === 'ACQUIRED';
+  const isPaused = item.status === 'PAUSED';
 
   return (
-    <div 
+    <div
       onClick={() => onClick && onClick(item)}
       className={`relative group flex flex-col h-full cursor-pointer transition-all duration-300 hover:-translate-y-1 overflow-hidden
-        ${isXP 
-          ? 'rounded border-2 border-[#0058EE] bg-white hover:shadow-lg' 
+        ${isXP
+          ? 'rounded border-2 border-[#0058EE] bg-white hover:shadow-lg'
           : isWinamp
           ? 'rounded-none border border-[#505050] bg-[#191919] text-[#00ff00]'
-          : `rounded-xl border ${priorityConfig.border} ${theme === 'dark' ? 'bg-black/40 hover:bg-white/5' : 'bg-white hover:bg-gray-50'}`
+          : `rounded-xl border ${isAcquired ? 'border-green-500' : priorityConfig.border} ${theme === 'dark' ? 'bg-black/40 hover:bg-white/5' : 'bg-white hover:bg-gray-50'}`
         }
-        ${isGrail ? 'shadow-[0_0_20px_rgba(234,179,8,0.2)]' : ''}
+        ${isGrail && !isAcquired ? 'shadow-[0_0_20px_rgba(234,179,8,0.2)]' : ''}
+        ${isAcquired ? 'shadow-[0_0_12px_rgba(74,222,128,0.15)]' : ''}
+        ${isPaused ? 'opacity-60' : ''}
       `}
     >
       {/* Target Overlay Effect */}
@@ -56,12 +61,28 @@ const WishlistCard: React.FC<WishlistCardProps> = ({ item, theme, onDelete, onUs
             </div>
         )}
         
-        {/* Priority Badge - Centered Bottom */}
-        <div className={`absolute bottom-0 left-0 right-0 py-1 flex justify-center backdrop-blur-md border-t ${isXP ? 'bg-white/90 border-blue-200' : isWinamp ? 'bg-black border-[#505050]' : 'bg-black/80 border-white/10'}`}>
-            <div className={`flex items-center gap-1.5 text-[8px] font-pixel font-bold uppercase tracking-widest ${priorityConfig.color.split(' ')[0]}`}>
-                {React.createElement(priorityConfig.icon, { size: 10 })}
-                {priorityConfig.label}
+        {/* ACQUIRED overlay */}
+        {isAcquired && (
+            <div className="absolute inset-0 flex items-center justify-center bg-green-900/40 z-10 pointer-events-none">
+                <div className="bg-green-500 text-black font-pixel text-[9px] font-black px-3 py-1 rounded flex items-center gap-1 shadow-lg">
+                    <XI icon={CheckCircle} size={10} /> НАШЕЛ
+                </div>
             </div>
+        )}
+
+        {/* Priority / Status Badge - Centered Bottom */}
+        <div className={`absolute bottom-0 left-0 right-0 py-1 flex justify-center backdrop-blur-md border-t ${isXP ? 'bg-white/90 border-blue-200' : isWinamp ? 'bg-black border-[#505050]' : 'bg-black/80 border-white/10'}`}>
+            {statusConfig && item.status !== 'SEARCHING' ? (
+                <div className={`flex items-center gap-1.5 text-[8px] font-pixel font-bold uppercase tracking-widest ${statusConfig.color.split(' ')[0]}`}>
+                    {React.createElement(statusConfig.icon, { size: 10 })}
+                    {statusConfig.label}
+                </div>
+            ) : (
+                <div className={`flex items-center gap-1.5 text-[8px] font-pixel font-bold uppercase tracking-widest ${priorityConfig.color.split(' ')[0]}`}>
+                    {React.createElement(priorityConfig.icon, { size: 10 })}
+                    {priorityConfig.label}
+                </div>
+            )}
         </div>
       </div>
 

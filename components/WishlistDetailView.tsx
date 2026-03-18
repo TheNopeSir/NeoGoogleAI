@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Trash2, Search, Target, AlertCircle, Sparkles } from 'lucide-react';
-import { WishlistItem, UserProfile, Exhibit } from '../types';
-import { WISHLIST_PRIORITY_CONFIG } from '../constants';
+import { ArrowLeft, Trash2, Search, Target, Sparkles } from 'lucide-react';
+import { WishlistItem, UserProfile, Exhibit, WishlistItemStatus } from '../types';
+import { WISHLIST_PRIORITY_CONFIG, WISHLIST_STATUS_CONFIG } from '../constants';
 import { getUserAvatar, getFullDatabase } from '../services/storageService';
 import TradeOfferModal from './TradeOfferModal';
 import XI from './XI';
@@ -12,13 +12,14 @@ interface WishlistDetailViewProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
     onBack: () => void;
     onDelete?: (id: string) => void;
+    onStatusChange?: (id: string, status: WishlistItemStatus) => void;
     onAuthorClick: (username: string) => void;
     currentUser: string;
     userInventory?: Exhibit[]; // Needed for trade
 }
 
-const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({ 
-    item, theme, onBack, onDelete, onAuthorClick, currentUser, userInventory = [] 
+const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
+    item, theme, onBack, onDelete, onStatusChange, onAuthorClick, currentUser, userInventory = []
 }) => {
     const priorityConfig = WISHLIST_PRIORITY_CONFIG[item.priority];
     const isOwner = currentUser === item.owner;
@@ -68,6 +69,26 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                             WANTED: {item.priority} PRIORITY
                         </div>
                     </div>
+
+                    {/* Status Toggle (owner only) */}
+                    {isOwner && onStatusChange && (
+                        <div>
+                            <div className="text-[9px] font-pixel opacity-40 uppercase tracking-widest text-center mb-2">Статус поиска</div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {(Object.entries(WISHLIST_STATUS_CONFIG) as [WishlistItemStatus, any][]).map(([key, cfg]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => onStatusChange(item.id, key)}
+                                        className={`py-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all text-[9px] font-pixel font-bold uppercase
+                                            ${(item.status ?? 'SEARCHING') === key ? cfg.color + ' bg-white/10' : 'border-white/10 opacity-40 hover:opacity-80'}`}
+                                    >
+                                        {React.createElement(cfg.icon, { size: 12 })}
+                                        {cfg.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Image Area */}
                     <div className={`aspect-video rounded-xl overflow-hidden border-2 relative flex items-center justify-center ${isWinamp ? 'border-[#505050] bg-black' : isXP ? 'border-[#8592B5] bg-white' : theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-black/10 bg-gray-50'}`}>

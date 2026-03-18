@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Save, Search, Camera, Flame, Star, Circle, Crown } from 'lucide-react';
-import { DefaultCategory, WISHLIST_PRIORITY_CONFIG } from '../constants';
+import { ArrowLeft, Search, Camera, Crown } from 'lucide-react';
+import { DefaultCategory, WISHLIST_PRIORITY_CONFIG, WISHLIST_STATUS_CONFIG } from '../constants';
 import { fileToBase64 } from '../services/storageService';
-import { WishlistItem, WishlistPriority } from '../types';
+import { WishlistItem, WishlistPriority, WishlistItemStatus } from '../types';
 import XI from './XI';
 
 interface CreateWishlistItemViewProps {
@@ -16,6 +16,7 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>(DefaultCategory.MISC);
   const [priority, setPriority] = useState<WishlistPriority>('MEDIUM');
+  const [status, setStatus] = useState<WishlistItemStatus>('SEARCHING');
   const [notes, setNotes] = useState('');
   const [image, setImage] = useState('');
   
@@ -35,6 +36,7 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
       title,
       category,
       priority,
+      status,
       notes,
       referenceImageUrl: image,
       timestamp: new Date().toISOString()
@@ -105,6 +107,22 @@ const CreateWishlistItemView: React.FC<CreateWishlistItemViewProps> = ({ theme, 
                             key={key}
                             onClick={() => setPriority(key as WishlistPriority)}
                             className={`p-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${priority === key ? config.color + ' bg-white/10' : 'border-white/10 opacity-50 hover:opacity-100'}`}
+                        >
+                            {React.createElement(config.icon, { size: 14 })}
+                            <span className="text-[10px] font-bold uppercase">{config.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Статус поиска</label>
+                <div className="grid grid-cols-3 gap-2">
+                    {(Object.entries(WISHLIST_STATUS_CONFIG) as [WishlistItemStatus, any][]).map(([key, config]) => (
+                        <button
+                            key={key}
+                            onClick={() => setStatus(key)}
+                            className={`p-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${status === key ? config.color + ' bg-white/10' : 'border-white/10 opacity-50 hover:opacity-100'}`}
                         >
                             {React.createElement(config.icon, { size: 14 })}
                             <span className="text-[10px] font-bold uppercase">{config.label}</span>

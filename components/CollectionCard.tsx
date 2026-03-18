@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { FolderOpen, Share2, Heart, Layers } from 'lucide-react';
+import { FolderOpen, Share2, Heart, Layers, Lock, UserCheck, Tag } from 'lucide-react';
 import { Collection } from '../types';
 import { getUserAvatar } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import { COLLECTION_VISIBILITY_CONFIG } from '../constants';
 import XI from './XI';
 
 interface CollectionCardProps {
@@ -63,6 +64,12 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
                       <div className={`px-2 py-1 rounded-lg backdrop-blur-md border text-[9px] font-pixel flex items-center gap-1.5 uppercase tracking-widest ${isWinamp ? 'bg-black border-[#00ff00] text-[#00ff00]' : 'bg-black/40 border-white/10 text-white/90'}`}>
                           <XI icon={Layers} size={10} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}/> КОЛЛЕКЦИЯ
                       </div>
+                      {col.visibility && col.visibility !== 'PUBLIC' && (
+                          <div className={`px-2 py-1 rounded-lg backdrop-blur-md border text-[9px] font-pixel flex items-center gap-1 ${COLLECTION_VISIBILITY_CONFIG[col.visibility].color} bg-black/40`}>
+                              <XI icon={col.visibility === 'PRIVATE' ? Lock : UserCheck} size={10} />
+                              {COLLECTION_VISIBILITY_CONFIG[col.visibility].label}
+                          </div>
+                      )}
                   </div>
               )}
               {isXP && <div />} {/* Spacer */}
@@ -73,6 +80,19 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
                       <h3 className={`${isXP ? 'text-blue-900 drop-shadow-sm font-sans' : 'font-pixel drop-shadow-md'} text-lg md:text-xl font-bold leading-tight mb-1 line-clamp-2 ${isWinamp ? 'text-[#00ff00]' : !isXP ? 'text-white' : ''}`}>{col.title}</h3>
                       <p className={`text-[10px] font-mono line-clamp-1 ${isXP ? 'text-black/80' : isWinamp ? 'text-[#00ff00] opacity-80' : 'text-white/60'}`}>{col.description || 'Без описания'}</p>
                   </div>
+
+                  {col.tags && col.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap mb-2">
+                          {col.tags.slice(0, 2).map(t => (
+                              <span key={t} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-[8px] font-pixel text-blue-300">
+                                  <XI icon={Tag} size={7} /> {t}
+                              </span>
+                          ))}
+                          {col.tags.length > 2 && (
+                              <span className="px-1.5 py-0.5 bg-white/10 rounded text-[8px] font-pixel opacity-60">+{col.tags.length - 2}</span>
+                          )}
+                      </div>
+                  )}
 
                   <div className={`pt-3 border-t flex items-center justify-between ${isXP ? 'border-blue-900/20' : isWinamp ? 'border-[#505050]' : 'border-white/10'}`}>
                       {/* Author Info */}
@@ -92,6 +112,12 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ col, theme, onClick, on
                                   <span className="text-[10px] font-bold">{col.likes || 0}</span>
                               </button>
                           )}
+                          <button
+                              onClick={(e) => { e.stopPropagation(); onShare(col); }}
+                              className={`flex items-center px-2 py-1 rounded-lg backdrop-blur-sm border transition-colors ${isXP ? 'bg-white/50 border-blue-900/10 text-blue-900 hover:bg-white' : isWinamp ? 'bg-black border-[#505050] text-[#00ff00] hover:bg-[#202020]' : 'bg-white/10 border-white/10 text-white hover:bg-white/20'}`}
+                          >
+                              <XI icon={Share2} size={14} />
+                          </button>
                           <div className={`w-[1px] h-4 ${isXP ? 'bg-black/20' : 'bg-white/20'}`} />
                           <div className={`px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${isXP ? 'bg-blue-600 text-white' : isWinamp ? 'bg-[#00ff00] text-black' : 'bg-white/10 text-white'}`}>
                               {itemCount}

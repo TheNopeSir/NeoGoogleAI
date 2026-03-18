@@ -1032,6 +1032,18 @@ export const completeTradeRequest = async (id: string) => {
     await apiCall('/trade_requests', 'POST', req);
     notifyListeners();
     createNotification(req.sender, 'TRADE_COMPLETED', req.recipient, req.id, 'Сделка завершена!');
+
+    // Auto-mark linked wishlist item as ACQUIRED
+    if (req.isWishlistFulfillment && req.wishlistId) {
+        const wishItem = hotCache.wishlist.find(w => w.id === req.wishlistId);
+        if (wishItem && wishItem.status !== 'ACQUIRED') {
+            const updated = { ...wishItem, status: 'ACQUIRED' as const };
+            hotCache.wishlist = hotCache.wishlist.map(w => w.id === req.wishlistId ? updated : w);
+            await saveGeneric('wishlist', updated);
+            await apiCall('/wishlist', 'POST', updated);
+            createNotification(req.recipient, 'WISHLIST_ACQUIRED', req.sender, req.wishlistId, wishItem.title);
+        }
+    }
 };
 
 export const confirmDelivery = async (id: string) => {
