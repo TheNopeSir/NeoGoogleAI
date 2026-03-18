@@ -601,7 +601,7 @@ export default function App() {
   // Helper for conditional classes
   const getDesktopNavClasses = () => {
       switch(theme) {
-          case 'xp': return 'bg-gradient-to-b from-[#245DDA] to-[#245DDA] border-b-2 border-[#003C74] text-white';
+          case 'xp': return 'bg-[#245DDA] border-b-2 border-[#003C74] text-white shadow-[0_2px_6px_rgba(0,0,0,0.3)]';
           case 'winamp': return 'bg-[#292929] border-b border-[#505050] text-[#00ff00] font-winamp';
           case 'light': return 'bg-white/90 backdrop-blur-md border-b border-gray-200 text-gray-900';
           default: return 'bg-black/80 backdrop-blur-md border-b border-white/10 text-white';

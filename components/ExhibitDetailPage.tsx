@@ -101,6 +101,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const commentLongPressFiredRef = React.useRef(false);
 
   const isWinamp = theme === 'winamp';
+  const isXp = theme === 'xp';
 
   const slides = useMemo(() => {
       const media: Array<{type: 'image' | 'video', url: string, largeUrl?: string}> = [];
@@ -347,10 +348,10 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       };
 
       return (
-          <div key={c.id} className={`flex flex-col ${depth > 0 ? 'ml-4 md:ml-8 border-l-2 border-white/10 pl-4 mt-2' : 'mt-4'}`}>
+          <div key={c.id} className={`flex flex-col ${depth > 0 ? `ml-4 md:ml-8 border-l-2 pl-4 mt-2 ${isXp ? 'border-[#003C74]/20' : 'border-white/10'}` : 'mt-4'}`}>
               <div
                 id={`comment-${c.id}`}
-                className={`p-3 border transition-all cursor-pointer select-none ${isWinamp ? 'bg-black border-[#505050]' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
+                className={`p-3 border transition-all cursor-pointer select-none ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'rounded-xl bg-gray-50 border-gray-200 hover:border-gray-300' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
                 onContextMenu={e => { e.preventDefault(); openCommentReactionPicker(e, c.id); }}
                 onTouchStart={e => {
                     const touch = e.touches[0];
@@ -622,7 +623,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         
         {/* COMPACT BREADCRUMBS & ACTIONS */}
-        <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+        <div className={`flex items-center justify-between mb-4 border-b pb-2 ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
             <div className="flex items-center gap-2 text-[10px] font-mono opacity-50 uppercase">
                 <button onClick={onBack} className="hover:text-green-500 flex items-center gap-1"><XI icon={ArrowLeft} size={12}/> НАЗАД</button>
                 <span className="opacity-30">/</span>
@@ -640,7 +641,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 <div className="relative">
                     <button onClick={() => setShowShareMenu(!showShareMenu)} className={`hover:text-white transition-all ${shareCopied ? 'text-green-500' : 'text-gray-400'}`}><XI icon={Share2} size={16}/></button>
                     {showShareMenu && (
-                        <div className="absolute right-0 top-6 w-40 bg-dark-surface border border-white/10 rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2">
+                        <div className={`absolute right-0 top-6 w-40 border rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2 ${isXp ? 'bg-white border-gray-200' : 'bg-dark-surface border-white/10'}`}>
                             <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Send} size={12} className="text-blue-400"/> TELEGRAM</button>
                             <button onClick={() => handleShare('wa')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={MessageCircle} size={12} className="text-green-500"/> WHATSAPP</button>
                             <button onClick={() => handleShare('copy')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Share2} size={12}/> COPY LINK</button>
@@ -782,10 +783,10 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             )}
                         </div>
                         
-                        <h1 className={`text-xl md:text-3xl font-bold font-pixel leading-tight ${isCursed ? 'text-red-500 italic' : (isWinamp ? 'text-[#00ff00]' : 'text-white')}`}>{exhibit.title}</h1>
+                        <h1 className={`text-xl md:text-3xl font-bold font-pixel leading-tight ${isCursed ? 'text-red-500 italic' : (isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white')}`}>{exhibit.title}</h1>
                         
                         {/* Compact Stats Toolbar */}
-                        <div className="flex items-center gap-4 text-xs font-mono opacity-70 border-b border-white/5 pb-4 select-none">
+                        <div className={`flex items-center gap-4 text-xs font-mono opacity-70 border-b pb-4 select-none ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => onLike(exhibit.id)}
@@ -825,16 +826,16 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     </div>
 
                     {/* Author Row */}
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
+                    <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
                         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onAuthorClick(exhibit.owner)}>
-                            <img src={getUserAvatar(exhibit.owner)} className="w-10 h-10 rounded-full border border-white/20" />
+                            <img src={getUserAvatar(exhibit.owner)} className={`w-10 h-10 rounded-full border ${isXp ? 'border-gray-300' : 'border-white/20'}`} />
                             <div>
                                 <div className={`font-bold font-pixel text-xs transition-colors ${isWinamp ? 'text-[#00ff00]' : 'group-hover:text-green-500'}`}>@{exhibit.owner}</div>
                                 <div className="text-[9px] opacity-40 font-mono uppercase">{exhibit.timestamp.split(',')[0]}</div>
                             </div>
                         </div>
                         {!isOwner && ( 
-                            <button onClick={() => onFollow(exhibit.owner)} className={`px-3 py-1.5 text-[9px] font-bold font-pixel border rounded transition-all ${isFollowing ? 'border-white/10 opacity-40' : 'bg-white/10 hover:bg-white/20 border-transparent'}`}>
+                            <button onClick={() => onFollow(exhibit.owner)} className={`px-3 py-1.5 text-[9px] font-bold font-pixel border rounded transition-all ${isFollowing ? (isXp ? 'border-gray-300 opacity-40 text-gray-600' : 'border-white/10 opacity-40') : (isXp ? 'bg-[#003C74] text-white hover:bg-[#1B4EBD] border-transparent' : 'bg-white/10 hover:bg-white/20 border-transparent')}`}>
                                 {isFollowing ? 'ПОДПИСАН' : 'ПОДПИСАТЬСЯ'}
                             </button> 
                         )}
@@ -865,16 +866,16 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             <h3 className={`font-pixel text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : 'opacity-70'}`}>
                                 <XI icon={Info} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
                             </h3>
-                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-4 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-black/20 border-white/5'}`}>
+                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-4 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-gray-100 border-gray-300' : 'bg-black/20 border-white/5'}`}>
                                 {nonEmptySpecs.map(([key, val]) => (
-                                    <div key={key} className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider mb-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}>{key}</div>
-                                        <div className={`font-bold font-mono text-xs break-words leading-tight ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>{val}</div>
+                                    <div key={key} className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+                                        <div className={`text-[8px] uppercase tracking-wider mb-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}>{key}</div>
+                                        <div className={`font-bold font-mono text-xs break-words leading-tight ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{val}</div>
                                     </div>
                                 ))}
                                 {exhibit.condition && (
-                                    <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
+                                    <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
                                         <div className={`font-bold font-mono text-xs text-green-400 uppercase leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
                                     </div>
                                 )}
@@ -884,7 +885,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
                     {/* Linked Items */}
                     {linkedArtifacts.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-white/5">
+                        <div className={`mt-6 pt-4 border-t ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
                             <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-3 flex items-center gap-1"><XI icon={Link2} size={10}/> СВЯЗАННЫЕ ПРЕДМЕТЫ</h3>
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                                 {linkedArtifacts.map(link => (
@@ -901,11 +902,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 </div>
 
                 {/* Comments Section */}
-                <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-dark-surface border-white/5'}`}>
+                <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-white border-gray-300 shadow-inner' : 'bg-dark-surface border-white/5'}`}>
                     {/* Comments header with sort controls */}
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}>
-                            <XI icon={MessageSquare} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-green-500'} />
+                        <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#003C74]' : 'text-white'}`}>
+                            <XI icon={MessageSquare} size={14} className={isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#003C74]' : 'text-green-500'} />
                             ОБСУЖДЕНИЕ
                             <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-mono text-[10px] font-bold">
                                 {comments.length}
@@ -919,7 +920,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                         <button
                                             key={sort}
                                             onClick={() => setCommentSort(sort)}
-                                            className={`px-2 py-0.5 text-[8px] font-pixel uppercase rounded transition-all ${commentSort === sort ? 'bg-green-500/20 text-green-400 border border-green-500/40' : 'opacity-30 hover:opacity-60'}`}
+                                            className={`px-2 py-0.5 text-[8px] font-pixel uppercase rounded transition-all ${commentSort === sort ? (isXp ? 'bg-[#003C74]/10 text-[#003C74] border border-[#003C74]/40' : 'bg-green-500/20 text-green-400 border border-green-500/40') : (isXp ? 'text-gray-500 hover:text-gray-700' : 'opacity-30 hover:opacity-60')}`}
                                         >
                                             {labels[sort]}
                                         </button>
@@ -930,7 +931,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     </div>
 
                     <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {comments.length === 0 ? ( <div className="text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed border-white/10 rounded-xl">ТИШИНА В ЭФИРЕ</div> ) : (
+                        {comments.length === 0 ? ( <div className={`text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed rounded-xl ${isXp ? 'border-gray-400 text-gray-600' : 'border-white/10'}`}>ТИШИНА В ЭФИРЕ</div> ) : (
                             commentTree.roots.map(rootComment => renderCommentNode(rootComment))
                         )}
                     </div>
@@ -954,7 +955,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         )}
 
                         {replyTo && (
-                            <div className="flex items-center justify-between text-[10px] font-mono bg-white/5 p-2 rounded-lg border border-white/5">
+                            <div className={`flex items-center justify-between text-[10px] font-mono p-2 rounded-lg border ${isXp ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-white/5 border-white/5'}`}>
                                 <span className="opacity-70">Ответ <span className="text-green-500 font-bold">@{replyTo.author}</span></span>
                                 <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><XI icon={X} size={12}/></button>
                             </div>
@@ -973,7 +974,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 value={commentText}
                                 onChange={handleCommentChange}
                                 placeholder={replyTo ? "Ваш ответ..." : "Написать комментарий..."}
-                                className={`flex-1 bg-black/40 border border-white/10 px-3 py-2.5 font-mono text-xs focus:outline-none focus:border-green-500 transition-colors rounded-lg ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                                className={`flex-1 border px-3 py-2.5 font-mono text-xs focus:outline-none transition-colors rounded-lg ${isWinamp ? 'bg-black/40 border-white/10 text-[#00ff00] placeholder-gray-600 focus:border-green-500' : isXp ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-[#003C74]' : 'bg-black/40 border-white/10 focus:border-green-500'}`}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && commentText.trim()) {
                                         onPostComment(exhibit.id, commentText, replyTo?.id);
@@ -985,7 +986,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             />
                             <button
                                 onClick={() => setShowEmojiPicker(v => !v)}
-                                className={`p-2.5 rounded-lg border transition-all ${showEmojiPicker ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'border-white/10 text-gray-500 hover:text-white'}`}
+                                className={`p-2.5 rounded-lg border transition-all ${showEmojiPicker ? (isXp ? 'bg-[#003C74]/10 border-[#003C74]/40 text-[#003C74]' : 'bg-green-500/20 border-green-500/40 text-green-400') : (isXp ? 'border-gray-300 text-gray-500 hover:text-gray-700' : 'border-white/10 text-gray-500 hover:text-white')}`}
                                 title="Эмодзи"
                             >
                                 <SmilePlus size={16} />
