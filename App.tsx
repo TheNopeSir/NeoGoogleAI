@@ -601,8 +601,8 @@ export default function App() {
   // Helper for conditional classes
   const getDesktopNavClasses = () => {
       switch(theme) {
-          case 'xp': return 'bg-[#245DDA] border-b-2 border-[#003C74] text-white shadow-[0_2px_6px_rgba(0,0,0,0.3)]';
-          case 'winamp': return 'bg-[#292929] border-b border-[#505050] text-[#00ff00] font-winamp';
+          case 'xp': return 'bg-xp-blue border-b-2 border-xp-navy text-white shadow-[0_2px_6px_rgba(0,0,0,0.3)]';
+          case 'winamp': return 'bg-wa-base border-b border-[#505050] text-[#00ff00] font-winamp';
           case 'light': return 'bg-white/90 backdrop-blur-md border-b border-gray-200 text-gray-900';
           default: return 'bg-black/80 backdrop-blur-md border-b border-white/10 text-white';
       }
@@ -610,8 +610,8 @@ export default function App() {
 
   const getMobileNavClasses = () => {
       switch(theme) {
-          case 'xp': return 'bg-[#ECE9D8] border-t-2 border-[#003C74] text-black shadow-[0_-2px_5px_rgba(0,0,0,0.1)]';
-          case 'winamp': return 'bg-[#292929] border-t border-[#505050] text-[#00ff00]';
+          case 'xp': return 'bg-xp-bg border-t-2 border-xp-navy text-black shadow-[0_-2px_5px_rgba(0,0,0,0.1)]';
+          case 'winamp': return 'bg-wa-base border-t border-[#505050] text-[#00ff00]';
           case 'light': return 'bg-white/90 backdrop-blur-md border-t border-gray-200 text-gray-900';
           default: return 'bg-black/90 backdrop-blur-md border-t border-white/10 text-white';
       }
@@ -619,7 +619,7 @@ export default function App() {
 
   const getThemeClasses = () => {
       switch(theme) {
-          case 'xp': return 'bg-[#ECE9D8] text-black font-sans';
+          case 'xp': return 'bg-xp-bg text-black font-sans';
           case 'winamp': return 'bg-[#191919] font-winamp text-gray-300';
           case 'light': return 'bg-light-bg text-gray-900';
           default: return 'bg-dark-bg text-gray-100';
@@ -674,7 +674,7 @@ export default function App() {
                 {/* DESKTOP NAV */}
                 <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
-                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'xp' ? 'border-[#ECE9D8] bg-[#ECE9D8] text-[#003C74]' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
+                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'xp' ? 'border-xp-bg bg-xp-bg text-xp-navy' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
                         <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
                     </div>
 

@@ -23,6 +23,11 @@ export default {
         'light-primary': '#111827',
         'light-accent': '#059669',
         'light-dim': '#9ca3af',
+        // WinXP Luna theme colors
+        'xp-blue':    '#245DDA',
+        'xp-navy':    '#003C74',
+        'xp-bg':      '#ECE9D8',
+        'xp-surface': '#F5F4F0',
         // Winamp authentic colors
         'wa-base': '#292929',
         'wa-gray': '#DCDCDC',

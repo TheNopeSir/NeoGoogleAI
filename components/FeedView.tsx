@@ -63,11 +63,14 @@ const TrendingCard: React.FC<{
   const firstImage = getFirstImageUrl(item.imageUrls, 'thumbnail');
   const trendScore = (item.likes * 10) + item.views;
   const isLight = theme === 'light';
+  const isXpCard = theme === 'xp';
   return (
     <div
       onClick={() => onClick(item)}
       className={`w-36 flex-shrink-0 cursor-pointer rounded-xl overflow-hidden border transition-all group ${
-        isLight
+        isXpCard
+          ? 'border-xp-navy/20 bg-white hover:border-xp-navy/50 shadow-sm hover:shadow-md'
+          : isLight
           ? 'border-black/10 bg-white hover:border-black/25 shadow-sm hover:shadow-md'
           : 'border-white/10 bg-dark-surface hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10'
       }`}
@@ -83,9 +86,9 @@ const TrendingCard: React.FC<{
           {label ?? `🔥 ${trendScore}`}
         </div>
       </div>
-      <div className={`px-2 py-1.5 ${isLight ? 'bg-white' : 'bg-dark-surface'}`}>
-        <div className={`text-[9px] font-pixel font-bold line-clamp-1 ${isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</div>
-        <div className={`text-[8px] font-mono mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>@{item.owner}</div>
+      <div className={`px-2 py-1.5 ${isXpCard ? 'bg-white' : isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+        <div className={`text-[9px] font-pixel font-bold line-clamp-1 ${isXpCard ? 'text-gray-900' : isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</div>
+        <div className={`text-[8px] font-mono mt-0.5 ${isXpCard ? 'text-gray-400' : isLight ? 'text-gray-400' : 'text-white/40'}`}>@{item.owner}</div>
       </div>
     </div>
   );
@@ -118,6 +121,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 }) => {
   const isWinamp = theme === 'winamp';
   const isLight = theme === 'light';
+  const isXp = theme === 'xp';
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [expandedWishlistUsers, setExpandedWishlistUsers] = useState<Set<string>>(new Set());
@@ -308,43 +312,44 @@ const FeedView: React.FC<FeedViewProps> = ({
         </header>
 
         {/* 3. CONTROLS AREA */}
-        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
+        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
             <div className="max-w-6xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
                 <div className="flex gap-3">
-                    <div className={`flex-1 flex relative p-1 rounded-2xl ${isWinamp ? 'bg-[#292929] border border-[#505050]' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
+                    <div className={`flex-1 flex relative p-1 rounded-2xl ${isWinamp ? 'bg-[#292929] border border-[#505050]' : isXp ? 'bg-xp-navy/10 border border-xp-navy/20' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
                         <div className={`absolute top-1 bottom-1 w-[calc(33.333%-2px)] rounded-xl transition-transform duration-200 ease-out ${
                             isWinamp ? 'bg-[#00ff00]' :
+                            isXp ? 'bg-xp-blue shadow-md shadow-xp-blue/20' :
                             feedMode === 'ARTIFACTS' ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-md shadow-green-500/20' :
                             feedMode === 'COLLECTIONS' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md shadow-blue-500/20' :
                             'bg-gradient-to-r from-purple-500 to-violet-500 shadow-md shadow-purple-500/20'
                         } ${feedMode === 'ARTIFACTS' ? 'translate-x-0.5' : feedMode === 'COLLECTIONS' ? 'translate-x-[calc(100%+1px)]' : 'translate-x-[calc(200%+1px)]'}`} />
-                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
+                        <button onClick={() => setFeedMode('ARTIFACTS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'ARTIFACTS' ? (isWinamp ? 'text-black' : isXp ? 'text-white' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : isXp ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70')}`}>
                             <XI icon={LayoutGrid} size={12} /> ЛЕНТА
                         </button>
-                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
+                        <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : isXp ? 'text-white' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : isXp ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70')}`}>
                             <XI icon={Folder} size={12} /> АЛЬБОМЫ
                         </button>
-                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>
+                        <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : isXp ? 'text-white' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : isXp ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70')}`}>
                             <XI icon={Radar} size={12} /> ВИШЛИСТ
                         </button>
                     </div>
-                    <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white'}`}>
+                    <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isXp ? 'bg-xp-navy/10 hover:bg-xp-navy/20 text-xp-navy border border-xp-navy/20' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white'}`}>
                         <XI icon={Search} size={18} />
                     </button>
                 </div>
 
                 {/* Filters Row: feedType + viewMode + sort pills */}
                 <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
-                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ГЛАВНАЯ</button>
-                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ПОДПИСКИ</button>
+                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isXp ? 'bg-xp-navy/10 border border-xp-navy/20' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
+                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white shadow-sm' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isXp ? 'text-gray-500 hover:text-gray-700' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ГЛАВНАЯ</button>
+                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white shadow-sm' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isXp ? 'text-gray-500 hover:text-gray-700' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ПОДПИСКИ</button>
                     </div>
 
                     <div className="flex gap-1 shrink-0">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><XI icon={LayoutGrid} size={15}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><XI icon={LayoutGrid} size={15}/></button>
+                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
                     </div>
 
                     {/* Sort pills — only in ARTIFACTS mode */}

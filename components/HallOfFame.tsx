@@ -15,6 +15,7 @@ interface HallOfFameProps {
 
 const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, onBack }) => {
   const isWinamp = theme === 'winamp';
+  const isXp = theme === 'xp';
 
   return (
     <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
@@ -41,19 +42,24 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                     <div 
                         key={id}
                         className={`relative p-6 rounded-3xl border-2 transition-all group ${
-                            isWinamp 
+                            isWinamp
                              ? (progress.unlocked ? 'bg-[#191919] border-[#00ff00]' : 'bg-[#191919] border-[#505050] opacity-50')
-                             : (progress.unlocked 
+                             : isXp
+                             ? (progress.unlocked
+                                 ? 'bg-white border-xp-blue shadow-md shadow-xp-blue/20'
+                                 : 'bg-xp-surface border-xp-navy/20 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'
+                               )
+                             : (progress.unlocked
                                  ? 'bg-dark-surface border-green-500/50 shadow-[0_0_20px_rgba(74,222,128,0.2)]'
                                  : 'bg-black/40 border-white/5 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'
                                )
                         }`}
                     >
                         <div className="flex items-start gap-4 mb-6">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${progress.unlocked ? config.color : 'bg-white/10'} text-black shadow-lg`}>
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${progress.unlocked ? config.color : isXp ? 'bg-xp-navy/10' : 'bg-white/10'} text-black shadow-lg`}>
                                  {progress.unlocked
                                      ? <MatrixIcon icon={config.icon} size={28} color="#000000" glow={0} theme={theme} />
-                                     : <config.icon size={28} className="text-white/30" />
+                                     : <config.icon size={28} className={isXp ? 'text-xp-navy/30' : 'text-white/30'} />
                                  }
                             </div>
                             <div className="flex-1">
@@ -71,9 +77,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                                 <span>ПРОГРЕСС: {progress.current} / {config.target}</span>
                                 <span>{Math.round(percent)}%</span>
                             </div>
-                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                <div 
-                                    className={`h-full transition-all duration-1000 ${progress.unlocked ? 'bg-green-500 shadow-[0_0_10px_#4ade80]' : 'bg-white/20'}`}
+                            <div className={`w-full h-1.5 rounded-full overflow-hidden ${isXp ? 'bg-xp-navy/10' : 'bg-white/5'}`}>
+                                <div
+                                    className={`h-full transition-all duration-1000 ${progress.unlocked ? (isXp ? 'bg-xp-blue' : 'bg-green-500 shadow-[0_0_10px_#4ade80]') : (isXp ? 'bg-xp-navy/30' : 'bg-white/20')}`}
                                     style={{ width: `${percent}%` }}
                                 />
                             </div>

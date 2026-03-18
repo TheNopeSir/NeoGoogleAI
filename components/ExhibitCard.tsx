@@ -309,11 +309,13 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         onMouseEnter={handleCardMouseEnter}
         onMouseLeave={handleCardMouseLeave}
         className={`group cursor-pointer flex flex-col rounded-2xl overflow-hidden transition-all duration-300
-          ${isLight
+          ${isXP
+            ? 'bg-white shadow-md hover:shadow-xl hover:shadow-xp-navy/10 ring-1 ring-xp-navy/10 hover:ring-xp-navy/30'
+            : isLight
             ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
             : `bg-dark-surface ring-1 ring-white/8 hover:ring-green-500/40 hover:shadow-lg hover:shadow-green-500/10 ${isHighTier && !isWanted ? config.borderDark : ''}`
           }
-          ${isWanted ? (isLight ? 'ring-amber-400/50 hover:ring-amber-400' : 'ring-amber-500/30 hover:ring-amber-500/60') : ''}
+          ${isWanted ? (isLight || isXP ? 'ring-amber-400/50 hover:ring-amber-400' : 'ring-amber-500/30 hover:ring-amber-500/60') : ''}
           ${isCursed || config.animated ? 'animate-pulse' : ''}
         `}
       >
@@ -480,9 +482,9 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         </div>
 
         {/* Info panel */}
-        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isXP || isLight ? 'bg-white' : 'bg-dark-surface'}`}>
           {/* Title */}
-          <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
+          <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isXP || isLight ? 'text-gray-900' : 'text-white'}`}>
             {item.title}
           </h3>
 
@@ -490,7 +492,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           {(condition || (tradeStatus === 'FOR_SALE' && item.price) || isWanted) && (
             <div className="flex items-center justify-between gap-2">
               {condition && (
-                <div className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-gray-100 text-gray-600' : 'bg-white/8 text-white/60'}`}>
+                <div className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ${isXP || isLight ? 'bg-gray-100 text-gray-600' : 'bg-white/8 text-white/60'}`}>
                   <XI icon={Tag} size={9} />
                   <span className="truncate">{condition}</span>
                 </div>
@@ -517,25 +519,25 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             >
               <img
                 src={getUserAvatar(item.owner)}
-                className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+                className={`w-4 h-4 rounded-full border shrink-0 ${isXP || isLight ? 'border-gray-200' : 'border-white/20'}`}
                 alt={item.owner}
               />
-              <span className={`text-[10px] group-hover/author:text-white transition-colors font-pixel truncate min-w-0 ${isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-white/60'}`}>
+              <span className={`text-[10px] transition-colors font-pixel truncate min-w-0 ${isXP ? 'text-gray-500 group-hover/author:!text-xp-navy' : isLight ? 'text-gray-500 group-hover/author:!text-gray-900 group-hover/author:text-white' : 'text-white/60 group-hover/author:text-white'}`}>
                 @{item.owner}
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
                 <MatrixIcon icon={Eye} size={11} theme={theme} glow={0} /> <span>{uniqueViews}</span>
               </div>
-              <div className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
                 <MatrixIcon icon={MessageSquare} size={11} color="#60a5fa" theme={theme} glow={0} /> <span>{commentCount}</span>
               </div>
               <button
                 type="button"
                 onClick={handleLike}
-                className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-400' : isLight ? 'text-gray-400 hover:text-red-400' : 'text-white/40 hover:text-red-400'}`}
+                className={`flex items-center gap-1 text-[10px] transition-colors p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center ${isLiked ? 'text-red-400' : isXP || isLight ? 'text-gray-400 hover:text-red-400' : 'text-white/40 hover:text-red-400'}`}
               >
                 <MatrixIcon icon={Heart} size={11} color="#f87171" theme={theme} glow={isLiked ? 1 : 0} />
                 <span>{likeCount}</span>
