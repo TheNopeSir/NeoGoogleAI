@@ -1042,7 +1042,7 @@ const createCrud = (router, table) => {
                 }
             });
             if (conditions.length > 0) q += ` WHERE ${conditions.join(' AND ')}`;
-            const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 500);
+            const limit = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
             q += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
             params.push(limit);
             const r = await query(q, params);
