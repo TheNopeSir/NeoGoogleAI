@@ -376,18 +376,27 @@ const ensureSchema = async () => {
 // DB-ready flag — routes will return 503 until DB is initialised
 let dbReady = false;
 
-pool.connect()
-    .then(async client => {
+const initDb = async (attempt = 1, maxAttempts = 10) => {
+    try {
+        const client = await pool.connect();
         console.log(`✅ [DB] Connected`);
         client.release();
         await ensureSchema();
         dbReady = true;
         console.log(`✅ [DB] Schema ready`);
-    })
-    .catch(err => {
-        console.error("❌ [DB Connection Error]:", err.message || err);
-        // Keep running so health-checks can report the error
-    });
+    } catch (err) {
+        console.error(`❌ [DB Connection Error] Attempt ${attempt}/${maxAttempts}:`, err.message || err);
+        if (attempt < maxAttempts) {
+            const delay = Math.min(2000 * attempt, 30000);
+            console.log(`⏳ [DB] Retry in ${delay / 1000}s...`);
+            setTimeout(() => initDb(attempt + 1, maxAttempts), delay);
+        } else {
+            console.error('❌ [DB] Max connection attempts reached. Server will continue without DB.');
+        }
+    }
+};
+
+initDb();
 
 // ==========================================
 // API ROUTES
