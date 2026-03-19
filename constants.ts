@@ -12,6 +12,7 @@ export const DefaultCategory = {
   TOYS: 'ИГРУШКИ',
   COMPUTERS: 'КОМПЬЮТЕРЫ',
   CAMERAS: 'КАМЕРЫ',
+  CONSOLES: 'КОНСОЛИ',
   MISC: 'ПРОЧЕЕ'
 } as const;
 
@@ -25,6 +26,24 @@ export const CATEGORY_SUBCATEGORIES: Record<string, string[]> = {
     [DefaultCategory.TOYS]: ['Action Figures / Фигурки', 'Конструкторы (LEGO / Meccano / советские)', 'Мягкие игрушки', 'Роботы и электронные игрушки', 'Настольные игры', 'Куклы и аксессуары', 'Моделизм (пластиковые модели)', 'Радиоуправляемые модели (ретро RC)'],
     [DefaultCategory.COMPUTERS]: ['Ретро ПК (ZX Spectrum / BK / Amiga / Atari ST / IBM)', 'Ноутбуки (до 2003)', 'Комплектующие', 'Периферия (мыши, клавиатуры, принтеры)', 'Носители (Floppy / ZIP / Tape)', 'Программное обеспечение (ПО, игры на дискетах/CD)', 'Документация / Мануалы'],
     [DefaultCategory.CAMERAS]: ['Плёночные фотоаппараты 35мм', 'Плёночные фотоаппараты средний формат', 'Polaroid / Instax / Моментальные', 'Ранние цифровые фотоаппараты (до 2005)', 'Видеокамеры аналоговые', 'Видеокамеры цифровые (ранние)', 'Объективы и оптика', 'Аксессуары (вспышки, штативы, фильтры)'],
+    [DefaultCategory.CONSOLES]: [
+        'Стационарные консоли 2-го поколения (Atari 2600 / Intellivision / ColecoVision)',
+        'Стационарные консоли 8-bit (NES / Famicom / Sega Master System)',
+        'Стационарные консоли 16-bit (SNES / Mega Drive / Neo Geo AES / TurboGrafx-16)',
+        'Стационарные консоли 32-bit (PlayStation / Saturn / 3DO / Jaguar)',
+        'Стационарные консоли 64-bit (Nintendo 64 / Dreamcast)',
+        'Стационарные консоли 128-bit (PS2 / Xbox / GameCube)',
+        'Стационарные консоли 7-го поколения (PS3 / Xbox 360 / Wii)',
+        'Стационарные консоли 8-го поколения (PS4 / Xbox One / Wii U)',
+        'Портативные консоли классика (Game & Watch / Elektronika / LCD-игры)',
+        'Портативные консоли 8-bit (Game Boy / Game Gear / Atari Lynx)',
+        'Портативные консоли 32-bit (GBA / Game Boy Color / WonderSwan)',
+        'Портативные консоли 6-7 поколение (PSP / DS / NDS)',
+        'Портативные консоли современные (3DS / PS Vita / Switch Lite)',
+        'Аркадные системы / PCB (Neo Geo MVS / CPS / JAMMA)',
+        'Мини-консоли / Ретро-реплики (NES Classic / SNES Classic / Genesis Mini)',
+        'Аксессуары и периферия для консолей',
+    ],
     [DefaultCategory.MISC]: ['Мерч / Сувениры', 'Упаковка (vintage packaging)', 'Значки / Пины', 'Рекламные материалы', 'Другое']
 };
 
@@ -38,6 +57,7 @@ export const CATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {
   [DefaultCategory.TOYS]: ['Название', 'Серия', 'Бренд', 'Год', 'Материал'],
   [DefaultCategory.COMPUTERS]: ['Бренд', 'Модель', 'Процессор', 'ОЗУ', 'Год'],
   [DefaultCategory.CAMERAS]: ['Бренд', 'Модель', 'Тип', 'Матрица/Пленка', 'Год'],
+  [DefaultCategory.CONSOLES]: ['Бренд', 'Модель', 'Регион', 'Ревизия / Версия', 'Год выпуска'],
   [DefaultCategory.MISC]: ['Название', 'Производитель', 'Год', 'Описание']
 };
 
@@ -92,7 +112,7 @@ export const BADGE_CONFIG = {
     'BROADCAST_NODE': { label: 'BROADCAST',   desc: 'Набрано 50 подписчиков',                       color: 'bg-purple-500', icon: Radar,       target: 50, tier: 'RARE',     hint: 'Набери 50 подписчиков. Твой сигнал слышат по всей сети.' },
     'OVERCLOCK':      { label: 'OVERCLOCK',   desc: 'Выиграно 5 битв артефактов',                   color: 'bg-purple-500', icon: Flame,       target: 5,  tier: 'RARE',     hint: 'Выиграй 5 битв артефактов. Разгон до предела.' },
     // ── EPIC ────────────────────────────────────────────────────────────────
-    'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 10 категориях',              color: 'bg-orange-500', icon: Globe,       target: 10, tier: 'EPIC',     hint: 'Загрузи артефакты во все 10 категорий: телефоны, гаджеты, игры, журналы, музыка, видео, игрушки, компьютеры, камеры, прочее.' },
+    'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 11 категориях',              color: 'bg-orange-500', icon: Globe,       target: 11, tier: 'EPIC',     hint: 'Загрузи артефакты во все 11 категорий: телефоны, гаджеты, игры, журналы, музыка, видео, игрушки, компьютеры, камеры, консоли, прочее.' },
     'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC',     hint: 'Однажды Эрнест Хемингуэй поспорил, что напишет рассказ в 6 слов... Получи 10 лайков на любой свой комментарий длиной меньше 50 символов. Краткость — сестра таланта.' },
 };
 
@@ -116,6 +136,7 @@ export const CATEGORY_CONDITIONS: Record<string, string[]> = {
   [DefaultCategory.TOYS]:      ['MISB (Sealed)', 'MIB (Boxed)', 'LOOSE (Complete)', 'LOOSE (Incomplete)', 'BROKEN'],
   [DefaultCategory.COMPUTERS]: ['NOS (New Old Stock)', 'RESTORED', 'WORKING', 'UNTESTED', 'FOR PARTS'],
   [DefaultCategory.CAMERAS]:   ['MINT', 'NEAR MINT', 'EXC++', 'EXC', 'USER', 'UG', 'FOR PARTS'],
+  [DefaultCategory.CONSOLES]:  ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
   [DefaultCategory.MISC]:      ['ИДЕАЛ', 'ХОРОШЕЕ', 'ПОТЁРТОЕ', 'ПОВРЕЖДЁННОЕ']
 };
 
@@ -158,6 +179,28 @@ export const SUBCATEGORY_CONDITIONS: Record<string, string[]> = {
   'Носители (Floppy / ZIP / Tape)': ['SEALED', 'TESTED OK', 'UNTESTED', 'BAD SECTORS', 'FAILED'],
   'Программное обеспечение (ПО, игры на дискетах/CD)': ['SEALED', 'CIB (С Мануалом)', 'BOXED', 'MEDIA ONLY'],
   'Документация / Мануалы':      ['MINT', 'FINE', 'GOOD', 'FAIR', 'POOR'],
+
+  // КОНСОЛИ — стационарные
+  'Стационарные консоли 2-го поколения (Atari 2600 / Intellivision / ColecoVision)': ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 8-bit (NES / Famicom / Sega Master System)':                 ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 16-bit (SNES / Mega Drive / Neo Geo AES / TurboGrafx-16)':   ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 32-bit (PlayStation / Saturn / 3DO / Jaguar)':               ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 64-bit (Nintendo 64 / Dreamcast)':                           ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 128-bit (PS2 / Xbox / GameCube)':                            ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 7-го поколения (PS3 / Xbox 360 / Wii)':                      ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли 8-го поколения (PS4 / Xbox One / Wii U)':                    ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+
+  // КОНСОЛИ — портативные
+  'Портативные консоли классика (Game & Watch / Elektronika / LCD-игры)':    ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Портативные консоли 8-bit (Game Boy / Game Gear / Atari Lynx)':           ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Портативные консоли 32-bit (GBA / Game Boy Color / WonderSwan)':          ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Портативные консоли 6-7 поколение (PSP / DS / NDS)':                      ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+  'Портативные консоли современные (3DS / PS Vita / Switch Lite)':           ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НЕТЕСТИРОВАННАЯ', 'НА ЗАПЧАСТИ'],
+
+  // КОНСОЛИ — прочее
+  'Аркадные системы / PCB (Neo Geo MVS / CPS / JAMMA)':                      ['РАБОЧИЙ (JAMMA Ready)', 'РАБОЧИЙ', 'ТРЕБУЕТ РЕМОНТА', 'НА ЗАПЧАСТИ'],
+  'Мини-консоли / Ретро-реплики (NES Classic / SNES Classic / Genesis Mini)': ['SEALED', 'MINT', 'EXC', 'GOOD', 'НА ЗАПЧАСТИ'],
+  'Аксессуары и периферия для консолей':                                       ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЕ', 'НА ЗАПЧАСТИ'],
 
   // КАМЕРЫ — стандарт KEH Camera / Japan Camera
   'Объективы и оптика':          ['MINT', 'NEAR MINT', 'EXC++', 'EXC', 'USER', 'FUNGUS/HAZE', 'UG'],
