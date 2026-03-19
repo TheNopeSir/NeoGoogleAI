@@ -271,7 +271,10 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div>
                                             <h2 className="text-2xl md:text-3xl font-pixel font-bold flex items-center gap-2">@{profileUser.username}</h2>
-                                            <p className="text-xs font-mono opacity-60 mt-1">В сети с {profileUser.joinedDate}</p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <p className="text-xs font-mono opacity-60">В сети с {profileUser.joinedDate}</p>
+                                                {(() => { const s = STATUS_OPTIONS[profileUser.status || 'ONLINE']; const Icon = s.icon; return <span className={`inline-flex items-center gap-1 text-xs font-mono ${s.color}`}><Icon size={10} /> {s.label}</span>; })()}
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-6 border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
                                             <button onClick={() => onOpenSocialList(profileUser.username, 'followers')} className="flex flex-col items-center group"><span className="font-pixel text-lg leading-none group-hover:text-green-500">{profileUser.followers?.length || 0}</span><span className="text-[9px] font-pixel opacity-50 uppercase group-hover:opacity-100">Фолловеры</span></button>
@@ -304,6 +307,19 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                         <div>
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 block">О себе</label>
                                             <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={3} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none resize-none"/>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Статус присутствия</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(Object.entries(STATUS_OPTIONS) as [UserStatus, typeof STATUS_OPTIONS[keyof typeof STATUS_OPTIONS]][]).map(([key, opt]) => {
+                                                    const Icon = opt.icon;
+                                                    return (
+                                                        <button key={key} onClick={() => setEditStatus(key as UserStatus)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all ${editStatus === key ? `${opt.color} border-current bg-white/10` : 'opacity-40 border-white/10 hover:opacity-70'}`}>
+                                                            <Icon size={12} /> {opt.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/5">
                                             <div>
