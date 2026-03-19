@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical, Search } from 'lucide-react';
-import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS } from '../constants';
+import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS, SUBCATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -386,7 +386,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                         className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none appearance-none ${isWinamp ? 'text-[#00ff00]' : ''}`}
                     >
                         <option value="">Не указано</option>
-                        {(CATEGORY_CONDITIONS[category] || CATEGORY_CONDITIONS[DefaultCategory.MISC]).map(cond => (
+                        {(SUBCATEGORY_CONDITIONS[subcategory] || CATEGORY_CONDITIONS[category] || CATEGORY_CONDITIONS[DefaultCategory.MISC]).map(cond => (
                             <option key={cond} value={cond}>{cond}</option>
                         ))}
                     </select>

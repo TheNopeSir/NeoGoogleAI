@@ -4,6 +4,7 @@ import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCirc
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
+  GADGETS: 'ГАДЖЕТЫ',
   GAMES: 'ИГРЫ',
   MAGAZINES: 'ЖУРНАЛЫ',
   MUSIC: 'МУЗЫКА',
@@ -15,23 +16,25 @@ export const DefaultCategory = {
 } as const;
 
 export const CATEGORY_SUBCATEGORIES: Record<string, string[]> = {
-    [DefaultCategory.PHONES]: ['Смартфоны', 'Кнопочные телефоны', 'Раскладушки', 'Слайдеры', 'КПК', 'Стационарные', 'Пейджеры'],
-    [DefaultCategory.GAMES]: ['Картриджи (8-bit/16-bit)', 'Диски (CD/DVD/BD)', 'Портативные консоли', 'Стационарные консоли', 'Аксессуары', 'Аркадные автоматы'],
-    [DefaultCategory.MAGAZINES]: ['Игровые', 'Компьютерные', 'Технические', 'Музыкальные', 'Комиксы', 'Каталоги', 'Постеры'],
-    [DefaultCategory.MUSIC]: ['Аудиокассеты', 'Винил (LP/EP)', 'CD', 'MiniDisc', 'Плееры (Портатив)', 'Hi-Fi Компоненты', 'Катушки'],
-    [DefaultCategory.VIDEO]: ['VHS', 'DVD', 'Blu-ray', 'Видеоплееры', 'Проекторы', 'Video CD'],
-    [DefaultCategory.TOYS]: ['Action Figures', 'Конструкторы', 'Мягкие игрушки', 'Роботы', 'Настольные игры', 'Тамагочи/Электроника', 'Моделизм'],
-    [DefaultCategory.COMPUTERS]: ['Ретро ПК', 'Ноутбуки', 'Комплектующие', 'Периферия', 'Носители (Floppy/ZIP)'],
-    [DefaultCategory.CAMERAS]: ['Пленочные', 'Цифровые (Early Digital)', 'Polaroid/Instax', 'Видеокамеры', 'Объективы'],
-    [DefaultCategory.MISC]: ['Часы', 'Калькуляторы', 'Мерч', 'Упаковка', 'Реклама', 'Другое']
+    [DefaultCategory.PHONES]: ['Смартфоны (ранние, до 2005)', 'Кнопочные телефоны', 'Раскладушки', 'Слайдеры', 'КПК / Органайзеры', 'Стационарные телефоны', 'Радиотелефоны (DECT)'],
+    [DefaultCategory.GADGETS]: ['Портативные плееры (Walkman, Discman, MiniDisc)', 'Пейджеры', 'Электронные часы', 'Калькуляторы', 'Тамагочи / Виртуальные питомцы', 'Диктофоны / Рекордеры', 'Электронные переводчики', 'Прочие портативные гаджеты'],
+    [DefaultCategory.GAMES]: ['Картриджи 8-bit (Famicom / Atari / Sega MS)', 'Картриджи 16-bit (SNES / Mega Drive / Neo Geo)', 'Картриджи 32/64-bit (N64 / GBA)', 'Диски (CD / DVD / GD-ROM)', 'Портативные консоли', 'Стационарные консоли', 'Аркадные автоматы / PCB', 'Аксессуары и периферия'],
+    [DefaultCategory.MAGAZINES]: ['Игровые журналы', 'Компьютерные журналы', 'Технические журналы', 'Музыкальные журналы / Fanzines', 'Комиксы', 'Игровые руководства / Мануалы', 'Каталоги и рекламные буклеты', 'Постеры / Вкладыши'],
+    [DefaultCategory.MUSIC]: ['Виниловые пластинки LP', 'Виниловые синглы (7" / EP)', 'Аудиокассеты', 'CD', 'MiniDisc', '8-Track / Картриджи', 'Катушки / Бобины (Reel-to-Reel)', 'Аксессуары (иглы, чистящие наборы)'],
+    [DefaultCategory.VIDEO]: ['VHS', 'Betamax', 'LaserDisc', 'Video CD (VCD)', 'DVD', 'Blu-ray (коллекционные издания)', 'Видеомагнитофоны / VCR', 'Проекторы', 'Телевизоры (CRT / ламповые)', 'Hi-Fi Компоненты (усилители, ресиверы, вертушки)', 'Магнитофоны (катушечные / кассетные деки)', 'Радиоприёмники'],
+    [DefaultCategory.TOYS]: ['Action Figures / Фигурки', 'Конструкторы (LEGO / Meccano / советские)', 'Мягкие игрушки', 'Роботы и электронные игрушки', 'Настольные игры', 'Куклы и аксессуары', 'Моделизм (пластиковые модели)', 'Радиоуправляемые модели (ретро RC)'],
+    [DefaultCategory.COMPUTERS]: ['Ретро ПК (ZX Spectrum / BK / Amiga / Atari ST / IBM)', 'Ноутбуки (до 2003)', 'Комплектующие', 'Периферия (мыши, клавиатуры, принтеры)', 'Носители (Floppy / ZIP / Tape)', 'Программное обеспечение (ПО, игры на дискетах/CD)', 'Документация / Мануалы'],
+    [DefaultCategory.CAMERAS]: ['Плёночные фотоаппараты 35мм', 'Плёночные фотоаппараты средний формат', 'Polaroid / Instax / Моментальные', 'Ранние цифровые фотоаппараты (до 2005)', 'Видеокамеры аналоговые', 'Видеокамеры цифровые (ранние)', 'Объективы и оптика', 'Аксессуары (вспышки, штативы, фильтры)'],
+    [DefaultCategory.MISC]: ['Мерч / Сувениры', 'Упаковка (vintage packaging)', 'Значки / Пины', 'Рекламные материалы', 'Другое']
 };
 
 export const CATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {
   [DefaultCategory.PHONES]: ['Бренд', 'Модель', 'Год выпуска', 'Стандарт связи', 'Тип корпуса'],
+  [DefaultCategory.GADGETS]: ['Бренд', 'Модель', 'Год выпуска', 'Тип', 'Питание'],
   [DefaultCategory.GAMES]: ['Платформа', 'Название', 'Регион', 'Год', 'Комплектация'],
   [DefaultCategory.MAGAZINES]: ['Название', 'Номер', 'Год', 'Издательство', 'Язык'],
-  [DefaultCategory.MUSIC]: ['Исполнитель', 'Альбом', 'Год', 'Носитель', 'Состояние'],
-  [DefaultCategory.VIDEO]: ['Название', 'Год', 'Носитель', 'Режиссер', 'Издатель'],
+  [DefaultCategory.MUSIC]: ['Исполнитель', 'Альбом', 'Год', 'Носитель', 'Лейбл'],
+  [DefaultCategory.VIDEO]: ['Название / Модель', 'Год', 'Носитель / Тип', 'Бренд', 'Регион / Стандарт'],
   [DefaultCategory.TOYS]: ['Название', 'Серия', 'Бренд', 'Год', 'Материал'],
   [DefaultCategory.COMPUTERS]: ['Бренд', 'Модель', 'Процессор', 'ОЗУ', 'Год'],
   [DefaultCategory.CAMERAS]: ['Бренд', 'Модель', 'Тип', 'Матрица/Пленка', 'Год'],
@@ -86,15 +89,71 @@ export const STATUS_OPTIONS = {
 };
 
 export const CATEGORY_CONDITIONS: Record<string, string[]> = {
-  [DefaultCategory.PHONES]: ['НОВЫЙ (SEALED)', 'LIKE NEW', 'EXC', 'GOOD', 'FAIR', 'PARTS'],
-  [DefaultCategory.GAMES]: ['SEALED', 'CIB', 'BOXED', 'LOOSE', 'D.O.A.'],
-  [DefaultCategory.MUSIC]: ['MINT', 'NM', 'VG+', 'VG', 'G', 'POOR'],
-  [DefaultCategory.MAGAZINES]: ['NEW', 'FINE', 'VERY GOOD', 'GOOD', 'FAIR', 'POOR'],
-  [DefaultCategory.VIDEO]: ['SEALED', 'MINT', 'EXC', 'GOOD', 'VHS-RIP'],
-  [DefaultCategory.TOYS]: ['MISB (Sealed)', 'MIB (Boxed)', 'LOOSE (Complete)', 'LOOSE (Incomplete)', 'BROKEN'],
+  [DefaultCategory.PHONES]:    ['НОВЫЙ (SEALED)', 'LIKE NEW', 'EXC', 'GOOD', 'FAIR', 'PARTS'],
+  [DefaultCategory.GADGETS]:   ['НОВЫЙ (SEALED)', 'LIKE NEW', 'EXC++', 'EXC', 'GOOD', 'FAIR', 'PARTS'],
+  [DefaultCategory.GAMES]:     ['SEALED', 'CIB', 'BOXED', 'LOOSE', 'D.O.A.'],
+  [DefaultCategory.MUSIC]:     ['M (Mint)', 'NM', 'VG+', 'VG', 'G', 'P'],
+  [DefaultCategory.MAGAZINES]: ['MINT', 'FINE', 'VERY GOOD', 'GOOD', 'FAIR', 'POOR'],
+  [DefaultCategory.VIDEO]:     ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НА ЗАПЧАСТИ'],
+  [DefaultCategory.TOYS]:      ['MISB (Sealed)', 'MIB (Boxed)', 'LOOSE (Complete)', 'LOOSE (Incomplete)', 'BROKEN'],
   [DefaultCategory.COMPUTERS]: ['NOS (New Old Stock)', 'RESTORED', 'WORKING', 'UNTESTED', 'FOR PARTS'],
-  [DefaultCategory.CAMERAS]: ['MINT', 'NEAR MINT', 'EXC++', 'EXC', 'USER', 'UG'],
-  [DefaultCategory.MISC]: ['ИДЕАЛ', 'ХОРОШЕЕ', 'ПОТЕРТОЕ', 'СЛОМАНО']
+  [DefaultCategory.CAMERAS]:   ['MINT', 'NEAR MINT', 'EXC++', 'EXC', 'USER', 'UG', 'FOR PARTS'],
+  [DefaultCategory.MISC]:      ['ИДЕАЛ', 'ХОРОШЕЕ', 'ПОТЁРТОЕ', 'ПОВРЕЖДЁННОЕ']
+};
+
+export const SUBCATEGORY_CONDITIONS: Record<string, string[]> = {
+  // МУЗЫКА — медиа (стандарт Discogs)
+  'Виниловые пластинки LP':      ['M (Mint)', 'NM', 'VG+', 'VG', 'G', 'P'],
+  'Виниловые синглы (7" / EP)':  ['M (Mint)', 'NM', 'VG+', 'VG', 'G', 'P'],
+  'Аудиокассеты':                ['M (Mint)', 'NM', 'VG+', 'VG', 'G', 'WORN'],
+  'CD':                          ['SEALED', 'MINT', 'VG+', 'VG', 'SCRATCHED', 'BROKEN'],
+  'MiniDisc':                    ['SEALED', 'MINT', 'VG+', 'VG', 'WORN'],
+  '8-Track / Картриджи':         ['MINT', 'VG+', 'VG', 'WORN', 'BROKEN'],
+  'Катушки / Бобины (Reel-to-Reel)': ['MINT', 'VG+', 'VG', 'WORN', 'BROKEN'],
+
+  // ВИДЕО — медиа
+  'VHS':                         ['SEALED', 'MINT', 'VG+', 'VG', 'WORN', 'DAMAGED'],
+  'Betamax':                     ['SEALED', 'MINT', 'VG+', 'VG', 'WORN', 'DAMAGED'],
+  'LaserDisc':                   ['SEALED', 'MINT', 'VG+', 'VG', 'SCRATCHED', 'DAMAGED'],
+  'Video CD (VCD)':              ['SEALED', 'MINT', 'VG+', 'VG', 'SCRATCHED'],
+  'DVD':                         ['SEALED', 'MINT', 'VG+', 'VG', 'SCRATCHED'],
+  'Blu-ray (коллекционные издания)': ['SEALED', 'MINT', 'VG+', 'VG', 'SCRATCHED'],
+
+  // ВИДЕО — AV-техника (стандарт eBay Vintage Electronics)
+  'Видеомагнитофоны / VCR':      ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Проекторы':                   ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Телевизоры (CRT / ламповые)': ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Hi-Fi Компоненты (усилители, ресиверы, вертушки)': ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Магнитофоны (катушечные / кассетные деки)': ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Радиоприёмники':              ['NOS', 'MINT', 'EXC', 'GOOD', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+
+  // ИГРЫ — картриджи / диски (стандарт игровых коллекционеров: CIB)
+  'Картриджи 8-bit (Famicom / Atari / Sega MS)':   ['SEALED', 'CIB (Коробка+Мануал)', 'BOXED (Коробка)', 'LOOSE (Картридж)', 'D.O.A.'],
+  'Картриджи 16-bit (SNES / Mega Drive / Neo Geo)': ['SEALED', 'CIB (Коробка+Мануал)', 'BOXED (Коробка)', 'LOOSE (Картридж)', 'D.O.A.'],
+  'Картриджи 32/64-bit (N64 / GBA)':               ['SEALED', 'CIB (Коробка+Мануал)', 'BOXED (Коробка)', 'LOOSE (Картридж)', 'D.O.A.'],
+  'Диски (CD / DVD / GD-ROM)':   ['SEALED', 'CIB', 'BOXED', 'LOOSE', 'SCRATCHED', 'D.O.A.'],
+  'Портативные консоли':         ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НА ЗАПЧАСТИ'],
+  'Стационарные консоли':        ['SEALED', 'MINT', 'EXC', 'GOOD', 'РАБОЧАЯ', 'НА ЗАПЧАСТИ'],
+  'Аркадные автоматы / PCB':     ['РАБОЧИЙ (JAMMA Ready)', 'РАБОЧИЙ', 'ТРЕБУЕТ РЕМОНТА', 'НА ЗАПЧАСТИ'],
+
+  // КОМПЬЮТЕРЫ — специфические подкатегории
+  'Носители (Floppy / ZIP / Tape)': ['SEALED', 'TESTED OK', 'UNTESTED', 'BAD SECTORS', 'FAILED'],
+  'Программное обеспечение (ПО, игры на дискетах/CD)': ['SEALED', 'CIB (С Мануалом)', 'BOXED', 'MEDIA ONLY'],
+  'Документация / Мануалы':      ['MINT', 'FINE', 'GOOD', 'FAIR', 'POOR'],
+
+  // КАМЕРЫ — стандарт KEH Camera / Japan Camera
+  'Объективы и оптика':          ['MINT', 'NEAR MINT', 'EXC++', 'EXC', 'USER', 'FUNGUS/HAZE', 'UG'],
+  'Polaroid / Instax / Моментальные': ['WORKING', 'TESTED', 'UNTESTED', 'FOR PARTS'],
+
+  // ИГРУШКИ — стандарт коллекционеров (MISB/MIB)
+  'Action Figures / Фигурки':    ['MISB (Запечатан)', 'MIB (В коробке)', 'MOC (На карте)', 'LOOSE (Полный)', 'LOOSE (Неполный)', 'СЛОМАН'],
+  'Конструкторы (LEGO / Meccano / советские)': ['MISB', 'MIB (Полный)', 'MIB (Неполный)', 'LOOSE (Полный)', 'LOOSE (Неполный)', 'СЛОМАН'],
+  'Мягкие игрушки':              ['НОВАЯ (С бирками)', 'ОТЛИЧНОЕ', 'ХОРОШЕЕ', 'ПОТЁРТОЕ', 'НА РЕМОНТ'],
+  'Роботы и электронные игрушки': ['SEALED', 'MINT', 'РАБОЧИЙ', 'НЕТЕСТИРОВАННЫЙ', 'НА ЗАПЧАСТИ'],
+  'Настольные игры':             ['SEALED', 'ПОЛНЫЙ КОМПЛЕКТ', 'НЕПОЛНЫЙ КОМПЛЕКТ', 'КОМПОНЕНТЫ'],
+  'Куклы и аксессуары':          ['MISB', 'MIB', 'LOOSE (Полная)', 'LOOSE (Неполная)', 'ПОВРЕЖДЕНА'],
+  'Моделизм (пластиковые модели)': ['SEALED', 'СОБРАН+ПОКРАШЕН', 'СОБРАН', 'ЧАСТИЧНО СОБРАН', 'ЗАПЧАСТИ'],
+  'Радиоуправляемые модели (ретро RC)': ['РАБОЧАЯ', 'ТРЕБУЕТ ОБСЛУЖИВАНИЯ', 'НЕПОЛНАЯ', 'НА ЗАПЧАСТИ'],
 };
 
 export const getArtifactTier = (item: Exhibit): TierType => {
