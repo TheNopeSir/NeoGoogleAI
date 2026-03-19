@@ -117,54 +117,106 @@ export default function App() {
   }, [user, exhibits]);
 
   // --- PURE ACHIEVEMENT COMPUTATION (works for ANY username) ---
+  // Серверные ачивки (события, нельзя восстановить из текущего состояния данных):
+  const SERVER_ONLY_IDS = ['GHOST_MODE', 'FIRST_VOTE', 'OVERCLOCK', 'GRAIL_HUNTER'];
+
   const computeAchievementsForUser = useCallback((username: string): AchievementProgress[] => {
       // HELLO_WORLD — всегда выполнено у любого зарегистрированного пользователя
       const hw: AchievementProgress = { id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true };
 
-      // UPLOADER
-      const uploadCount = exhibits.filter(e => e.owner === username && !e.isDraft).length;
-      const uploader: AchievementProgress = {
-          id: 'UPLOADER', current: uploadCount,
-          target: BADGE_CONFIG.UPLOADER.target,
-          unlocked: uploadCount >= BADGE_CONFIG.UPLOADER.target,
-      };
+      // ── Общие данные ──────────────────────────────────────────────────────
+      const ownExhibits = exhibits.filter(e => e.owner === username && !e.isDraft);
+      const uploadCount = ownExhibits.length;
 
-      // INFLUENCER
-      const totalLikes = exhibits.filter(e => e.owner === username).reduce((acc, e) => acc + (e.likes || 0), 0);
-      const influencer: AchievementProgress = {
-          id: 'INFLUENCER', current: totalLikes,
-          target: BADGE_CONFIG.INFLUENCER.target,
-          unlocked: totalLikes >= BADGE_CONFIG.INFLUENCER.target,
-      };
-
-      // CRITIC
       let commentsMade = 0;
       exhibits.forEach(e => { if (e.comments) commentsMade += e.comments.filter(c => c.author === username).length; });
-      const critic: AchievementProgress = {
-          id: 'CRITIC', current: commentsMade,
-          target: BADGE_CONFIG.CRITIC.target,
-          unlocked: commentsMade >= BADGE_CONFIG.CRITIC.target,
-      };
 
-      // COLLECTOR
       const collectionCount = collections.filter(c => c.owner === username).length;
-      const collector: AchievementProgress = {
-          id: 'COLLECTOR', current: collectionCount,
-          target: BADGE_CONFIG.COLLECTOR.target,
-          unlocked: collectionCount >= BADGE_CONFIG.COLLECTOR.target,
-      };
 
-      // LEGEND — владеет хотя бы одним артефактом уровня LEGENDARY
-      const hasLegendary = exhibits.some(e => e.owner === username && !e.isDraft && getArtifactTier(e) === 'LEGENDARY');
-      const legend: AchievementProgress = { id: 'LEGEND', current: hasLegendary ? 1 : 0, target: 1, unlocked: hasLegendary };
-
-      // BATTLE_CHAMPION — хранится в профиле (выдаётся системой битв)
       const allUsers = db.getFullDatabase().users;
       const targetUser = allUsers.find(u => u.username === username);
-      const storedChampion = targetUser?.achievements?.find(a => a.id === 'BATTLE_CHAMPION');
-      const champion: AchievementProgress = storedChampion || { id: 'BATTLE_CHAMPION', current: 0, target: 1, unlocked: false };
+      const followerCount = targetUser?.followers?.length || 0;
+      const followingCount = targetUser?.following?.length || 0;
 
-      return [hw, uploader, influencer, critic, collector, legend, champion];
+      // ── COMMON ────────────────────────────────────────────────────────────
+
+      // INIT_SEQUENCE — первый артефакт
+      const initSeq: AchievementProgress = { id: 'INIT_SEQUENCE', current: Math.min(uploadCount, 1), target: 1, unlocked: uploadCount >= 1 };
+
+      // UPLOADER — 5 артефактов
+      const uploader: AchievementProgress = { id: 'UPLOADER', current: Math.min(uploadCount, BADGE_CONFIG.UPLOADER.target), target: BADGE_CONFIG.UPLOADER.target, unlocked: uploadCount >= BADGE_CONFIG.UPLOADER.target };
+
+      // INFLUENCER — 50 лайков суммарно
+      const totalLikes = exhibits.filter(e => e.owner === username).reduce((acc, e) => acc + (e.likes || 0), 0);
+      const influencer: AchievementProgress = { id: 'INFLUENCER', current: Math.min(totalLikes, BADGE_CONFIG.INFLUENCER.target), target: BADGE_CONFIG.INFLUENCER.target, unlocked: totalLikes >= BADGE_CONFIG.INFLUENCER.target };
+
+      // CRITIC — 10 комментариев
+      const critic: AchievementProgress = { id: 'CRITIC', current: Math.min(commentsMade, BADGE_CONFIG.CRITIC.target), target: BADGE_CONFIG.CRITIC.target, unlocked: commentsMade >= BADGE_CONFIG.CRITIC.target };
+
+      // COLLECTOR — 3 коллекции
+      const collector: AchievementProgress = { id: 'COLLECTOR', current: Math.min(collectionCount, BADGE_CONFIG.COLLECTOR.target), target: BADGE_CONFIG.COLLECTOR.target, unlocked: collectionCount >= BADGE_CONFIG.COLLECTOR.target };
+
+      // FIRST_FOLLOW — хотя бы одна подписка
+      const firstFollow: AchievementProgress = { id: 'FIRST_FOLLOW', current: followingCount > 0 ? 1 : 0, target: 1, unlocked: followingCount > 0 };
+
+      // ── UNCOMMON ──────────────────────────────────────────────────────────
+
+      // BATTLE_CHAMPION — хранится в профиле (выдаётся системой битв)
+      const storedChampion = targetUser?.achievements?.find(a => a.id === 'BATTLE_CHAMPION');
+      const champion: AchievementProgress = storedChampion
+          ? { ...storedChampion, current: Math.min(storedChampion.current, 1) }
+          : { id: 'BATTLE_CHAMPION', current: 0, target: 1, unlocked: false };
+
+      // ARCHAEOLOGIST — 25 артефактов
+      const archaeologist: AchievementProgress = { id: 'ARCHAEOLOGIST', current: Math.min(uploadCount, BADGE_CONFIG.ARCHAEOLOGIST.target), target: BADGE_CONFIG.ARCHAEOLOGIST.target, unlocked: uploadCount >= BADGE_CONFIG.ARCHAEOLOGIST.target };
+
+      // ANALYST — 50 комментариев
+      const analyst: AchievementProgress = { id: 'ANALYST', current: Math.min(commentsMade, BADGE_CONFIG.ANALYST.target), target: BADGE_CONFIG.ANALYST.target, unlocked: commentsMade >= BADGE_CONFIG.ANALYST.target };
+
+      // CURATOR — 10 коллекций
+      const curator: AchievementProgress = { id: 'CURATOR', current: Math.min(collectionCount, BADGE_CONFIG.CURATOR.target), target: BADGE_CONFIG.CURATOR.target, unlocked: collectionCount >= BADGE_CONFIG.CURATOR.target };
+
+      // SIGNAL_BOOST — 10 подписчиков
+      const signalBoost: AchievementProgress = { id: 'SIGNAL_BOOST', current: Math.min(followerCount, BADGE_CONFIG.SIGNAL_BOOST.target), target: BADGE_CONFIG.SIGNAL_BOOST.target, unlocked: followerCount >= BADGE_CONFIG.SIGNAL_BOOST.target };
+
+      // ── RARE ──────────────────────────────────────────────────────────────
+
+      // LEGEND — владеет хотя бы одним артефактом уровня LEGENDARY
+      const hasLegendary = ownExhibits.some(e => getArtifactTier(e) === 'LEGENDARY');
+      const legend: AchievementProgress = { id: 'LEGEND', current: hasLegendary ? 1 : 0, target: 1, unlocked: hasLegendary };
+
+      // ARCHON — 100 артефактов
+      const archon: AchievementProgress = { id: 'ARCHON', current: Math.min(uploadCount, BADGE_CONFIG.ARCHON.target), target: BADGE_CONFIG.ARCHON.target, unlocked: uploadCount >= BADGE_CONFIG.ARCHON.target };
+
+      // BROADCAST_NODE — 50 подписчиков
+      const broadcastNode: AchievementProgress = { id: 'BROADCAST_NODE', current: Math.min(followerCount, BADGE_CONFIG.BROADCAST_NODE.target), target: BADGE_CONFIG.BROADCAST_NODE.target, unlocked: followerCount >= BADGE_CONFIG.BROADCAST_NODE.target };
+
+      // ── EPIC ──────────────────────────────────────────────────────────────
+
+      // FULL_STACK — артефакты во всех 10 категориях
+      const ownedCategories = new Set(ownExhibits.map(e => e.category)).size;
+      const fullStack: AchievementProgress = { id: 'FULL_STACK', current: Math.min(ownedCategories, BADGE_CONFIG.FULL_STACK.target), target: BADGE_CONFIG.FULL_STACK.target, unlocked: ownedCategories >= BADGE_CONFIG.FULL_STACK.target };
+
+      // HEMINGWAY — комментарий < 50 символов с >= 10 лайками
+      const hasHemingway = exhibits.some(e => (e.comments || []).some(c => c.author === username && c.text && c.text.length < 50 && (c.likes || 0) >= 10));
+      const hemingway: AchievementProgress = { id: 'HEMINGWAY', current: hasHemingway ? 1 : 0, target: 1, unlocked: hasHemingway };
+
+      // ── СЕРВЕРНЫЕ (события — читаем из хранимого профиля) ─────────────────
+      const serverAchs: AchievementProgress[] = SERVER_ONLY_IDS.map(id => {
+          const stored = targetUser?.achievements?.find(a => a.id === id);
+          const cfg = BADGE_CONFIG[id as keyof typeof BADGE_CONFIG];
+          return stored
+              ? { ...stored, current: Math.min(stored.current, cfg.target) }
+              : { id, current: 0, target: cfg.target, unlocked: false };
+      });
+
+      return [
+          hw, initSeq, uploader, influencer, critic, collector, firstFollow,
+          champion, archaeologist, analyst, curator, signalBoost,
+          legend, archon, broadcastNode,
+          fullStack, hemingway,
+          ...serverAchs,
+      ];
   }, [exhibits, collections]);
 
   // --- ACHIEVEMENTS CHECKER (сохраняет актуальные данные в профиле залогиненного) ---
@@ -172,15 +224,24 @@ export default function App() {
       if (!currentUser) return;
       const fresh = computeAchievementsForUser(currentUser.username);
 
+      // Серверные ачивки: предпочесть хранимую версию (актуальнее вычисленной по кэшу)
+      const merged = fresh.map(a => {
+          if (SERVER_ONLY_IDS.includes(a.id)) {
+              const stored = currentUser.achievements?.find(p => p.id === a.id);
+              return stored ? { ...stored, current: Math.min(stored.current, a.target) } : a;
+          }
+          return a;
+      });
+
       // Сохраняем только если данные изменились
       const prev = currentUser.achievements || [];
-      const changed = fresh.some(f => {
+      const changed = merged.some(f => {
           const old = prev.find(p => p.id === f.id);
           return !old || old.current !== f.current || old.unlocked !== f.unlocked;
       });
 
       if (changed) {
-          const updatedUser = { ...currentUser, achievements: fresh };
+          const updatedUser = { ...currentUser, achievements: merged };
           setUser(updatedUser);
           await db.updateUserProfile(updatedUser);
       }

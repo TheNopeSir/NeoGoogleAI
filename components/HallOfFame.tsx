@@ -29,6 +29,7 @@ const TIER_BAR_COLORS: Record<string, string> = {
 const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, onBack }) => {
   const isWinamp = theme === 'winamp';
   const isXp = theme === 'xp';
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   return (
     <div className={`max-w-4xl mx-auto animate-in fade-in pb-20 px-4 ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
@@ -49,12 +50,17 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Object.entries(BADGE_CONFIG).map(([id, config]) => {
                 const progress = achievements.find(a => a.id === id) || { current: 0, target: config.target, unlocked: false };
-                const percent = Math.min(100, (progress.current / config.target) * 100);
-                
+                // Cap display: never show current > target
+                const displayCurrent = Math.min(progress.current, config.target);
+                const percent = Math.min(100, (displayCurrent / config.target) * 100);
+                const isExpanded = expandedId === id;
+                const hint = (config as any).hint as string | undefined;
+
                 return (
                     <div
                         key={id}
-                        className={`relative p-6 rounded-3xl border-2 transition-all group ${
+                        onClick={() => hint && setExpandedId(isExpanded ? null : id)}
+                        className={`relative p-6 rounded-3xl border-2 transition-all group ${hint ? 'cursor-pointer' : ''} ${
                             isWinamp
                              ? (progress.unlocked ? 'bg-[#191919] border-[#00ff00]' : 'bg-[#191919] border-[#505050] opacity-50')
                              : isXp
@@ -82,12 +88,15 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                                 </h3>
                                 <p className="font-mono text-[10px] opacity-60 leading-relaxed uppercase">{config.desc}</p>
                             </div>
+                            {hint && (
+                                <div className={`text-[10px] opacity-30 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▾</div>
+                            )}
                         </div>
 
                         {/* Individual Progress Bar */}
                         <div className="space-y-2">
                             <div className="flex justify-between font-mono text-[9px] font-bold">
-                                <span>ПРОГРЕСС: {progress.current} / {config.target}</span>
+                                <span>ПРОГРЕСС: {displayCurrent} / {config.target}</span>
                                 <span>{Math.round(percent)}%</span>
                             </div>
                             <div className={`w-full h-1.5 rounded-full overflow-hidden ${isXp ? 'bg-xp-navy/10' : 'bg-white/5'}`}>
@@ -101,7 +110,20 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                                 />
                             </div>
                         </div>
-                        
+
+                        {/* Expandable hint */}
+                        {isExpanded && hint && (
+                            <div className={`mt-4 pt-4 border-t ${
+                                isWinamp ? 'border-[#00ff00]/20' : isXp ? 'border-xp-navy/20' : 'border-white/10'
+                            } animate-in fade-in slide-in-from-top-1 duration-200`}>
+                                <p className={`font-mono text-[10px] leading-relaxed ${
+                                    isWinamp ? 'text-[#00ff00]/70' : 'opacity-60'
+                                }`}>
+                                    {hint}
+                                </p>
+                            </div>
+                        )}
+
                         {!progress.unlocked && (
                             <div className="absolute top-4 right-4"><XI icon={Lock} size={14} className="opacity-20" /></div>
                         )}

@@ -845,7 +845,7 @@ async function grantAchievement(username, achievementId, target) {
         const existing = achievements.find(a => a.id === achievementId);
         if (existing) {
             if (existing.unlocked) return;
-            existing.current = (existing.current || 0) + 1;
+            existing.current = Math.min((existing.current || 0) + 1, target);
             if (existing.current >= target) existing.unlocked = true;
         } else {
             achievements.push({ id: achievementId, current: 1, target, unlocked: 1 >= target });
@@ -1672,7 +1672,8 @@ api.get('/battles', async (req, res) => {
                                 const achievements = userData.achievements || [];
                                 const existing = achievements.find(a => a.id === 'BATTLE_CHAMPION');
                                 if (existing) {
-                                    existing.current = (existing.current || 1) + 1;
+                                    existing.current = Math.min((existing.current || 0) + 1, 1); // cap at target=1
+                                    existing.unlocked = true;
                                 } else {
                                     achievements.push({ id: 'BATTLE_CHAMPION', current: 1, target: 1, unlocked: true });
                                 }

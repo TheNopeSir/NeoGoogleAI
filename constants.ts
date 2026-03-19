@@ -70,30 +70,30 @@ export const COLLECTION_VISIBILITY_CONFIG: Record<CollectionVisibility, any> = {
 
 export const BADGE_CONFIG = {
     // ── COMMON ──────────────────────────────────────────────────────────────
-    'HELLO_WORLD':    { label: 'HELLO WORLD', desc: 'Первый вход в систему',                        color: 'bg-green-500',  icon: Terminal,    target: 1,  tier: 'COMMON' },
-    'UPLOADER':       { label: 'DATA_MINER',  desc: 'Загружено 5 артефактов',                       color: 'bg-green-500',  icon: Upload,      target: 5,  tier: 'COMMON' },
-    'INIT_SEQUENCE':  { label: 'INIT.EXE',    desc: 'Загружен первый артефакт',                     color: 'bg-green-500',  icon: Upload,      target: 1,  tier: 'COMMON' },
-    'INFLUENCER':     { label: 'NET_CELEB',   desc: 'Лайков получено',                              color: 'bg-green-500',  icon: Star,        target: 50, tier: 'COMMON' },
-    'CRITIC':         { label: 'OBSERVER',    desc: 'Оставлено 10 комментариев',                    color: 'bg-green-500',  icon: MessageSquare, target: 10, tier: 'COMMON' },
-    'COLLECTOR':      { label: 'ARCHIVIST',   desc: 'Создано 3 коллекции',                          color: 'bg-green-500',  icon: Layers,      target: 3,  tier: 'COMMON' },
-    'FIRST_FOLLOW':   { label: 'HANDSHAKE',   desc: 'Первая подписка',                              color: 'bg-green-500',  icon: UserCheck,   target: 1,  tier: 'COMMON' },
-    'FIRST_VOTE':     { label: 'PING',        desc: 'Первый голос в битве артефактов',               color: 'bg-green-500',  icon: Target,      target: 1,  tier: 'COMMON' },
-    'GHOST_MODE':     { label: 'GHOST_MODE',  desc: 'Установлен статус Невидимка',                  color: 'bg-green-500',  icon: EyeOff,      target: 1,  tier: 'COMMON' },
+    'HELLO_WORLD':    { label: 'HELLO WORLD', desc: 'Первый вход в систему',                        color: 'bg-green-500',  icon: Terminal,    target: 1,  tier: 'COMMON',   hint: 'Просто войди в систему. Добро пожаловать в Матрицу.' },
+    'UPLOADER':       { label: 'DATA_MINER',  desc: 'Загружено 5 артефактов',                       color: 'bg-green-500',  icon: Upload,      target: 5,  tier: 'COMMON',   hint: 'Загрузи 5 артефактов в свою коллекцию.' },
+    'INIT_SEQUENCE':  { label: 'INIT.EXE',    desc: 'Загружен первый артефакт',                     color: 'bg-green-500',  icon: Upload,      target: 1,  tier: 'COMMON',   hint: 'Загрузи свой первый артефакт — запусти последовательность.' },
+    'INFLUENCER':     { label: 'NET_CELEB',   desc: 'Лайков получено',                              color: 'bg-green-500',  icon: Star,        target: 50, tier: 'COMMON',   hint: 'Набери суммарно 50 лайков на своих артефактах.' },
+    'CRITIC':         { label: 'OBSERVER',    desc: 'Оставлено 10 комментариев',                    color: 'bg-green-500',  icon: MessageSquare, target: 10, tier: 'COMMON', hint: 'Оставь 10 комментариев на любых артефактах.' },
+    'COLLECTOR':      { label: 'ARCHIVIST',   desc: 'Создано 3 коллекции',                          color: 'bg-green-500',  icon: Layers,      target: 3,  tier: 'COMMON',   hint: 'Создай 3 коллекции и начни систематизировать архив.' },
+    'FIRST_FOLLOW':   { label: 'HANDSHAKE',   desc: 'Первая подписка',                              color: 'bg-green-500',  icon: UserCheck,   target: 1,  tier: 'COMMON',   hint: 'Подпишись на любого пользователя.' },
+    'FIRST_VOTE':     { label: 'PING',        desc: 'Первый голос в битве артефактов',               color: 'bg-green-500',  icon: Target,      target: 1,  tier: 'COMMON',   hint: 'Проголосуй в любой битве артефактов в разделе «Битвы».' },
+    'GHOST_MODE':     { label: 'GHOST_MODE',  desc: 'Установлен статус Невидимка',                  color: 'bg-green-500',  icon: EyeOff,      target: 1,  tier: 'COMMON',   hint: 'Установи статус «Невидимка» в настройках профиля.' },
     // ── UNCOMMON ────────────────────────────────────────────────────────────
-    'BATTLE_CHAMPION':{ label: 'CHAMPION',    desc: 'Победитель битвы артефактов',                  color: 'bg-blue-500',   icon: Trophy,      target: 1,  tier: 'UNCOMMON' },
-    'ARCHAEOLOGIST':  { label: 'DIGITAL_DIG', desc: 'Загружено 25 артефактов',                      color: 'bg-blue-500',   icon: Search,      target: 25, tier: 'UNCOMMON' },
-    'ANALYST':        { label: 'ANALYST',     desc: 'Оставлено 50 комментариев',                    color: 'bg-blue-500',   icon: Eye,         target: 50, tier: 'UNCOMMON' },
-    'CURATOR':        { label: 'CURATOR',     desc: 'Создано 10 коллекций',                         color: 'bg-blue-500',   icon: BookOpen,    target: 10, tier: 'UNCOMMON' },
-    'SIGNAL_BOOST':   { label: 'SIGNAL++',    desc: 'Набрано 10 подписчиков',                       color: 'bg-blue-500',   icon: TrendingUp,  target: 10, tier: 'UNCOMMON' },
-    'GRAIL_HUNTER':   { label: 'GRAIL.HUNT',  desc: '5 предметов с приоритетом ГРААЛЬ в вишлисте',  color: 'bg-blue-500',   icon: Crown,       target: 5,  tier: 'UNCOMMON' },
+    'BATTLE_CHAMPION':{ label: 'CHAMPION',    desc: 'Победитель битвы артефактов',                  color: 'bg-blue-500',   icon: Trophy,      target: 1,  tier: 'UNCOMMON', hint: 'Выиграй битву артефактов. Побеждает тот, за кого проголосовали больше.' },
+    'ARCHAEOLOGIST':  { label: 'DIGITAL_DIG', desc: 'Загружено 25 артефактов',                      color: 'bg-blue-500',   icon: Search,      target: 25, tier: 'UNCOMMON', hint: 'Загрузи 25 артефактов. Ты — настоящий цифровой археолог.' },
+    'ANALYST':        { label: 'ANALYST',     desc: 'Оставлено 50 комментариев',                    color: 'bg-blue-500',   icon: Eye,         target: 50, tier: 'UNCOMMON', hint: 'Оставь 50 комментариев. Ты — голос коллекционного сообщества.' },
+    'CURATOR':        { label: 'CURATOR',     desc: 'Создано 10 коллекций',                         color: 'bg-blue-500',   icon: BookOpen,    target: 10, tier: 'UNCOMMON', hint: 'Создай 10 коллекций. Твой архив — произведение искусства.' },
+    'SIGNAL_BOOST':   { label: 'SIGNAL++',    desc: 'Набрано 10 подписчиков',                       color: 'bg-blue-500',   icon: TrendingUp,  target: 10, tier: 'UNCOMMON', hint: 'Набери 10 подписчиков. Сигнал усилен.' },
+    'GRAIL_HUNTER':   { label: 'GRAIL.HUNT',  desc: '5 предметов с приоритетом ГРААЛЬ в вишлисте',  color: 'bg-blue-500',   icon: Crown,       target: 5,  tier: 'UNCOMMON', hint: 'Добавь 5 предметов с приоритетом ГРААЛЬ в свой вишлист.' },
     // ── RARE ────────────────────────────────────────────────────────────────
-    'LEGEND':         { label: 'THE_ONE',     desc: 'Владелец Легендарного артефакта',               color: 'bg-purple-500', icon: Zap,         target: 1,  tier: 'RARE' },
-    'ARCHON':         { label: 'ARCHON',      desc: 'Загружено 100 артефактов',                     color: 'bg-purple-500', icon: Award,       target: 100, tier: 'RARE' },
-    'BROADCAST_NODE': { label: 'BROADCAST',   desc: 'Набрано 50 подписчиков',                       color: 'bg-purple-500', icon: Radar,       target: 50, tier: 'RARE' },
-    'OVERCLOCK':      { label: 'OVERCLOCK',   desc: 'Выиграно 5 битв артефактов',                   color: 'bg-purple-500', icon: Flame,       target: 5,  tier: 'RARE' },
+    'LEGEND':         { label: 'THE_ONE',     desc: 'Владелец Легендарного артефакта',               color: 'bg-purple-500', icon: Zap,         target: 1,  tier: 'RARE',     hint: 'Стань владельцем артефакта, набравшего 10 000+ очков (лайки × 25 + комментарии × 10 + просмотры).' },
+    'ARCHON':         { label: 'ARCHON',      desc: 'Загружено 100 артефактов',                     color: 'bg-purple-500', icon: Award,       target: 100, tier: 'RARE',    hint: 'Загрузи 100 артефактов. Ты — хранитель цифрового наследия.' },
+    'BROADCAST_NODE': { label: 'BROADCAST',   desc: 'Набрано 50 подписчиков',                       color: 'bg-purple-500', icon: Radar,       target: 50, tier: 'RARE',     hint: 'Набери 50 подписчиков. Твой сигнал слышат по всей сети.' },
+    'OVERCLOCK':      { label: 'OVERCLOCK',   desc: 'Выиграно 5 битв артефактов',                   color: 'bg-purple-500', icon: Flame,       target: 5,  tier: 'RARE',     hint: 'Выиграй 5 битв артефактов. Разгон до предела.' },
     // ── EPIC ────────────────────────────────────────────────────────────────
-    'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 10 категориях',              color: 'bg-orange-500', icon: Globe,       target: 10, tier: 'EPIC' },
-    'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC' },
+    'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 10 категориях',              color: 'bg-orange-500', icon: Globe,       target: 10, tier: 'EPIC',     hint: 'Загрузи артефакты во все 10 категорий: телефоны, гаджеты, игры, журналы, музыка, видео, игрушки, компьютеры, камеры, прочее.' },
+    'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC',     hint: 'Получи 10 лайков на любой свой комментарий длиной меньше 50 символов. Краткость — сестра таланта.' },
 };
 
 export const BADGES = BADGE_CONFIG;
