@@ -30,6 +30,7 @@ import FeedView from './components/FeedView';
 import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
+import OfertaPage from './components/OfertaPage';
 import { ThemeContext } from './components/ThemeContext';
 
 import * as db from './services/storageService';
@@ -269,6 +270,8 @@ export default function App() {
 
       if (!root) { setView('FEED'); return; }
 
+      if (root === 'oferta') { setView('OFERTA'); return; }
+
       if (root === 'community') setView('COMMUNITY_HUB');
       else if (root === 'activity') setView('ACTIVITY');
       else if (root === 'search') setView('SEARCH');
@@ -347,7 +350,8 @@ export default function App() {
       else if (newView === 'SEARCH') path = '/search';
       else if (newView === 'CREATE_HUB') path = '/create';
       else if (newView === 'MY_COLLECTION') path = '/my-collection';
-      
+      else if (newView === 'OFERTA') path = '/oferta';
+
       window.history.pushState({ view: newView, params }, '', path);
       window.scrollTo(0, 0);
   };
@@ -410,6 +414,8 @@ export default function App() {
               if (code && type) {
                   // Email link — open AUTH with verification params
                   await syncFromUrl();
+              } else if (window.location.pathname === '/oferta') {
+                  setView('OFERTA');
               } else {
                   setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
                   window.history.replaceState({}, document.title, '/');
@@ -662,6 +668,17 @@ export default function App() {
       <LandingPage
         onLogin={() => setView('AUTH')}
         onRegister={() => setView('AUTH')}
+      />
+    );
+  }
+
+  if (view === 'OFERTA') {
+    return (
+      <OfertaPage
+        onBack={() => {
+          window.history.back();
+          setView('LANDING');
+        }}
       />
     );
   }
