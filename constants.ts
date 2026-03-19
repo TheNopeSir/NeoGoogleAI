@@ -93,7 +93,7 @@ export const BADGE_CONFIG = {
     'OVERCLOCK':      { label: 'OVERCLOCK',   desc: 'Выиграно 5 битв артефактов',                   color: 'bg-purple-500', icon: Flame,       target: 5,  tier: 'RARE',     hint: 'Выиграй 5 битв артефактов. Разгон до предела.' },
     // ── EPIC ────────────────────────────────────────────────────────────────
     'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 10 категориях',              color: 'bg-orange-500', icon: Globe,       target: 10, tier: 'EPIC',     hint: 'Загрузи артефакты во все 10 категорий: телефоны, гаджеты, игры, журналы, музыка, видео, игрушки, компьютеры, камеры, прочее.' },
-    'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC',     hint: 'Получи 10 лайков на любой свой комментарий длиной меньше 50 символов. Краткость — сестра таланта.' },
+    'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC',     hint: 'Однажды Эрнест Хемингуэй поспорил, что напишет рассказ в 6 слов... Получи 10 лайков на любой свой комментарий длиной меньше 50 символов. Краткость — сестра таланта.' },
 };
 
 export const BADGES = BADGE_CONFIG;
