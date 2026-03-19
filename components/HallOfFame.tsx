@@ -13,6 +13,19 @@ interface HallOfFameProps {
   onBack: () => void;
 }
 
+const TIER_UNLOCKED_STYLES: Record<string, string> = {
+  EPIC:     'bg-dark-surface border-orange-500/60 shadow-[0_0_30px_rgba(249,115,22,0.35)]',
+  RARE:     'bg-dark-surface border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.3)]',
+  UNCOMMON: 'bg-dark-surface border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.25)]',
+  COMMON:   'bg-dark-surface border-green-500/50 shadow-[0_0_20px_rgba(74,222,128,0.2)]',
+};
+const TIER_BAR_COLORS: Record<string, string> = {
+  EPIC:     'bg-orange-500 shadow-[0_0_8px_#f97316]',
+  RARE:     'bg-purple-500 shadow-[0_0_8px_#a855f7]',
+  UNCOMMON: 'bg-blue-500 shadow-[0_0_8px_#3b82f6]',
+  COMMON:   'bg-green-500 shadow-[0_0_10px_#4ade80]',
+};
+
 const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, onBack }) => {
   const isWinamp = theme === 'winamp';
   const isXp = theme === 'xp';
@@ -39,7 +52,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                 const percent = Math.min(100, (progress.current / config.target) * 100);
                 
                 return (
-                    <div 
+                    <div
                         key={id}
                         className={`relative p-6 rounded-3xl border-2 transition-all group ${
                             isWinamp
@@ -50,7 +63,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                                  : 'bg-xp-surface border-xp-navy/20 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'
                                )
                              : (progress.unlocked
-                                 ? 'bg-dark-surface border-green-500/50 shadow-[0_0_20px_rgba(74,222,128,0.2)]'
+                                 ? (TIER_UNLOCKED_STYLES[(config as any).tier] ?? TIER_UNLOCKED_STYLES.COMMON)
                                  : 'bg-black/40 border-white/5 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'
                                )
                         }`}
@@ -79,7 +92,11 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ theme, achievements, username, 
                             </div>
                             <div className={`w-full h-1.5 rounded-full overflow-hidden ${isXp ? 'bg-xp-navy/10' : 'bg-white/5'}`}>
                                 <div
-                                    className={`h-full transition-all duration-1000 ${progress.unlocked ? (isXp ? 'bg-xp-blue' : 'bg-green-500 shadow-[0_0_10px_#4ade80]') : (isXp ? 'bg-xp-navy/30' : 'bg-white/20')}`}
+                                    className={`h-full transition-all duration-1000 ${
+                                        progress.unlocked
+                                            ? (isXp ? 'bg-xp-blue' : (TIER_BAR_COLORS[(config as any).tier] ?? TIER_BAR_COLORS.COMMON))
+                                            : (isXp ? 'bg-xp-navy/30' : 'bg-white/20')
+                                    }`}
                                     style={{ width: `${percent}%` }}
                                 />
                             </div>

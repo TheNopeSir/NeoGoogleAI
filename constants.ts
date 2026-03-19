@@ -1,6 +1,6 @@
 
 import { Exhibit, TierType, TradeStatus, WishlistPriority, WishlistItemStatus, CollectionVisibility } from './types';
-import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Trophy, CheckCircle, PauseCircle, Globe, UserCheck } from 'lucide-react';
+import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Trophy, CheckCircle, PauseCircle, Globe, UserCheck, TrendingUp, BookOpen, Feather } from 'lucide-react';
 
 export const DefaultCategory = {
   PHONES: 'ТЕЛЕФОНЫ',
@@ -69,13 +69,31 @@ export const COLLECTION_VISIBILITY_CONFIG: Record<CollectionVisibility, any> = {
 };
 
 export const BADGE_CONFIG = {
-    'HELLO_WORLD': { label: 'HELLO WORLD', desc: 'Первый вход в систему', color: 'bg-green-500', icon: Terminal, target: 1 },
-    'UPLOADER': { label: 'DATA_MINER', desc: 'Загружено артефактов', color: 'bg-blue-500', icon: Upload, target: 5 },
-    'INFLUENCER': { label: 'NET_CELEB', desc: 'Лайков получено', color: 'bg-purple-500', icon: Star, target: 50 },
-    'CRITIC': { label: 'OBSERVER', desc: 'Оставлено комментариев', color: 'bg-yellow-500', icon: MessageSquare, target: 10 },
-    'LEGEND': { label: 'THE_ONE', desc: 'Владелец Легендарного артефакта', color: 'bg-red-500', icon: Zap, target: 1 },
-    'COLLECTOR': { label: 'ARCHIVIST', desc: 'Создано коллекций', color: 'bg-orange-500', icon: Layers, target: 3 },
-    'BATTLE_CHAMPION': { label: 'CHAMPION', desc: 'Победитель битвы артефактов', color: 'bg-yellow-500', icon: Trophy, target: 1 },
+    // ── COMMON ──────────────────────────────────────────────────────────────
+    'HELLO_WORLD':    { label: 'HELLO WORLD', desc: 'Первый вход в систему',                        color: 'bg-green-500',  icon: Terminal,    target: 1,  tier: 'COMMON' },
+    'UPLOADER':       { label: 'DATA_MINER',  desc: 'Загружено 5 артефактов',                       color: 'bg-green-500',  icon: Upload,      target: 5,  tier: 'COMMON' },
+    'INIT_SEQUENCE':  { label: 'INIT.EXE',    desc: 'Загружен первый артефакт',                     color: 'bg-green-500',  icon: Upload,      target: 1,  tier: 'COMMON' },
+    'INFLUENCER':     { label: 'NET_CELEB',   desc: 'Лайков получено',                              color: 'bg-green-500',  icon: Star,        target: 50, tier: 'COMMON' },
+    'CRITIC':         { label: 'OBSERVER',    desc: 'Оставлено 10 комментариев',                    color: 'bg-green-500',  icon: MessageSquare, target: 10, tier: 'COMMON' },
+    'COLLECTOR':      { label: 'ARCHIVIST',   desc: 'Создано 3 коллекции',                          color: 'bg-green-500',  icon: Layers,      target: 3,  tier: 'COMMON' },
+    'FIRST_FOLLOW':   { label: 'HANDSHAKE',   desc: 'Первая подписка',                              color: 'bg-green-500',  icon: UserCheck,   target: 1,  tier: 'COMMON' },
+    'FIRST_VOTE':     { label: 'PING',        desc: 'Первый голос в битве артефактов',               color: 'bg-green-500',  icon: Target,      target: 1,  tier: 'COMMON' },
+    'GHOST_MODE':     { label: 'GHOST_MODE',  desc: 'Установлен статус Невидимка',                  color: 'bg-green-500',  icon: EyeOff,      target: 1,  tier: 'COMMON' },
+    // ── UNCOMMON ────────────────────────────────────────────────────────────
+    'BATTLE_CHAMPION':{ label: 'CHAMPION',    desc: 'Победитель битвы артефактов',                  color: 'bg-blue-500',   icon: Trophy,      target: 1,  tier: 'UNCOMMON' },
+    'ARCHAEOLOGIST':  { label: 'DIGITAL_DIG', desc: 'Загружено 25 артефактов',                      color: 'bg-blue-500',   icon: Search,      target: 25, tier: 'UNCOMMON' },
+    'ANALYST':        { label: 'ANALYST',     desc: 'Оставлено 50 комментариев',                    color: 'bg-blue-500',   icon: Eye,         target: 50, tier: 'UNCOMMON' },
+    'CURATOR':        { label: 'CURATOR',     desc: 'Создано 10 коллекций',                         color: 'bg-blue-500',   icon: BookOpen,    target: 10, tier: 'UNCOMMON' },
+    'SIGNAL_BOOST':   { label: 'SIGNAL++',    desc: 'Набрано 10 подписчиков',                       color: 'bg-blue-500',   icon: TrendingUp,  target: 10, tier: 'UNCOMMON' },
+    'GRAIL_HUNTER':   { label: 'GRAIL.HUNT',  desc: '5 предметов с приоритетом ГРААЛЬ в вишлисте',  color: 'bg-blue-500',   icon: Crown,       target: 5,  tier: 'UNCOMMON' },
+    // ── RARE ────────────────────────────────────────────────────────────────
+    'LEGEND':         { label: 'THE_ONE',     desc: 'Владелец Легендарного артефакта',               color: 'bg-purple-500', icon: Zap,         target: 1,  tier: 'RARE' },
+    'ARCHON':         { label: 'ARCHON',      desc: 'Загружено 100 артефактов',                     color: 'bg-purple-500', icon: Award,       target: 100, tier: 'RARE' },
+    'BROADCAST_NODE': { label: 'BROADCAST',   desc: 'Набрано 50 подписчиков',                       color: 'bg-purple-500', icon: Radar,       target: 50, tier: 'RARE' },
+    'OVERCLOCK':      { label: 'OVERCLOCK',   desc: 'Выиграно 5 битв артефактов',                   color: 'bg-purple-500', icon: Flame,       target: 5,  tier: 'RARE' },
+    // ── EPIC ────────────────────────────────────────────────────────────────
+    'FULL_STACK':     { label: 'FULL_STACK',  desc: 'Артефакты во всех 10 категориях',              color: 'bg-orange-500', icon: Globe,       target: 10, tier: 'EPIC' },
+    'HEMINGWAY':      { label: 'HEMINGWAY',   desc: '10 лайков на комментарий короче 50 символов',  color: 'bg-orange-500', icon: Feather,     target: 1,  tier: 'EPIC' },
 };
 
 export const BADGES = BADGE_CONFIG;

@@ -833,6 +833,54 @@ api.delete('/push/subscribe', async (req, res) => {
     }
 });
 
+// --- ACHIEVEMENT HELPERS ---
+
+// Increment-based: good for event-driven one-shots (first follow, first vote, ghost mode, hemingway)
+async function grantAchievement(username, achievementId, target) {
+    try {
+        const { rows } = await query(`SELECT data FROM users WHERE username = $1`, [username]);
+        if (!rows[0]) return;
+        const userData = rows[0].data;
+        const achievements = userData.achievements || [];
+        const existing = achievements.find(a => a.id === achievementId);
+        if (existing) {
+            if (existing.unlocked) return;
+            existing.current = (existing.current || 0) + 1;
+            if (existing.current >= target) existing.unlocked = true;
+        } else {
+            achievements.push({ id: achievementId, current: 1, target, unlocked: 1 >= target });
+        }
+        userData.achievements = achievements;
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [userData, username]);
+    } catch (e) {
+        console.error(`[ACHIEVEMENT] ${achievementId} for ${username}:`, e.message);
+    }
+}
+
+// Absolute-value: good for DB-counted progress (upload count, follower count, etc.)
+async function setAchievementProgress(username, achievementId, current, target) {
+    try {
+        const { rows } = await query(`SELECT data FROM users WHERE username = $1`, [username]);
+        if (!rows[0]) return;
+        const userData = rows[0].data;
+        const achievements = userData.achievements || [];
+        const existing = achievements.find(a => a.id === achievementId);
+        if (existing) {
+            if (existing.unlocked) return;
+            if (current <= (existing.current || 0)) return;
+            existing.current = current;
+            existing.target = target;
+            if (current >= target) existing.unlocked = true;
+        } else {
+            achievements.push({ id: achievementId, current, target, unlocked: current >= target });
+        }
+        userData.achievements = achievements;
+        await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`, [userData, username]);
+    } catch (e) {
+        console.error(`[ACHIEVEMENT] ${achievementId} for ${username}:`, e.message);
+    }
+}
+
 // --- FOLLOW / UNFOLLOW (atomic PostgreSQL JSON ops) ---
 api.post('/follow', authLimiter, async (req, res) => {
     try {
@@ -883,6 +931,25 @@ api.post('/follow', authLimiter, async (req, res) => {
             followerProfile:  followerResult.rows[0]  ? mapRow(followerResult.rows[0])  : null,
             followingProfile: followingResult.rows[0] ? mapRow(followingResult.rows[0]) : null,
         });
+
+        // Achievement triggers (fire-and-forget)
+        if (!unfollow) {
+            (async () => {
+                try {
+                    // HANDSHAKE: person who followed gets credit for their first follow
+                    await grantAchievement(follower, 'FIRST_FOLLOW', 1);
+                    // SIGNAL++ / BROADCAST: person being followed tracks their follower count
+                    const followedData = followingResult.rows[0]?.data;
+                    if (followedData) {
+                        const followerCount = (followedData.followers || []).length;
+                        await setAchievementProgress(following, 'SIGNAL_BOOST', Math.min(followerCount, 10), 10);
+                        await setAchievementProgress(following, 'BROADCAST_NODE', Math.min(followerCount, 50), 50);
+                    }
+                } catch (e) {
+                    console.error('[ACHIEVEMENT] follow:', e.message);
+                }
+            })();
+        }
     } catch (e) {
         console.error('[FOLLOW] Error:', e);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -982,6 +1049,11 @@ api.post('/users', async (req, res) => {
         await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (username) DO UPDATE SET data = $2, updated_at = NOW()`, [targetKey, req.body]);
         try { await query(`UPDATE users SET id = username WHERE username = $1`, [targetKey]); } catch(e){}
         res.json({ success: true, avatarUrl: req.body.avatarUrl, coverUrl: req.body.coverUrl });
+
+        // GHOST_MODE achievement
+        if (req.body.status === 'INVISIBLE') {
+            grantAchievement(targetKey, 'GHOST_MODE', 1).catch(() => {});
+        }
     } catch(e) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -1100,6 +1172,30 @@ const createCrud = (router, table) => {
                 if (notif.recipient !== notif.actor) sendPushToUser(notif.recipient, title, body, `/activity`);
             }
             res.json({ success: true, data: req.body });
+
+            // Achievement triggers
+            const owner = req.body.owner;
+            if (owner) {
+                if (table === 'collections') {
+                    (async () => {
+                        try {
+                            const { rows } = await query(`SELECT COUNT(*) FROM collections WHERE data->>'owner' = $1`, [owner]);
+                            const total = parseInt(rows[0].count);
+                            await setAchievementProgress(owner, 'COLLECTOR', Math.min(total, 3),  3);
+                            await setAchievementProgress(owner, 'CURATOR',   Math.min(total, 10), 10);
+                        } catch (e) { console.error('[ACHIEVEMENT] curator:', e.message); }
+                    })();
+                }
+                if (table === 'wishlist' && req.body.priority === 'GRAIL') {
+                    (async () => {
+                        try {
+                            const { rows } = await query(`SELECT COUNT(*) FROM wishlist WHERE data->>'owner' = $1 AND data->>'priority' = 'GRAIL'`, [owner]);
+                            const total = parseInt(rows[0].count);
+                            await setAchievementProgress(owner, 'GRAIL_HUNTER', Math.min(total, 5), 5);
+                        } catch (e) { console.error('[ACHIEVEMENT] grail_hunter:', e.message); }
+                    })();
+                }
+            }
         } catch (e) {
             console.error(`Error saving to ${table}:`, e);
             res.status(500).json({ error: 'Internal Server Error' });
@@ -1155,6 +1251,11 @@ api.post('/exhibits', contentCreateLimiter, async (req, res) => {
     try {
         const { id, imageUrls } = req.body;
         let processedData = { ...req.body };
+
+        // Check before UPSERT so we know if this is a new exhibit
+        const { rows: existingExhibit } = await query('SELECT id FROM exhibits WHERE id = $1', [id]);
+        const isNewExhibit = existingExhibit.length === 0;
+
         if (imageUrls && Array.isArray(imageUrls) && imageUrls.some(u => isBase64DataUri(u))) {
             const base64Only = imageUrls.filter(u => isBase64DataUri(u));
             const processed = await processExhibitImages(base64Only, id);
@@ -1163,6 +1264,55 @@ api.post('/exhibits', contentCreateLimiter, async (req, res) => {
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
         res.json({ success: true, imageUrls: processedData.imageUrls });
+
+        // Fire-and-forget: achievement checks
+        (async () => {
+            try {
+                const owner = processedData.owner;
+                if (!owner) return;
+
+                // 1. Upload-count achievements (only for new non-draft exhibits)
+                if (isNewExhibit && !processedData.isDraft) {
+                    const { rows: countRows } = await query(
+                        `SELECT COUNT(*) FROM exhibits WHERE data->>'owner' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false')`,
+                        [owner]
+                    );
+                    const total = parseInt(countRows[0].count);
+                    await setAchievementProgress(owner, 'INIT_SEQUENCE',  Math.min(total, 1),   1);
+                    await setAchievementProgress(owner, 'UPLOADER',       Math.min(total, 5),   5);
+                    await setAchievementProgress(owner, 'ARCHAEOLOGIST',  Math.min(total, 25),  25);
+                    await setAchievementProgress(owner, 'ARCHON',         Math.min(total, 100), 100);
+
+                    // FULL_STACK: unique categories
+                    const { rows: catRows } = await query(
+                        `SELECT COUNT(DISTINCT data->>'category') as cats FROM exhibits WHERE data->>'owner' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false')`,
+                        [owner]
+                    );
+                    await setAchievementProgress(owner, 'FULL_STACK', parseInt(catRows[0].cats), 10);
+                }
+
+                // 2. Comment-based achievements (OBSERVER + ANALYST) — count per comment author
+                const commentAuthors = new Set((processedData.comments || []).map(c => c.author).filter(Boolean));
+                for (const author of commentAuthors) {
+                    const { rows: cRows } = await query(
+                        `SELECT COUNT(*) FROM exhibits, jsonb_array_elements(COALESCE(data->'comments', '[]'::jsonb)) AS c WHERE c->>'author' = $1`,
+                        [author]
+                    );
+                    const totalComments = parseInt(cRows[0]?.count || 0);
+                    await setAchievementProgress(author, 'CRITIC',   Math.min(totalComments, 10), 10);
+                    await setAchievementProgress(author, 'ANALYST',  Math.min(totalComments, 50), 50);
+                }
+
+                // 3. HEMINGWAY: a comment < 50 chars with >= 10 likes
+                for (const comment of (processedData.comments || [])) {
+                    if (comment.author && comment.text && comment.text.length < 50 && (comment.likes || 0) >= 10) {
+                        await grantAchievement(comment.author, 'HEMINGWAY', 1);
+                    }
+                }
+            } catch (e) {
+                console.error('[ACHIEVEMENT] exhibit post:', e.message);
+            }
+        })();
 
         // Fire-and-forget: wishlist match detection
         (async () => {
@@ -1526,6 +1676,16 @@ api.get('/battles', async (req, res) => {
                                 } else {
                                     achievements.push({ id: 'BATTLE_CHAMPION', current: 1, target: 1, unlocked: true });
                                 }
+                                // OVERCLOCK: track battle wins toward 5
+                                const overclock = achievements.find(a => a.id === 'OVERCLOCK');
+                                if (overclock) {
+                                    if (!overclock.unlocked) {
+                                        overclock.current = (overclock.current || 0) + 1;
+                                        if (overclock.current >= 5) overclock.unlocked = true;
+                                    }
+                                } else {
+                                    achievements.push({ id: 'OVERCLOCK', current: 1, target: 5, unlocked: false });
+                                }
                                 userData.achievements = achievements;
                                 await query(
                                     `UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
@@ -1580,6 +1740,9 @@ api.post('/battles/vote', async (req, res) => {
 
         await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
         res.json({ battle });
+
+        // PING: first ever vote
+        grantAchievement(username, 'FIRST_VOTE', 1).catch(() => {});
     } catch (e) {
         res.status(500).json({ error: 'Vote error' });
     }
