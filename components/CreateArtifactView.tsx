@@ -323,8 +323,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   <input
                     value={categorySearch}
                     onChange={e => { setCategorySearch(e.target.value); setShowCategorySuggestions(true); }}
-                    onFocus={() => setShowCategorySuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 150)}
+                    onFocus={() => { setCategorySearch(''); setShowCategorySuggestions(true); }}
+                    onBlur={() => setTimeout(() => { setShowCategorySuggestions(false); setCategorySearch(category); }, 150)}
                     className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
                     placeholder="Начните вводить категорию..."
                     autoComplete="off"
@@ -349,8 +349,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   <input
                     value={subcategorySearch}
                     onChange={e => { setSubcategorySearch(e.target.value); setShowSubcategorySuggestions(true); }}
-                    onFocus={() => { if (availableSubcategories.length > 0) setShowSubcategorySuggestions(true); }}
-                    onBlur={() => setTimeout(() => setShowSubcategorySuggestions(false), 150)}
+                    onFocus={() => { if (availableSubcategories.length > 0) { setSubcategorySearch(''); setShowSubcategorySuggestions(true); } }}
+                    onBlur={() => setTimeout(() => { setShowSubcategorySuggestions(false); setSubcategorySearch(subcategory); }, 150)}
                     disabled={availableSubcategories.length === 0}
                     className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors disabled:opacity-30 ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
                     placeholder={availableSubcategories.length === 0 ? 'Сначала выберите категорию' : 'Начните вводить подкатегорию...'}
