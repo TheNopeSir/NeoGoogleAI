@@ -769,7 +769,7 @@ export default function App() {
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
         
-        <ToastContainer />
+        <ToastContainer cardFlipEnabled={user?.settings?.cardFlipAnimation ?? true} />
 
         {isOffline && (
             <div className="fixed top-16 md:top-20 left-0 right-0 z-40 bg-yellow-500/90 text-black text-center py-1 px-4 text-xs font-bold font-mono flex justify-center items-center gap-2">

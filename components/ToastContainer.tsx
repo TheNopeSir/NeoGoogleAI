@@ -7,6 +7,9 @@ import MatrixIcon from './MatrixIcon';
 import XI from './XI';
 
 const TOAST_TTL = 5000; // ms до авто-скрытия
+const FLIP_DURATION = 700; // ms
+
+const FLIP_TYPES = new Set(['WISHLIST_ACQUIRED', 'TRADE_ACCEPTED', 'TRADE_COMPLETED']);
 
 interface GroupedToast {
     key: string;       // = actor (уникальный ключ группы)
@@ -14,6 +17,10 @@ interface GroupedToast {
     types: Set<string>;
     count: number;
     previews: string[]; // до 2 названий артефактов
+}
+
+interface ToastContainerProps {
+    cardFlipEnabled?: boolean;
 }
 
 /** Человеко-читаемое описание типов событий */
@@ -25,6 +32,8 @@ function describeTypes(types: Set<string>, count: number): string {
     if (has('COMMENT')) return count > 1 ? `оставил ${count} комментария` : 'прокомментировал';
     if (has('TRADE_OFFER')) return 'прислал предложение обмена';
     if (has('TRADE_ACCEPTED')) return 'принял ваш обмен';
+    if (has('TRADE_COMPLETED')) return 'завершил обмен';
+    if (has('WISHLIST_ACQUIRED')) return 'вишлист-айтем получен!';
     if (has('GUESTBOOK')) return 'оставил запись в гостевой';
     return 'взаимодействует с вами';
 }
@@ -33,15 +42,24 @@ function getIcon(types: Set<string>) {
     if (types.has('FOLLOW'))        return <MatrixIcon icon={UserPlus}      size={16} color="#4ade80" theme="dark" />;
     if (types.has('COMMENT'))       return <MatrixIcon icon={MessageSquare} size={16} color="#60a5fa" theme="dark" />;
     if (types.has('LIKE'))          return <MatrixIcon icon={Heart}         size={16} color="#f87171" theme="dark" />;
-    if (types.has('TRADE_OFFER') || types.has('TRADE_ACCEPTED'))
+    if (types.has('TRADE_OFFER') || types.has('TRADE_ACCEPTED') || types.has('TRADE_COMPLETED'))
                                     return <MatrixIcon icon={RefreshCw}     size={16} color="#fbbf24" theme="dark" />;
     if (types.has('GUESTBOOK'))     return <MatrixIcon icon={BookOpen}      size={16} color="#fbbf24" theme="dark" />;
     return <MatrixIcon icon={Bell} size={16} theme="dark" />;
 }
 
-const ToastContainer: React.FC = () => {
+function hasFlipType(types: Set<string>): boolean {
+    for (const t of types) {
+        if (FLIP_TYPES.has(t)) return true;
+    }
+    return false;
+}
+
+const ToastContainer: React.FC<ToastContainerProps> = ({ cardFlipEnabled = true }) => {
     // Актуальные сгруппированные тосты (Map для O(1) поиска по actor)
     const [toasts, setToasts] = useState<Map<string, GroupedToast>>(new Map());
+    // Множество акторов, чьи карточки сейчас анимируются
+    const [flipping, setFlipping] = useState<Set<string>>(new Set());
 
     // Таймеры удаления: actor → timeoutId
     const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -49,6 +67,12 @@ const ToastContainer: React.FC = () => {
     const removeToast = useCallback((actor: string) => {
         setToasts(prev => {
             const next = new Map(prev);
+            next.delete(actor);
+            return next;
+        });
+        setFlipping(prev => {
+            if (!prev.has(actor)) return prev;
+            const next = new Set(prev);
             next.delete(actor);
             return next;
         });
@@ -64,6 +88,19 @@ const ToastContainer: React.FC = () => {
         const id = setTimeout(() => removeToast(actor), TOAST_TTL);
         timers.current.set(actor, id);
     }, [removeToast]);
+
+    const handleToastClick = useCallback((toast: GroupedToast) => {
+        if (cardFlipEnabled && hasFlipType(toast.types)) {
+            // Запускаем анимацию, затем удаляем
+            setFlipping(prev => new Set(prev).add(toast.actor));
+            const old = timers.current.get(toast.actor);
+            if (old) clearTimeout(old);
+            const id = setTimeout(() => removeToast(toast.actor), FLIP_DURATION);
+            timers.current.set(toast.actor, id);
+        } else {
+            removeToast(toast.actor);
+        }
+    }, [cardFlipEnabled, removeToast]);
 
     useEffect(() => {
         const unsubscribe = subscribeToToasts((newToast: Notification) => {
@@ -120,7 +157,8 @@ const ToastContainer: React.FC = () => {
             {toastList.map(toast => (
                 <div
                     key={toast.key}
-                    className="pointer-events-auto bg-black/90 border border-green-500/50 text-white p-3 rounded-xl shadow-2xl flex items-start gap-3 animate-in slide-in-from-right fade-in duration-300"
+                    onClick={() => handleToastClick(toast)}
+                    className={`pointer-events-auto bg-black/90 border border-green-500/50 text-white p-3 rounded-xl shadow-2xl flex items-start gap-3 animate-in slide-in-from-right fade-in duration-300 cursor-pointer select-none${flipping.has(toast.key) ? ' animate-card-flip' : ''}`}
                 >
                     <div className="mt-1 flex-shrink-0">{getIcon(toast.types)}</div>
 
@@ -128,7 +166,7 @@ const ToastContainer: React.FC = () => {
                         <div className="text-xs font-bold font-pixel mb-1 flex justify-between items-center">
                             <span className="opacity-50 tracking-widest">УВЕДОМЛЕНИЕ</span>
                             <button
-                                onClick={() => removeToast(toast.actor)}
+                                onClick={e => { e.stopPropagation(); removeToast(toast.actor); }}
                                 className="opacity-40 hover:opacity-100 transition-opacity ml-2"
                             >
                                 <XI icon={X} size={12} />

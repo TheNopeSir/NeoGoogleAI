@@ -529,6 +529,20 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
 
                     <div className="pt-6 border-t border-white/10">
                         <h3 className="font-pixel text-[10px] uppercase tracking-[0.2em] mb-4 flex items-center gap-2 opacity-70"><XI icon={Bell} size={14}/> Уведомления</h3>
+
+                        <div className="flex items-center justify-between p-4 border rounded mb-3 border-white/10">
+                            <div>
+                                <div className="font-bold text-xs mb-1">Анимация карточки</div>
+                                <div className="text-[10px] opacity-60">Вращение в стиле Hearthstone при клике на уведомление</div>
+                            </div>
+                            <button
+                                onClick={() => updateSetting('cardFlipAnimation', !(localSettings.cardFlipAnimation ?? true))}
+                                className={`px-3 py-1 text-xs border rounded transition-colors font-pixel tracking-widest ${(localSettings.cardFlipAnimation ?? true) ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-white/20 opacity-40'}`}
+                            >
+                                {(localSettings.cardFlipAnimation ?? true) ? 'ВКЛ' : 'ВЫКЛ'}
+                            </button>
+                        </div>
+
                         <div className={`flex items-center justify-between p-4 border rounded transition-all ${pushEnabled ? 'border-green-500/50 bg-green-500/10' : 'border-white/10'}`}>
                             <div>
                                 <div className="font-bold text-xs mb-1">Push-уведомления</div>

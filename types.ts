@@ -151,6 +151,7 @@ export interface AppSettings {
     soundEnabled?: boolean;
     publicProfile?: boolean;
     showEmail?: boolean;
+    cardFlipAnimation?: boolean;
 }
 
 export interface UserProfile {
