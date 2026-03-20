@@ -1,6 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Capacitor } from '@capacitor/core';
 import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ArtifactBattle, DailyBracket } from '../types';
+import { calculateWishlistMatchScore, WISHLIST_MATCH_THRESHOLD } from '../constants';
 
 // ==========================================
 // 🚀 NEO_ARCHIVE HIGH-PERFORMANCE DB LAYER
@@ -553,9 +554,28 @@ export const requestEmailChange = async (username: string, newEmail: string): Pr
 export const getFullDatabase = () => ({ ...hotCache });
 
 export const saveExhibit = async (e: Exhibit) => {
+    const isNewPublish = !e.isDraft && !hotCache.exhibits.some(ex => ex.id === e.id);
     // Optimistic update
     hotCache.exhibits = mergeUnique([e], hotCache.exhibits);
     notifyListeners();
+
+    if (isNewPublish) {
+        (async () => {
+            const activeWishItems = hotCache.wishlist.filter(
+                w => w.owner !== e.owner && (!w.status || w.status === 'SEARCHING')
+            );
+            for (const w of activeWishItems) {
+                if (calculateWishlistMatchScore(e, w) >= WISHLIST_MATCH_THRESHOLD) {
+                    const alreadyNotified = hotCache.notifications.some(
+                        n => n.type === 'WISHLIST_MATCH' && n.targetId === e.id && n.contextId === w.id
+                    );
+                    if (!alreadyNotified) {
+                        await createNotification(w.owner, 'WISHLIST_MATCH', e.owner, e.id, e.title, w.id);
+                    }
+                }
+            }
+        })();
+    }
     
     const db = await getDB();
     await db.put('exhibits', e);
@@ -667,7 +687,7 @@ export const updateUserProfile = async (u: UserProfile) => {
     } catch(e) { console.error("Update profile sync error:", e); }
 };
 
-export const createNotification = async (r:string, t:NotificationType, a:string, id?:string, p?:string) => {
+export const createNotification = async (r:string, t:NotificationType, a:string, id?:string, p?:string, ctx?:string) => {
     const notif: Notification = {
         id: crypto.randomUUID(),
         type: t,
@@ -675,6 +695,7 @@ export const createNotification = async (r:string, t:NotificationType, a:string,
         actor: a,
         targetId: id,
         targetPreview: p,
+        contextId: ctx,
         timestamp: new Date().toISOString(),
         isRead: false
     };

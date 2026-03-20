@@ -5,7 +5,7 @@ import {
   ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare, Flame
 } from 'lucide-react';
 import { UserProfile, Exhibit, WishlistItem, Collection, WishlistPriority } from '../types';
-import { DefaultCategory, CATEGORY_SUBCATEGORIES } from '../constants';
+import { DefaultCategory, CATEGORY_SUBCATEGORIES, calculateWishlistMatchScore, WISHLIST_MATCH_THRESHOLD } from '../constants';
 import * as db from '../services/storageService';
 import { getUserAvatar } from '../services/storageService';
 import { ExhibitCard } from './ExhibitCard';
@@ -214,6 +214,11 @@ const FeedView: React.FC<FeedViewProps> = ({
       });
 
   }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode, priceFilterEnabled, priceMin, priceMax]);
+
+  // --- MY WISHLIST MATCH (for feed badge) ---
+  const mySearchingWishlist = useMemo(() =>
+      wishlist.filter(w => w.owner === user.username && (!w.status || w.status === 'SEARCHING')),
+  [wishlist, user.username]);
 
   // --- TRENDING BLOCK (top 3 from last 48h) ---
   const trendingExhibits = useMemo(() => {
@@ -497,6 +502,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                             userCollections={userCollections}
                                             onAddToCollection={onAddToCollection}
                                             onAddToWishlist={onAddToWishlist}
+                                            wishlistMatch={mySearchingWishlist.find(w => calculateWishlistMatchScore(item, w) >= WISHLIST_MATCH_THRESHOLD)}
                                         />
                                     ) : (
                                     <div key={item.id} onClick={(e) => handleListItemClick(e, item)} className={`flex gap-4 p-3 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border-white/10'}`}>

@@ -1,5 +1,5 @@
 
-import { Exhibit, TierType, TradeStatus, WishlistPriority, WishlistItemStatus, CollectionVisibility } from './types';
+import { Exhibit, TierType, TradeStatus, WishlistPriority, WishlistItemStatus, CollectionVisibility, WishlistItem } from './types';
 import { Zap, Flame, Award, User, Circle, Moon, MinusCircle, EyeOff, MessageCircle, Ghost, Terminal, Upload, Star, MessageSquare, Layers, Search, RefreshCw, DollarSign, Gift, Lock, Crown, Radar, Eye, Target, Trophy, CheckCircle, PauseCircle, Globe, UserCheck, TrendingUp, BookOpen, Feather } from 'lucide-react';
 
 export const DefaultCategory = {
@@ -300,4 +300,45 @@ export const getSimilarArtifacts = (current: Exhibit, all: Exhibit[], limit: num
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
         .map(x => x.item);
+};
+
+// --- WISHLIST MATCH SCORING ---
+export const WISHLIST_MATCH_THRESHOLD = 25;
+
+export const calculateWishlistMatchScore = (exhibit: Exhibit, wishItem: WishlistItem): number => {
+    if (exhibit.category !== wishItem.category) return 0;
+    let score = 10;
+
+    const stopWords = new Set(['и','в','на','с','для','из','что','как','это','the','and','for','with','edition','version','новый','продам','купил','б','у','бу']);
+    const tokenize = (text: string) =>
+        text.toLowerCase()
+            .replace(/[^\wа-яёa-z0-9\s]/gi, '')
+            .split(/\s+/)
+            .filter(t => t.length > 2 && !stopWords.has(t));
+
+    if (exhibit.subcategory && exhibit.subcategory === wishItem.category) score += 25;
+
+    const exhibitTokens = tokenize(exhibit.title + ' ' + (exhibit.description || ''));
+    const wishTokens = tokenize(wishItem.title + ' ' + (wishItem.notes || ''));
+
+    for (const wt of wishTokens) {
+        for (const et of exhibitTokens) {
+            if (et.includes(wt) || wt.includes(et)) {
+                score += 15;
+                break;
+            }
+        }
+    }
+
+    const brands = ['sony', 'nintendo', 'sega', 'apple', 'nokia', 'gameboy', 'atari', 'casio', 'panasonic'];
+    if (exhibit.specs) {
+        const specValues = Object.values(exhibit.specs).join(' ').toLowerCase();
+        for (const brand of brands) {
+            if (specValues.includes(brand) && wishTokens.some(t => t.includes(brand))) {
+                score += 20;
+            }
+        }
+    }
+
+    return score;
 };

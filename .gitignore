@@ -28,3 +28,10 @@ Thumbs.db
 
 # AI Studio History
 migrated_prompt_history/
+.claude/settings.local.json
+.idea/caches/deviceStreaming.xml
+.idea/markdown.xml
+.idea/modules.xml
+.idea/NeoGoogleAI.iml
+.idea/vcs.xml
+.claude/settings.local.json

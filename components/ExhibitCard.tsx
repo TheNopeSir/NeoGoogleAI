@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X } from 'lucide-react';
-import { Exhibit, WishlistPriority, Collection } from '../types';
+import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X, Radar } from 'lucide-react';
+import { Exhibit, WishlistPriority, Collection, WishlistItem } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
 import ProgressiveImage from './ProgressiveImage';
@@ -19,6 +19,7 @@ interface ExhibitCardProps {
   userCollections?: Collection[];
   onAddToCollection?: (exhibitId: string, collectionId: string) => void;
   onAddToWishlist?: (exhibit: Exhibit, priority: WishlistPriority) => void;
+  wishlistMatch?: WishlistItem;
 }
 
 const formatRelativeTime = (timestamp: string): string => {
@@ -41,7 +42,7 @@ const formatPrice = (price: number, currency?: string): string => {
 
 export const ExhibitCard: React.FC<ExhibitCardProps> = ({
   item, theme, onClick, currentUsername, onReact, onAuthorClick,
-  userCollections = [], onAddToCollection, onAddToWishlist
+  userCollections = [], onAddToCollection, onAddToWishlist, wishlistMatch
 }) => {
   const tier = getArtifactTier(item);
   const config = TIER_CONFIG[tier];
@@ -359,6 +360,12 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-green-500/90 text-black text-[7px] font-pixel font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-900 animate-pulse inline-block" />
                 NEW
+              </div>
+            )}
+            {wishlistMatch && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-600/90 text-white text-[7px] font-pixel font-bold backdrop-blur-md">
+                <XI icon={Radar} size={8} className="text-purple-200" />
+                ВИШЛИСТ
               </div>
             )}
           </div>
