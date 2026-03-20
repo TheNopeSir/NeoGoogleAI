@@ -57,12 +57,20 @@ export default {
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'scanline': 'scanline 15s linear infinite',
+        'card-flip': 'cardFlipHearth 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards',
       },
       keyframes: {
         scanline: {
-          '0%': { transform: 'translateY(-100%)' },
+          '0%':   { transform: 'translateY(-100%)' },
           '100%': { transform: 'translateY(100%)' },
-        }
+        },
+        cardFlipHearth: {
+          '0%':   { transform: 'perspective(600px) rotateY(0deg)   scale(1)',    filter: 'brightness(1)' },
+          '25%':  { transform: 'perspective(600px) rotateY(90deg)  scale(1.12)', filter: 'brightness(1.6)' },
+          '50%':  { transform: 'perspective(600px) rotateY(180deg) scale(1.18)', filter: 'brightness(2)' },
+          '75%':  { transform: 'perspective(600px) rotateY(270deg) scale(1.12)', filter: 'brightness(1.6)' },
+          '100%': { transform: 'perspective(600px) rotateY(360deg) scale(1)',    filter: 'brightness(1)' },
+        },
       }
     },
   },

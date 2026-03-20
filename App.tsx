@@ -535,6 +535,15 @@ export default function App() {
     if (!isLiked && item.owner !== user.username) {
         db.createNotification(item.owner, 'LIKE', user.username, item.id, item.title);
     }
+
+    // Tier upgrade notification
+    if (!isLiked) {
+        const oldTier = getArtifactTier(item);
+        const newTier = getArtifactTier(updatedItem);
+        if (newTier !== oldTier) {
+            db.createNotification(item.owner, 'GRADE_UP', item.owner, item.id, item.title, newTier);
+        }
+    }
     
     // We don't need to call refreshData() manually here because db.updateExhibit already calls notifyListeners
     // which triggers the subscription in useEffect -> refreshData.

@@ -103,7 +103,7 @@ export interface Collection {
   tags?: string[];
 }
 
-export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'GUESTBOOK' | 'LIKE_COMMENT' | 'MENTION' | 'TRADE_OFFER' | 'TRADE_ACCEPTED' | 'TRADE_DECLINED' | 'TRADE_COMPLETED' | 'TRADE_CANCELLED' | 'TRADE_COUNTER' | 'WISHLIST_MATCH' | 'WISHLIST_ACQUIRED';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'GUESTBOOK' | 'LIKE_COMMENT' | 'MENTION' | 'TRADE_OFFER' | 'TRADE_ACCEPTED' | 'TRADE_DECLINED' | 'TRADE_COMPLETED' | 'TRADE_CANCELLED' | 'TRADE_COUNTER' | 'WISHLIST_MATCH' | 'WISHLIST_ACQUIRED' | 'GRADE_UP';
 
 export interface Notification {
   id: string;

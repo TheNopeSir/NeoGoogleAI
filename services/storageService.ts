@@ -716,6 +716,17 @@ export const createNotification = async (r:string, t:NotificationType, a:string,
         timestamp: new Date().toISOString(),
         isRead: false
     };
+
+    // Если уведомление адресовано текущему пользователю — показываем тост немедленно,
+    // не дожидаясь следующего поллинга (особенно важно для GRADE_UP)
+    getActiveUsername().then(username => {
+        if (username && notif.recipient === username) {
+            emitNewToasts([notif]);
+            hotCache.notifications = [notif, ...hotCache.notifications];
+            notifyListeners();
+        }
+    });
+
     await apiCall('/notifications', 'POST', notif);
 };
 

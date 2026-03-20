@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy } from 'lucide-react';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy, TrendingUp } from 'lucide-react';
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
@@ -150,8 +150,9 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             case 'TRADE_OFFER':       return <MatrixIcon icon={RefreshCw} size={16} color="#fbbf24" theme={theme} />;
             case 'TRADE_ACCEPTED':    return <MatrixIcon icon={Check}     size={16} color="#4ade80" theme={theme} />;
             case 'WISHLIST_MATCH':    return <MatrixIcon icon={Radar}     size={16} color="#a78bfa" glow={2} theme={theme} />;
-            case 'WISHLIST_ACQUIRED': return <MatrixIcon icon={Trophy}    size={16} color="#fbbf24" glow={2} theme={theme} />;
-            default:                  return <MatrixIcon icon={Bell}      size={16} theme={theme} />;
+            case 'WISHLIST_ACQUIRED': return <MatrixIcon icon={Trophy}      size={16} color="#fbbf24" glow={2} theme={theme} />;
+            case 'GRADE_UP':          return <MatrixIcon icon={TrendingUp} size={16} color="#facc15" glow={2} theme={theme} />;
+            default:                  return <MatrixIcon icon={Bell}        size={16} theme={theme} />;
         }
     };
 
@@ -166,6 +167,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         else if (first.type === 'FOLLOW') actionText = 'подписался на вас';
         else if (first.type === 'WISHLIST_MATCH') actionText = 'добавил артефакт из вашего вишлиста';
         else if (first.type === 'WISHLIST_ACQUIRED') actionText = '— вишлист-айтем получен!';
+        else if (first.type === 'GRADE_UP') actionText = first.contextId ? `достиг ранга ${first.contextId}` : 'повысил ранг!';
         else if (first.type.includes('TRADE')) actionText = 'обновил статус сделки';
         else actionText = 'взаимодействует с вами';
 
