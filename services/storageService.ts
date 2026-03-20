@@ -173,6 +173,22 @@ const notifyListeners = () => {
     try { listeners.forEach(l => l()); } finally { _notifying = false; }
 };
 
+// IDs уведомлений, уже известных при загрузке — не показывать как тосты
+let _knownNotificationIds: Set<string> | null = null;
+const emitNewToasts = (notifs: Notification[]) => {
+    if (_knownNotificationIds === null) {
+        // Первая загрузка — просто запоминаем, тосты не показываем
+        _knownNotificationIds = new Set(notifs.map(n => n.id));
+        return;
+    }
+    for (const n of notifs) {
+        if (!_knownNotificationIds.has(n.id)) {
+            _knownNotificationIds.add(n.id);
+            toastListeners.forEach(l => l(n));
+        }
+    }
+};
+
 // --- API HELPER WITH TIMEOUT ---
 const pendingRequests = new Map<string, Promise<any>>();
 
@@ -478,6 +494,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             const tx = db.transaction(['notifications', 'messages'], 'readwrite');
             if (Array.isArray(notifs)) {
                 notifs.forEach(n => tx.objectStore('notifications').put(n));
+                emitNewToasts(notifs);
                 hotCache.notifications = notifs;
             }
             if (Array.isArray(msgs)) {
@@ -826,6 +843,17 @@ export const startLiveUpdates = () => {
             const tx = db.transaction('users', 'readwrite');
             data.forEach((u: UserProfile) => tx.store.put(u));
             await tx.done;
+        } catch (e) {}
+
+        // Поллинг уведомлений для текущего пользователя
+        try {
+            const username = await getActiveUsername();
+            if (!username) return;
+            const notifs = await apiCall(`/notifications?username=${username}`);
+            if (!Array.isArray(notifs)) return;
+            emitNewToasts(notifs);
+            hotCache.notifications = notifs;
+            notifyListeners();
         } catch (e) {}
     }, 30000);
 };
