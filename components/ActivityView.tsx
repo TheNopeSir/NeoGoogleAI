@@ -15,17 +15,19 @@ interface ActivityViewProps {
     onAuthorClick: (username: string) => void;
     onExhibitClick: (id: string, commentId?: string) => void;
     onChatClick: (username: string) => void;
-    exhibits?: Exhibit[]; // Needed for trade cards
+    exhibits?: Exhibit[];
+    cardFlipEnabled?: boolean;
 }
 
-const ActivityView: React.FC<ActivityViewProps> = ({ 
-    notifications, messages, currentUser, theme, 
-    onAuthorClick, onExhibitClick, onChatClick, exhibits = []
+const ActivityView: React.FC<ActivityViewProps> = ({
+    notifications, messages, currentUser, theme,
+    onAuthorClick, onExhibitClick, onChatClick, exhibits = [], cardFlipEnabled = true
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'MESSAGES' | 'TRADES'>('NOTIFICATIONS');
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [flippingGroupId, setFlippingGroupId] = useState<string | null>(null);
 
     const isLight = theme === 'light';
     const isWinamp = theme === 'winamp';
@@ -58,7 +60,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
     const handleNotificationClick = (group: any) => {
         markGroupRead(group);
-        onAuthorClick(group.actor);
+        if (group.type === 'GRADE_UP' && cardFlipEnabled) {
+            setFlippingGroupId(group.id);
+            setTimeout(() => {
+                setFlippingGroupId(null);
+                const targetId = group.items[0]?.targetId;
+                if (targetId) onExhibitClick(targetId);
+            }, 800);
+        } else {
+            onAuthorClick(group.actor);
+        }
     };
 
     const handleTargetClick = (e: React.MouseEvent, group: any, targetId: string) => {
@@ -188,7 +199,9 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             <div
                 key={group.id}
                 onClick={() => handleNotificationClick(group)}
+                style={{ transformStyle: 'preserve-3d' }}
                 className={`p-4 border-b transition-all flex gap-4 cursor-pointer
+                    ${flippingGroupId === group.id ? 'animate-card-flip' : ''}
                     ${isUnread
                         ? (isLight ? 'bg-green-50 border-green-200' : 'bg-green-900/10 border-green-500/30')
                         : (isWinamp ? 'border-[#505050] bg-[#191919] hover:bg-[#252525]' : isLight ? 'bg-white border-gray-100 hover:bg-gray-50' : 'border-white/5 bg-transparent hover:bg-white/5')}`}
