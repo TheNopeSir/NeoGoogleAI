@@ -75,7 +75,15 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const handleTargetClick = (e: React.MouseEvent, group: any, targetId: string) => {
         e.stopPropagation();
         markGroupRead(group);
-        onExhibitClick(targetId);
+        if (group.type === 'GRADE_UP' && cardFlipEnabled) {
+            setFlippingGroupId(group.id);
+            setTimeout(() => {
+                setFlippingGroupId(null);
+                onExhibitClick(targetId);
+            }, 800);
+        } else {
+            onExhibitClick(targetId);
+        }
     };
 
     const toggleGroupExpand = (e: React.MouseEvent, groupId: string) => {
