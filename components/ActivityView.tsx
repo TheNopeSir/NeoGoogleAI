@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy, TrendingUp } from 'lucide-react';
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
@@ -27,7 +28,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-    const [flippingGroupId, setFlippingGroupId] = useState<string | null>(null);
+    const [flippingExhibit, setFlippingExhibit] = useState<Exhibit | null>(null);
 
     const isLight = theme === 'light';
     const isWinamp = theme === 'winamp';
@@ -58,15 +59,24 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         });
     };
 
+    const triggerGradeUpFlip = (targetId: string) => {
+        const exhibit = exhibits.find(e => e.id === targetId);
+        if (exhibit && cardFlipEnabled) {
+            setFlippingExhibit(exhibit);
+            setTimeout(() => {
+                setFlippingExhibit(null);
+                onExhibitClick(targetId);
+            }, 850);
+        } else {
+            onExhibitClick(targetId);
+        }
+    };
+
     const handleNotificationClick = (group: any) => {
         markGroupRead(group);
-        if (group.type === 'GRADE_UP' && cardFlipEnabled) {
-            setFlippingGroupId(group.id);
-            setTimeout(() => {
-                setFlippingGroupId(null);
-                const targetId = group.items[0]?.targetId;
-                if (targetId) onExhibitClick(targetId);
-            }, 800);
+        if (group.type === 'GRADE_UP') {
+            const targetId = group.items[0]?.targetId;
+            if (targetId) triggerGradeUpFlip(targetId);
         } else {
             onAuthorClick(group.actor);
         }
@@ -75,12 +85,8 @@ const ActivityView: React.FC<ActivityViewProps> = ({
     const handleTargetClick = (e: React.MouseEvent, group: any, targetId: string) => {
         e.stopPropagation();
         markGroupRead(group);
-        if (group.type === 'GRADE_UP' && cardFlipEnabled) {
-            setFlippingGroupId(group.id);
-            setTimeout(() => {
-                setFlippingGroupId(null);
-                onExhibitClick(targetId);
-            }, 800);
+        if (group.type === 'GRADE_UP') {
+            triggerGradeUpFlip(targetId);
         } else {
             onExhibitClick(targetId);
         }
@@ -207,9 +213,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             <div
                 key={group.id}
                 onClick={() => handleNotificationClick(group)}
-                style={{ transformStyle: 'preserve-3d' }}
                 className={`p-4 border-b transition-all flex gap-4 cursor-pointer
-                    ${flippingGroupId === group.id ? 'animate-card-flip' : ''}
                     ${isUnread
                         ? (isLight ? 'bg-green-50 border-green-200' : 'bg-green-900/10 border-green-500/30')
                         : (isWinamp ? 'border-[#505050] bg-[#191919] hover:bg-[#252525]' : isLight ? 'bg-white border-gray-100 hover:bg-gray-50' : 'border-white/5 bg-transparent hover:bg-white/5')}`}
@@ -447,6 +451,25 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                         })()
                     )}
                 </div>
+            )}
+
+            {flippingExhibit && ReactDOM.createPortal(
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
+                    onClick={() => {}}
+                >
+                    <div
+                        className="animate-card-flip"
+                        style={{ transformStyle: 'preserve-3d', width: 220, height: 280 }}
+                    >
+                        <img
+                            src={getImageUrl(flippingExhibit.imageUrls?.[0], 'medium')}
+                            alt={flippingExhibit.title}
+                            className="w-full h-full object-cover rounded-2xl shadow-2xl border-2 border-yellow-400/60"
+                        />
+                    </div>
+                </div>,
+                document.body
             )}
 
             {activeTab === 'TRADES' && (
