@@ -5,6 +5,7 @@ import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, User
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
+import { getArtifactTier, TIER_CONFIG } from '../constants';
 import MatrixIcon from './MatrixIcon';
 import XI from './XI';
 
@@ -63,13 +64,16 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         const exhibit = exhibits.find(e => e.id === targetId);
         if (exhibit && cardFlipEnabled) {
             setFlippingExhibit(exhibit);
-            setTimeout(() => {
-                setFlippingExhibit(null);
-                onExhibitClick(targetId);
-            }, 850);
         } else {
             onExhibitClick(targetId);
         }
+    };
+
+    const handleFlipOverlayClick = () => {
+        if (!flippingExhibit) return;
+        const id = flippingExhibit.id;
+        setFlippingExhibit(null);
+        onExhibitClick(id);
     };
 
     const handleNotificationClick = (group: any) => {
@@ -455,12 +459,12 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {flippingExhibit && ReactDOM.createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
-                    onClick={() => {}}
+                    className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 cursor-pointer"
+                    onClick={handleFlipOverlayClick}
                 >
                     <div
                         className="animate-card-flip"
-                        style={{ transformStyle: 'preserve-3d', width: 220, height: 280 }}
+                        style={{ transformStyle: 'preserve-3d', width: 260, height: 340 }}
                     >
                         <img
                             src={getImageUrl(flippingExhibit.imageUrls?.[0], 'medium')}
@@ -468,6 +472,13 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                             className="w-full h-full object-cover rounded-2xl shadow-2xl border-2 border-yellow-400/60"
                         />
                     </div>
+                    <div className="mt-6 flex flex-col items-center gap-2 select-none">
+                        <span className="text-white/60 font-mono text-xs tracking-widest uppercase">Получен новый статус</span>
+                        <span className={`font-pixel text-2xl font-bold tracking-wider ${TIER_CONFIG[getArtifactTier(flippingExhibit)].color}`}>
+                            {getArtifactTier(flippingExhibit)}
+                        </span>
+                    </div>
+                    <span className="mt-8 text-white/20 text-[10px] font-mono">нажмите, чтобы перейти</span>
                 </div>,
                 document.body
             )}
