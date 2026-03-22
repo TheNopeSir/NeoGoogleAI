@@ -207,7 +207,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
         // Deduplicate targets by id using Map
         const allValidTargets: { id: string; title: string }[] = Array.from(
-            new Map(
+            new Map<string, { id: string; title: string }>(
                 group.items
                     .filter((n: any) => n.targetId && n.targetPreview)
                     .map((n: any) => [n.targetId, { id: n.targetId, title: n.targetPreview }])
