@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
+
+const APP_ORIGIN = Capacitor.isNativePlatform() ? 'https://neoarchive.ru' : window.location.origin;
 import { 
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
@@ -571,7 +573,7 @@ export default function App() {
   };
 
   const handleShareCollection = (col: Collection) => {
-    const url = `${window.location.origin}/collection/${col.id}`;
+    const url = `${APP_ORIGIN}/collection/${col.id}`;
     if (navigator.share) {
       navigator.share({ title: col.title, text: col.description, url });
     } else {

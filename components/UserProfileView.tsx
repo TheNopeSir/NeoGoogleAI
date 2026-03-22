@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
+
+const APP_ORIGIN = Capacitor.isNativePlatform() ? 'https://neoarchive.ru' : window.location.origin;
 import {
     ArrowLeft, Edit2, LogOut, MessageSquare, Send, Trophy,
     Trash2, Wand2, Eye, EyeOff, Camera, Palette, Settings,
@@ -193,7 +196,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     };
 
     const handleShareWishlist = () => {
-        const url = `${window.location.origin}/u/${viewedProfileUsername}/wishlist`;
+        const url = `${APP_ORIGIN}/u/${viewedProfileUsername}/wishlist`;
         navigator.clipboard.writeText(url);
         alert('Ссылка скопирована!');
     };
