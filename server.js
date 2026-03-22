@@ -103,7 +103,6 @@ app.use(compression());
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://neoarchive.ru').split(',').map(o => o.trim());
 app.use(cors({
     origin: (origin, callback) => {
-        console.log('[CORS] origin:', origin);
         // Allow requests with no origin (mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
         // Allow Capacitor native app origins

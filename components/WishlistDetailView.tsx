@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Trash2, Search, Target, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, Search, Target, Sparkles, Share2 } from 'lucide-react';
 import { WishlistItem, UserProfile, Exhibit, WishlistItemStatus } from '../types';
 import { WISHLIST_PRIORITY_CONFIG, WISHLIST_STATUS_CONFIG } from '../constants';
 import { getUserAvatar, getFullDatabase } from '../services/storageService';
@@ -14,12 +14,13 @@ interface WishlistDetailViewProps {
     onDelete?: (id: string) => void;
     onStatusChange?: (id: string, status: WishlistItemStatus) => void;
     onAuthorClick: (username: string) => void;
+    onShare?: () => void;
     currentUser: string;
     userInventory?: Exhibit[]; // Needed for trade
 }
 
 const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
-    item, theme, onBack, onDelete, onStatusChange, onAuthorClick, currentUser, userInventory = []
+    item, theme, onBack, onDelete, onStatusChange, onAuthorClick, onShare, currentUser, userInventory = []
 }) => {
     const priorityConfig = WISHLIST_PRIORITY_CONFIG[item.priority];
     const isOwner = currentUser === item.owner;
@@ -50,14 +51,21 @@ const WishlistDetailView: React.FC<WishlistDetailViewProps> = ({
                 <button onClick={onBack} className={`flex items-center gap-2 font-pixel text-[10px] opacity-70 hover:opacity-100 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : ''}`}>
                     <XI icon={ArrowLeft} size={14} /> НАЗАД
                 </button>
-                {isOwner && onDelete && (
-                    <button 
-                        onClick={() => onDelete(item.id)} 
-                        className="text-red-500 hover:text-red-400 transition-all flex items-center gap-2 font-pixel text-[10px] uppercase"
-                    >
-                        <XI icon={Trash2} size={14} /> УДАЛИТЬ ЗАПРОС
-                    </button>
-                )}
+                <div className="flex items-center gap-4">
+                    {onShare && (
+                        <button onClick={onShare} className="opacity-70 hover:opacity-100 transition-all">
+                            <XI icon={Share2} size={18} />
+                        </button>
+                    )}
+                    {isOwner && onDelete && (
+                        <button
+                            onClick={() => onDelete(item.id)}
+                            className="text-red-500 hover:text-red-400 transition-all flex items-center gap-2 font-pixel text-[10px] uppercase"
+                        >
+                            <XI icon={Trash2} size={14} /> УДАЛИТЬ ЗАПРОС
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className={`p-1 rounded-3xl border-2 border-dashed ${isXP ? 'border-[#0058EE] bg-white' : isWinamp ? 'border-[#505050] bg-[#191919]' : `border-purple-500/30 ${theme === 'dark' ? 'bg-dark-surface' : 'bg-white'}`}`}>

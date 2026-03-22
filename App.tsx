@@ -399,6 +399,20 @@ export default function App() {
     return () => { unsubscribe(); db.stopLiveUpdates(); };
   }, [refreshData]);
 
+  // Sync selectedExhibit with live exhibits state (so likes/comments from other users appear in real time)
+  useEffect(() => {
+    if (!selectedExhibit) return;
+    const updated = exhibits.find(e => e.id === selectedExhibit.id);
+    if (updated && updated !== selectedExhibit) setSelectedExhibit(updated);
+  }, [exhibits]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync selectedCollection with live collections state
+  useEffect(() => {
+    if (!selectedCollection) return;
+    const updated = collections.find(c => c.id === selectedCollection.id);
+    if (updated && updated !== selectedCollection) setSelectedCollection(updated);
+  }, [collections]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -900,6 +914,14 @@ export default function App() {
                     currentUser={user.username}
                     onAuthorClick={(u) => navigateTo('USER_PROFILE', { username: u })}
                     onDelete={async (id) => { await db.deleteWishlistItem(id); handleBack(); }}
+                    onShare={() => {
+                        const url = `${APP_ORIGIN}/wishlist/${selectedWishlistItem.id}`;
+                        if (navigator.share) {
+                            navigator.share({ title: selectedWishlistItem.title, url });
+                        } else {
+                            navigator.clipboard.writeText(url);
+                        }
+                    }}
                     onStatusChange={async (id, status) => {
                         const item = wishlist.find(w => w.id === id);
                         if (!item) return;
