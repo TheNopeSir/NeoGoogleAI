@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NeoArchive</string>
+    <string name="title_activity_main">NeoArchive</string>
+    <string name="package_name">ru.neoarchive.app</string>
+    <string name="custom_url_scheme">ru.neoarchive.app</string>
+</resources>
