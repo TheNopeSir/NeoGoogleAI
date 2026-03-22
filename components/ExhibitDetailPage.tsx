@@ -1,4 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
+
+const getPublicUrl = () =>
+  Capacitor.isNativePlatform()
+    ? window.location.href.replace('https://localhost', 'https://neoarchive.ru')
+    : window.location.href;
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MessageSquare, Trash2,
   ArrowLeft, Eye, BookmarkPlus, Send, MessageCircle, CornerDownRight, Edit2, Link2, Sparkles, Video, Pin, RefreshCw,
@@ -244,15 +250,16 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   }, [mentionQuery, users]);
 
   const handleShare = (platform: string) => {
-    const url = encodeURIComponent(window.location.href);
+    const publicUrl = getPublicUrl();
+    const url = encodeURIComponent(publicUrl);
     const text = encodeURIComponent(`NeoArchive Artifact: ${exhibit.title}`);
     const media = encodeURIComponent(slides[currentSlideIndex].url);
-    
+
     switch(platform) {
         case 'tg': window.open(`https://t.me/share/url?url=${url}&text=${text}`); break;
         case 'wa': window.open(`https://api.whatsapp.com/send?text=${text}%20${url}`); break;
         case 'pin': window.open(`https://pinterest.com/pin/create/button/?url=${url}&media=${media}&description=${text}`); break;
-        case 'copy': navigator.clipboard.writeText(window.location.href); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); break;
+        case 'copy': navigator.clipboard.writeText(publicUrl); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); break;
     }
     setShowShareMenu(false);
   };

@@ -1,4 +1,4 @@
-
+import { Capacitor } from '@capacitor/core';
 import React, { useState } from 'react';
 import { ArrowLeft, Search, Share2, Radar } from 'lucide-react';
 import { WishlistItem, UserProfile, WishlistItemStatus } from '../types';
@@ -30,7 +30,9 @@ const UserWishlistView: React.FC<UserWishlistViewProps> = ({
         : wishlistItems.filter(w => (w.status ?? 'SEARCHING') === statusFilter);
 
     const handleShare = () => {
-        const url = window.location.href;
+        const url = Capacitor.isNativePlatform()
+            ? window.location.href.replace('https://localhost', 'https://neoarchive.ru')
+            : window.location.href;
         navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
