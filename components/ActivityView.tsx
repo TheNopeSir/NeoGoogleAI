@@ -76,6 +76,11 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         onExhibitClick(id);
     };
 
+    const handleFlipOverlayClose = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setFlippingExhibit(null);
+    };
+
     const handleNotificationClick = (group: any) => {
         markGroupRead(group);
         if (group.type === 'GRADE_UP') {
@@ -459,13 +464,21 @@ const ActivityView: React.FC<ActivityViewProps> = ({
 
             {flippingExhibit && ReactDOM.createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/88 cursor-pointer"
-                    onClick={handleFlipOverlayClick}
+                    className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                 >
+                    {/* Back button */}
+                    <button
+                        onClick={handleFlipOverlayClose}
+                        className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all font-mono text-xs"
+                    >
+                        ← Назад
+                    </button>
+
                     {/* Card flip container */}
                     <div
-                        className="animate-card-flip relative"
-                        style={{ transformStyle: 'preserve-3d', width: 300, height: 400 }}
+                        className="animate-card-flip relative flex-shrink-0"
+                        style={{ transformStyle: 'preserve-3d', width: 260, height: 346 }}
                     >
                         {/* FRONT FACE — artifact photo */}
                         <div
@@ -488,20 +501,15 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                 background: 'linear-gradient(145deg, #0c1022 0%, #1b0e35 45%, #0c1022 100%)',
                             }}
                         >
-                            {/* outer ring */}
                             <div className="absolute inset-[8px] rounded-xl border border-yellow-500/30" />
-                            {/* inner ring */}
                             <div className="absolute inset-[16px] rounded-lg border border-yellow-400/20" />
-                            {/* diagonal lines pattern */}
                             <div className="absolute inset-0 opacity-10" style={{
                                 backgroundImage: 'repeating-linear-gradient(45deg, #facc15 0px, #facc15 1px, transparent 1px, transparent 12px)',
                             }} />
-                            {/* center emblem */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                                 <div className="text-yellow-400/80 text-5xl select-none" style={{ textShadow: '0 0 20px rgba(234,179,8,0.6)' }}>✦</div>
                                 <div className="text-yellow-400/40 font-pixel text-[9px] tracking-[0.3em] uppercase select-none">NeoArchive</div>
                             </div>
-                            {/* corner diamonds */}
                             {['top-3 left-3','top-3 right-3','bottom-3 left-3','bottom-3 right-3'].map(pos => (
                                 <div key={pos} className={`absolute ${pos} text-yellow-500/40 text-xs select-none`}>◆</div>
                             ))}
@@ -509,16 +517,23 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                     </div>
 
                     {/* Info below card */}
-                    <div className="mt-6 flex flex-col items-center gap-1 select-none">
+                    <div className="mt-6 flex flex-col items-center gap-2 select-none px-6 text-center">
                         <span className="text-white/50 font-mono text-[11px] tracking-widest uppercase">Получен новый статус</span>
-                        <span className={`font-pixel text-2xl font-bold tracking-wider ${TIER_CONFIG[getArtifactTier(flippingExhibit)].color}`}>
+                        <span className={`font-pixel text-3xl font-bold tracking-wider ${TIER_CONFIG[getArtifactTier(flippingExhibit)].color}`}>
                             {getArtifactTier(flippingExhibit)}
                         </span>
-                        <span className="text-white/70 font-mono text-sm mt-1 text-center px-6 max-w-xs truncate">
+                        <span className="text-white/70 font-mono text-sm mt-1 max-w-xs break-words">
                             {flippingExhibit.title}
                         </span>
                     </div>
-                    <span className="mt-6 text-white/20 text-[10px] font-mono">нажмите, чтобы перейти</span>
+
+                    {/* Navigate CTA */}
+                    <button
+                        onClick={handleFlipOverlayClick}
+                        className="mt-6 px-6 py-2 rounded-full border border-white/20 bg-white/10 text-white/50 hover:bg-white/20 hover:text-white transition-all font-mono text-[10px] tracking-widest"
+                    >
+                        нажмите, чтобы перейти →
+                    </button>
                 </div>,
                 document.body
             )}
