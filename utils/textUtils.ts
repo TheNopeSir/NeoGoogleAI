@@ -9,7 +9,7 @@ export const renderTextWithMentions = (
     if (!text) return '';
     const parts = text.split(/(@\w+)/g);
     return parts.map((part, i) => {
-        if (part.startsWith('@')) {
+        if (/^@\w+$/.test(part)) {
             const username = part.slice(1);
             const userObj = users?.find(u => u.username.toLowerCase() === username.toLowerCase());
             return React.createElement(
