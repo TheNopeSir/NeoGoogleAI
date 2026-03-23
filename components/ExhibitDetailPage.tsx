@@ -90,6 +90,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const initialPinchDistanceRef = React.useRef<number | null>(null);
+  const initialPinchZoomRef = React.useRef<number>(1);
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
@@ -168,6 +170,12 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       onSwipeLeft: () => setCurrentSlideIndex(prev => (prev + 1) % slides.length),
       onSwipeRight: () => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length),
   });
+  // Stop propagation so gallery swipes don't bubble up to the page-level back-swipe handler
+  const gallerySwipeStop = {
+      onTouchStart: (e: React.TouchEvent) => { gallerySwipeHandlers.onTouchStart(e); e.stopPropagation(); },
+      onTouchMove: (e: React.TouchEvent) => { gallerySwipeHandlers.onTouchMove(e); e.stopPropagation(); },
+      onTouchEnd: (e: React.TouchEvent) => { gallerySwipeHandlers.onTouchEnd(); e.stopPropagation(); },
+  };
 
   useEffect(() => {
       setCurrentSlideIndex(0);
@@ -303,8 +311,19 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       setIsDragging(false);
   };
 
+  const getPinchDistance = (touches: React.TouchList) =>
+      Math.hypot(
+          touches[0].clientX - touches[1].clientX,
+          touches[0].clientY - touches[1].clientY
+      );
+
   const handleTouchStart = (e: React.TouchEvent) => {
-      if (zoomLevel > 1 && e.touches.length === 1) {
+      if (e.touches.length === 2) {
+          // Start pinch-to-zoom
+          initialPinchDistanceRef.current = getPinchDistance(e.touches);
+          initialPinchZoomRef.current = zoomLevel;
+          setIsDragging(false);
+      } else if (zoomLevel > 1 && e.touches.length === 1) {
           setIsDragging(true);
           setDragStart({
               x: e.touches[0].clientX - panPosition.x,
@@ -314,7 +333,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-      if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
+      if (e.touches.length === 2 && initialPinchDistanceRef.current !== null) {
+          // Pinch zoom
+          const currentDist = getPinchDistance(e.touches);
+          const ratio = currentDist / initialPinchDistanceRef.current;
+          const newZoom = Math.max(1, Math.min(4, initialPinchZoomRef.current * ratio));
+          setZoomLevel(newZoom);
+          if (newZoom === 1) setPanPosition({ x: 0, y: 0 });
+      } else if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
           setPanPosition({
               x: e.touches[0].clientX - dragStart.x,
               y: e.touches[0].clientY - dragStart.y
@@ -323,6 +349,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   };
 
   const handleTouchEnd = () => {
+      initialPinchDistanceRef.current = null;
       setIsDragging(false);
   };
 
@@ -458,7 +485,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                   )}
                   {/* Reaction bar */}
                   {c.reactions && c.reactions.length > 0 && (
-                      <div className="pl-7 mt-2">
+                      <div
+                          className="pl-7 mt-2"
+                          onTouchStart={e => e.stopPropagation()}
+                          onTouchEnd={e => e.stopPropagation()}
+                      >
                           <ReactionBar
                               reactions={c.reactions}
                               currentUsername={currentUser}
@@ -555,7 +586,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                   </div>
               )}
 
-              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeHandlers : {})}>
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeStop : {})}>
                   {zoomLevel === 1 && (
                       <>
                           <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><XI icon={ChevronLeft} size={48}/></button>
@@ -703,7 +734,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 ) : (
                 <div
                     className={`relative aspect-square w-full overflow-hidden border transition-all duration-500 group ${isWinamp ? 'bg-black border-[#505050]' : (theme === 'dark' ? 'rounded-2xl border-white/10 bg-black' : 'rounded-2xl border-black/10 bg-white')} ${isCursed ? 'shadow-[0_0_30px_red]' : ''}`}
-                    {...gallerySwipeHandlers}
+                    {...gallerySwipeStop}
                 >
                     {/* Slide counter */}
                     {slides.length > 1 && (
@@ -714,13 +745,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
                     {/* Blurred Background Layer */}
                     <img
+                        key={`bg-${exhibit.id}-${currentSlideIndex}`}
                         src={slides[currentSlideIndex].type === 'image' ? slides[currentSlideIndex].url : ''}
                         className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                     />
 
                     {slides[currentSlideIndex].type === 'image' ? (
                         <div className="w-full h-full relative cursor-zoom-in z-10" onClick={() => setIsFullscreen(true)}>
-                            <img src={slides[currentSlideIndex].url} alt={exhibit.title} className="w-full h-full object-contain" />
+                            <img key={`main-${exhibit.id}-${currentSlideIndex}`} src={slides[currentSlideIndex].url} alt={exhibit.title} className="w-full h-full object-contain" />
                         </div>
                     ) : (
                         <div className="w-full h-full relative z-10">

@@ -36,8 +36,8 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position,
     const handleBackdropClose = () => {
         // On mobile, a long-press fires touchend which generates a synthetic click
         // ~300ms later. That click lands on the freshly-rendered backdrop and
-        // instantly closes the picker. Ignore any close request within 500ms of mount.
-        if (Date.now() - mountedAtRef.current < 500) return;
+        // instantly closes the picker. Ignore any close request within 650ms of mount.
+        if (Date.now() - mountedAtRef.current < 650) return;
         onClose();
     };
 

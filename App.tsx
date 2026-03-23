@@ -678,6 +678,7 @@ export default function App() {
           if (idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
       },
   });
+  const backSwipeHandlers = useSwipe({ onSwipeRight: handleBack });
 
   if (isInitializing || showSplash) {
     return (
@@ -853,7 +854,7 @@ export default function App() {
             </>
         )}
 
-        <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : {})}>
+        <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : backSwipeHandlers)}>
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
                     if (c.owner === user.username) return true;
@@ -897,11 +898,6 @@ export default function App() {
                         onLikeCollection={() => handleLikeCollection(selectedCollection.id)}
                         isCollectionLiked={selectedCollection.likedBy?.includes(user?.username || '') ?? false}
                         onShareCollection={() => handleShareCollection(selectedCollection)}
-                        wishlistMatches={(() => {
-                            const cats = new Set(selectedCollection.exhibitIds.map(id => exhibits.find(e => e.id === id)?.category).filter(Boolean));
-                            return wishlist.filter(w => w.owner !== user?.username && cats.has(w.category) && (!w.status || w.status === 'SEARCHING'));
-                        })()}
-                        onOfferTrade={(ownerUsername) => navigateTo('DIRECT_CHAT', { username: ownerUsername })}
                     />
                 </div>
             )}

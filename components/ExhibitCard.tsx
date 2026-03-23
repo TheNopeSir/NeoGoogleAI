@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X, Radar } from 'lucide-react';
+import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X, Radar, MoreHorizontal, ExternalLink } from 'lucide-react';
 import { Exhibit, WishlistPriority, Collection, WishlistItem } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
 import { getUserAvatar } from '../services/storageService';
@@ -74,6 +74,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
   // --- Quick action overlay state ---
   const [showActionOverlay, setShowActionOverlay] = useState(false);
   const [actionMode, setActionMode] = useState<'NONE' | 'COLLECTION_PICKER' | 'WISHLIST_PICKER'>('NONE');
+  const [showDotMenu, setShowDotMenu] = useState(false);
 
   // --- Hover preview portal state ---
   const cardRef = useRef<HTMLDivElement>(null);
@@ -110,6 +111,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
     }
     setPreviewVisible(false);
     if (actionMode === 'NONE') setShowActionOverlay(false);
+    setShowDotMenu(false);
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -549,6 +551,48 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
                 <MatrixIcon icon={Heart} size={11} color="#f87171" theme={theme} glow={isLiked ? 1 : 0} />
                 <span>{likeCount}</span>
               </button>
+              {/* Three-dot menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setShowDotMenu(v => !v); }}
+                  className={`flex items-center p-2 -m-2 cursor-pointer interactive min-h-[44px] min-w-[44px] justify-center transition-colors ${isXP || isLight ? 'text-gray-400 hover:text-gray-700' : 'text-white/30 hover:text-white/70'}`}
+                >
+                  <XI icon={MoreHorizontal} size={14} />
+                </button>
+                {showDotMenu && (
+                  <div
+                    className={`absolute right-0 bottom-8 w-36 border rounded-xl shadow-2xl py-1 z-50 ${isXP || isLight ? 'bg-white border-gray-200' : 'bg-[#111]/95 backdrop-blur-md border-white/10'}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setShowDotMenu(false); onClick(item); }}
+                      className={`w-full text-left px-3 py-1.5 text-[10px] font-pixel flex items-center gap-2 interactive ${isXP || isLight ? 'hover:bg-gray-100 text-gray-700' : 'hover:bg-white/10 text-white/80'}`}
+                    >
+                      <XI icon={ExternalLink} size={11} /> Открыть
+                    </button>
+                    {onAddToCollection && item.owner === currentUsername && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowDotMenu(false); setShowActionOverlay(true); setActionMode('COLLECTION_PICKER'); }}
+                        className={`w-full text-left px-3 py-1.5 text-[10px] font-pixel flex items-center gap-2 interactive ${isXP || isLight ? 'hover:bg-gray-100 text-gray-700' : 'hover:bg-white/10 text-white/80'}`}
+                      >
+                        <XI icon={FolderPlus} size={11} /> Коллекция
+                      </button>
+                    )}
+                    {onAddToWishlist && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowDotMenu(false); setShowActionOverlay(true); setActionMode('WISHLIST_PICKER'); }}
+                        className={`w-full text-left px-3 py-1.5 text-[10px] font-pixel flex items-center gap-2 interactive ${isXP || isLight ? 'hover:bg-gray-100 text-gray-700' : 'hover:bg-white/10 text-white/80'}`}
+                      >
+                        <XI icon={BookmarkPlus} size={11} /> Вишлист
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

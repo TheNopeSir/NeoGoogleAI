@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Share2, FolderOpen, Grid, Edit3, Trash2, Heart, Tag, Lock, Radar, ChevronDown, ChevronUp } from 'lucide-react';
-import { Collection, Exhibit, WishlistItem } from '../types';
-import { WISHLIST_PRIORITY_CONFIG } from '../constants';
+import React from 'react';
+import { ArrowLeft, Share2, FolderOpen, Grid, Edit3, Trash2, Heart, Tag, Lock } from 'lucide-react';
+import { Collection, Exhibit } from '../types';
 import { ExhibitCard } from './ExhibitCard';
-import { getUserAvatar } from '../services/storageService';
 import XI from './XI';
 
 interface CollectionDetailPageProps {
@@ -20,18 +18,15 @@ interface CollectionDetailPageProps {
     onLikeCollection?: () => void;
     isCollectionLiked?: boolean;
     onShareCollection?: () => void;
-    wishlistMatches?: WishlistItem[];
-    onOfferTrade?: (ownerUsername: string) => void;
 }
 
 const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
-    collection, artifacts, theme, onBack, onExhibitClick, onAuthorClick, currentUser, onEdit, onDelete, onLike, wishlistMatches = [], onOfferTrade,
+    collection, artifacts, theme, onBack, onExhibitClick, onAuthorClick, currentUser, onEdit, onDelete, onLike,
     onLikeCollection, isCollectionLiked, onShareCollection
 }) => {
     const isOwner = currentUser === collection.owner;
     const isWinamp = theme === 'winamp';
     const isPrivateBlocked = collection.visibility === 'PRIVATE' && !isOwner;
-    const [agentsExpanded, setAgentsExpanded] = useState(true);
 
     if (isPrivateBlocked) {
         return (
@@ -142,53 +137,6 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
                 </div>
             </div>
 
-            {/* АГЕНТЫ ИЩУТ panel */}
-            <div className={`mt-10 rounded-2xl border ${isWinamp ? 'border-[#505050]' : 'border-purple-500/20 bg-purple-500/5'}`}>
-                <button
-                    onClick={() => setAgentsExpanded(v => !v)}
-                    className="w-full flex items-center justify-between p-4 font-pixel text-xs uppercase tracking-widest text-purple-400"
-                >
-                    <div className="flex items-center gap-2">
-                        <XI icon={Radar} size={14} /> АГЕНТЫ ИЩУТ ({wishlistMatches.length})
-                    </div>
-                    <XI icon={agentsExpanded ? ChevronUp : ChevronDown} size={14} />
-                </button>
-
-                {agentsExpanded && (
-                    <div className="px-4 pb-4 space-y-2">
-                        {wishlistMatches.length === 0 ? (
-                            <div className="py-6 text-center font-mono text-xs opacity-40 uppercase">
-                                Никто не ищет предметы из этой коллекции
-                            </div>
-                        ) : (
-                            wishlistMatches.map(w => {
-                                const priCfg = WISHLIST_PRIORITY_CONFIG[w.priority];
-                                return (
-                                    <div key={w.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isWinamp ? 'border-[#505050]' : 'border-white/10 bg-black/20'}`}>
-                                        <img src={getUserAvatar(w.owner)} className="w-8 h-8 rounded-full border border-white/20 shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-pixel text-[10px] truncate">{w.title}</div>
-                                            <div className="font-mono text-[9px] opacity-50">@{w.owner}</div>
-                                        </div>
-                                        <div className={`px-2 py-0.5 rounded border text-[8px] font-pixel font-bold flex items-center gap-1 shrink-0 ${priCfg.color}`}>
-                                            {React.createElement(priCfg.icon, { size: 8 })}
-                                            {priCfg.label}
-                                        </div>
-                                        {onOfferTrade && currentUser !== w.owner && (
-                                            <button
-                                                onClick={() => onOfferTrade(w.owner)}
-                                                className="px-2 py-1 bg-green-600/20 border border-green-600/40 text-green-400 text-[8px] font-pixel rounded hover:bg-green-600/30 transition-colors shrink-0"
-                                            >
-                                                ОБМЕН
-                                            </button>
-                                        )}
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                )}
-            </div>
         </div>
     );
 };
