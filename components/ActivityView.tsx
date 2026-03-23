@@ -450,7 +450,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                         onClick={() => onChatClick(partner)}
                                         className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-white/5 transition-all ${isWinamp ? 'border-[#505050] bg-[#191919]' : isLight ? 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50' : 'border-white/10 bg-white/5'} ${hasUnread ? 'border-green-500/50' : ''}`}
                                     >
-                                        <img src={getUserAvatar(partner)} className={`w-10 h-10 rounded-full border ${isLight ? 'border-gray-300' : 'border-white/20'}`} />
+                                        <img src={getUserAvatar(partner)} className={`w-10 h-10 rounded-full border shrink-0 object-cover ${isLight ? 'border-gray-300' : 'border-white/20'}`} />
                                         <div className="flex-1">
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-500' : ''}`}>@{partner}</span>

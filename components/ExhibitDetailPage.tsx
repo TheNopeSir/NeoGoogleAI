@@ -924,7 +924,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 {exhibit.condition && (
                                     <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
                                         <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
-                                        <div className={`font-bold font-mono text-xs text-green-400 uppercase leading-tight ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
+                                        <div className={`font-bold font-mono text-[10px] text-green-400 uppercase leading-tight break-words ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
                                     </div>
                                 )}
                             </div>
@@ -1074,7 +1074,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
         {similarArtifacts.length > 0 && (
                 <div className="mt-12 mb-8">
                     <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><XI icon={Sparkles} size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {similarArtifacts.map(sim => (
                             <ExhibitCard
                                 key={sim.id}
