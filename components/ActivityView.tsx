@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy, TrendingUp } from 'lucide-react';
+import { Bell, MessageCircle, ChevronDown, ChevronUp, Heart, MessageSquare, UserPlus, BookOpen, CheckCheck, RefreshCw, X, Check, ArrowRight, Clock, AlertTriangle, Shield, Wallet, Radar, Trophy, TrendingUp, AtSign } from 'lucide-react';
 import { Notification, Message, UserProfile, TradeRequest, Exhibit } from '../types';
 import { getUserAvatar, markNotificationsRead, getMyTradeRequests, initializeDatabase, acceptTradeRequest, updateTradeStatus, markSingleNotificationRead } from '../services/storageService';
 import { getImageUrl } from '../utils/imageUtils';
@@ -86,6 +86,9 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         if (group.type === 'GRADE_UP') {
             const targetId = group.items[0]?.targetId;
             if (targetId) triggerGradeUpFlip(targetId);
+        } else if (group.type === 'MENTION') {
+            const first = group.items[0];
+            if (first?.targetId) onExhibitClick(first.targetId, first.contextId);
         } else {
             onAuthorClick(group.actor);
         }
@@ -96,6 +99,9 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         markGroupRead(group);
         if (group.type === 'GRADE_UP') {
             triggerGradeUpFlip(targetId);
+        } else if (group.type === 'MENTION') {
+            const item = group.items.find((n: any) => n.targetId === targetId);
+            onExhibitClick(targetId, item?.contextId);
         } else {
             onExhibitClick(targetId);
         }
@@ -186,6 +192,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             case 'WISHLIST_MATCH':    return <MatrixIcon icon={Radar}     size={16} color="#a78bfa" glow={2} theme={theme} />;
             case 'WISHLIST_ACQUIRED': return <MatrixIcon icon={Trophy}      size={16} color="#fbbf24" glow={2} theme={theme} />;
             case 'GRADE_UP':          return <MatrixIcon icon={TrendingUp} size={16} color="#facc15" glow={2} theme={theme} />;
+            case 'MENTION':           return <MatrixIcon icon={AtSign}      size={16} color="#c084fc" glow={1} theme={theme} />;
             default:                  return <MatrixIcon icon={Bell}        size={16} theme={theme} />;
         }
     };
@@ -201,6 +208,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
         else if (first.type === 'FOLLOW') actionText = 'подписался на вас';
         else if (first.type === 'WISHLIST_MATCH') actionText = 'добавил артефакт из вашего вишлиста';
         else if (first.type === 'WISHLIST_ACQUIRED') actionText = '— вишлист-айтем получен!';
+        else if (first.type === 'MENTION') actionText = 'упомянул вас в комментарии';
         else if (first.type === 'GRADE_UP') actionText = first.contextId ? `достиг ранга ${first.contextId}` : 'повысил ранг!';
         else if (first.type.includes('TRADE')) actionText = 'обновил статус сделки';
         else actionText = 'взаимодействует с вами';
