@@ -319,11 +319,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const handleTouchStart = (e: React.TouchEvent) => {
       if (e.touches.length === 2) {
-          // Start pinch-to-zoom
+          // Start pinch-to-zoom — stop propagation so page-level swipe-back doesn't fire
+          e.stopPropagation();
           initialPinchDistanceRef.current = getPinchDistance(e.touches);
           initialPinchZoomRef.current = zoomLevel;
           setIsDragging(false);
       } else if (zoomLevel > 1 && e.touches.length === 1) {
+          // Panning when zoomed — also stop propagation to avoid triggering swipe-back
+          e.stopPropagation();
           setIsDragging(true);
           setDragStart({
               x: e.touches[0].clientX - panPosition.x,
@@ -334,6 +337,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
       if (e.touches.length === 2 && initialPinchDistanceRef.current !== null) {
+          e.stopPropagation();
           // Pinch zoom
           const currentDist = getPinchDistance(e.touches);
           const ratio = currentDist / initialPinchDistanceRef.current;
@@ -341,6 +345,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
           setZoomLevel(newZoom);
           if (newZoom === 1) setPanPosition({ x: 0, y: 0 });
       } else if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
+          e.stopPropagation();
           setPanPosition({
               x: e.touches[0].clientX - dragStart.x,
               y: e.touches[0].clientY - dragStart.y
@@ -348,7 +353,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+      // If we were pinching or panning, stop the event from triggering swipe-back
+      if (initialPinchDistanceRef.current !== null || isDragging) {
+          e.stopPropagation();
+      }
       initialPinchDistanceRef.current = null;
       setIsDragging(false);
   };

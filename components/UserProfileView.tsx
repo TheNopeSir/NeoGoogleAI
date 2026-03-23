@@ -406,7 +406,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                         <button onClick={() => setLocalProfileTab('COLLECTIONS')} className={`text-xs font-pixel uppercase ${localProfileTab === 'COLLECTIONS' ? 'text-green-500 font-bold' : 'opacity-50'}`}>Коллекции ({userCollections.length})</button>
                     </div>
                     {localProfileTab === 'ARTIFACTS' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
                             {publishedExhibits.map(item => <ExhibitCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} currentUsername={user.username} onReact={() => onReact(item.id)} onAuthorClick={onAuthorClick} />)}
                             {publishedExhibits.length === 0 && <div className="col-span-full text-center py-10 opacity-30 font-mono text-xs">Полка пуста</div>}
                         </div>
@@ -421,7 +421,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             )}
 
             {activeSection === 'FAVORITES' && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 animate-in fade-in">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 animate-in fade-in">
                     {favoritedExhibits.map(item => (
                         <ExhibitCard
                             key={item.id}
@@ -446,7 +446,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <div className="flex justify-end px-2">
                         <button onClick={handleShareWishlist} className="flex items-center gap-2 text-xs font-pixel opacity-70 hover:opacity-100 uppercase tracking-widest"><LinkIcon size={12}/> Поделиться вишлистом</button>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {wishlistItems.map(item => (
                             <WishlistCard 
                                 key={item.id} 
