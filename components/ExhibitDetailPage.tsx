@@ -394,8 +394,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
           <div key={c.id} className={`flex flex-col ${depth > 0 ? `ml-4 md:ml-8 border-l-2 pl-4 mt-2 ${isXp ? 'border-xp-navy/20' : 'border-white/10'}` : 'mt-4'}`}>
               <div
                 id={`comment-${c.id}`}
-                className={`p-3 border transition-all cursor-pointer select-none ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'rounded-xl bg-gray-50 border-gray-200 hover:border-gray-300' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
-                onContextMenu={e => { e.preventDefault(); openCommentReactionPicker(e, c.id); }}
+                className={`p-3 border transition-all select-none ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'rounded-xl bg-gray-50 border-gray-200 hover:border-gray-300' : 'rounded-xl bg-white/5 border-white/5 hover:border-white/10'}`}
+                onContextMenu={e => e.preventDefault()}
                 onTouchStart={e => {
                     const touch = e.touches[0];
                     commentLongPressFiredRef.current = false;
@@ -406,10 +406,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                 }}
                 onTouchEnd={e => {
                     if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current);
-                    if (commentLongPressFiredRef.current) {
+                    // Prevent synthetic click whenever picker fired OR picker is already open
+                    if (commentLongPressFiredRef.current || commentReactionPicker !== null) {
                         e.preventDefault();
-                        commentLongPressFiredRef.current = false;
                     }
+                    commentLongPressFiredRef.current = false;
                 }}
                 onTouchMove={() => {
                     if (commentLongPressRef.current) clearTimeout(commentLongPressRef.current);
@@ -1059,17 +1060,24 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
         </div>
 
         {/* Comment reaction picker */}
-        {commentReactionPicker && (
-            <MessageReactionPicker
-                position={commentReactionPicker.position}
-                onReact={emoji => {
-                    onCommentReact?.(exhibit.id, commentReactionPicker.commentId, emoji);
-                    setCommentReactionPicker(null);
-                }}
-                onClose={() => setCommentReactionPicker(null)}
-                theme={theme}
-            />
-        )}
+        {commentReactionPicker && (() => {
+            const pickerComment = comments.find(c => c.id === commentReactionPicker.commentId);
+            return (
+                <MessageReactionPicker
+                    position={commentReactionPicker.position}
+                    onReact={emoji => {
+                        onCommentReact?.(exhibit.id, commentReactionPicker.commentId, emoji);
+                        setCommentReactionPicker(null);
+                    }}
+                    onClose={() => setCommentReactionPicker(null)}
+                    onReply={pickerComment ? () => {
+                        setCommentReactionPicker(null);
+                        handleReply(pickerComment);
+                    } : undefined}
+                    theme={theme}
+                />
+            );
+        })()}
 
         {similarArtifacts.length > 0 && (
                 <div className="mt-12 mb-8">
