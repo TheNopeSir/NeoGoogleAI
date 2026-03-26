@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Terminal, Lock, User, ArrowRight, CheckSquare, Square, Github, Chrome, Gamepad2, Mail } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Terminal, Lock, User, ArrowRight, CheckSquare, Square, Github, Chrome, Gamepad2, Mail, Send } from 'lucide-react';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 import XI from './XI';
@@ -20,6 +20,38 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTgWidget, setShowTgWidget] = useState(false);
+  const telegramRef = useRef<HTMLDivElement>(null);
+  const telegramBotName = (import.meta as any).env?.VITE_TELEGRAM_BOT_NAME as string | undefined;
+
+  useEffect(() => {
+    if (!showTgWidget || !telegramBotName || !telegramRef.current) return;
+    if (telegramRef.current.querySelector('script')) return;
+
+    (window as any).onTelegramAuthCallback = async (tgUser: any) => {
+      setShowTgWidget(false);
+      setIsLoading(true);
+      try {
+        const user = await db.loginViaTelegram(tgUser);
+        onLogin(user, true);
+      } catch (err: any) {
+        setError(err.message || 'ОШИБКА TELEGRAM АВТОРИЗАЦИИ');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.async = true;
+    script.setAttribute('data-telegram-login', telegramBotName);
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-onauth', 'onTelegramAuthCallback(user)');
+    script.setAttribute('data-request-access', 'write');
+    telegramRef.current.appendChild(script);
+
+    return () => { delete (window as any).onTelegramAuthCallback; };
+  }, [showTgWidget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,17 +269,51 @@ const AuthForm: React.FC<AuthFormProps> = ({ theme, onLogin }) => {
                 <span className="text-[9px] font-bold uppercase">Github</span>
             </button>
             
-            <button 
-                onClick={() => handleSocialRedirect('Discord')}
-                className={`flex flex-col items-center justify-center p-3 border rounded transition-all hover:scale-105 active:scale-95 gap-2 opacity-50 cursor-not-allowed ${
-                   theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'
-                }`}
-                title="В разработке"
-            >
-                 <XI icon={Gamepad2} size={20} />
-                <span className="text-[9px] font-bold uppercase">Discord</span>
-            </button>
+            {telegramBotName ? (
+                <button
+                    onClick={() => setShowTgWidget(true)}
+                    className={`flex flex-col items-center justify-center p-3 border rounded transition-all hover:scale-105 active:scale-95 gap-2 ${
+                       theme === 'dark' ? 'border-dark-dim hover:border-[#2AABEE] hover:text-[#2AABEE] hover:bg-white/5' : 'border-light-dim hover:border-[#2AABEE] hover:text-[#2AABEE] hover:bg-gray-50'
+                    }`}
+                >
+                    <XI icon={Send} size={20} />
+                    <span className="text-[9px] font-bold uppercase">Telegram</span>
+                </button>
+            ) : (
+                <button
+                    onClick={() => handleSocialRedirect('Discord')}
+                    className={`flex flex-col items-center justify-center p-3 border rounded transition-all hover:scale-105 active:scale-95 gap-2 opacity-50 cursor-not-allowed ${
+                       theme === 'dark' ? 'border-dark-dim' : 'border-light-dim'
+                    }`}
+                    title="В разработке"
+                >
+                    <XI icon={Gamepad2} size={20} />
+                    <span className="text-[9px] font-bold uppercase">Discord</span>
+                </button>
+            )}
         </div>
+
+        {/* Telegram Login Widget Modal */}
+        {showTgWidget && (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                onClick={() => setShowTgWidget(false)}
+            >
+                <div
+                    className={`rounded-2xl p-6 shadow-2xl border flex flex-col items-center gap-4 min-w-[220px] ${
+                        theme === 'dark' ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200'
+                    }`}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <span className={`text-xs font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-white/70' : 'text-black/60'}`}>Войти через Telegram</span>
+                    <div ref={telegramRef} />
+                    <button
+                        onClick={() => setShowTgWidget(false)}
+                        className="text-[10px] opacity-50 hover:opacity-80 underline"
+                    >отмена</button>
+                </div>
+            </div>
+        )}
 
         <div className="mt-6 text-center">
           <button 

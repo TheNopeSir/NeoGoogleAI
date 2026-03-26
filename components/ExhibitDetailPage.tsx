@@ -726,7 +726,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                         {slides.map((slide, idx) => (
                             <div
                                 key={idx}
-                                className="aspect-square overflow-hidden cursor-pointer relative group"
+                                className={`overflow-hidden cursor-pointer relative group ${idx === 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
                                 onClick={() => { setGalleryMode('SLIDER'); setCurrentSlideIndex(idx); }}
                             >
                                 {slide.type === 'image' ? (
