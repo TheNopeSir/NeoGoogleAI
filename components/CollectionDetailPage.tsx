@@ -3,6 +3,7 @@ import { ArrowLeft, Share2, FolderOpen, Grid, Edit3, Trash2, Heart, Tag, Lock } 
 import { Collection, Exhibit } from '../types';
 import { ExhibitCard } from './ExhibitCard';
 import XI from './XI';
+import { getUserAvatar } from '../services/storageService';
 
 interface CollectionDetailPageProps {
     collection: Collection;
