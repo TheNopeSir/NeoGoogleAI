@@ -136,7 +136,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                 setBracket(prev => mergeBracket(prev, result.bracket));
             }
             if (!silent) {
-                const hist = await getBattleHistory(cat, 5);
+                const hist = await getBattleHistory(cat, 1);
                 setHistory(hist);
             }
         } finally {
@@ -536,6 +536,19 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                         </div>
                     )}
 
+                    {/* No-winner banner — bracket completed but neither side reached 5 votes */}
+                    {bracket.status === 'COMPLETED' && bracket.winner === null && (
+                        <div className={`mb-4 p-3 rounded-2xl border flex items-center gap-3 ${
+                            isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : isDark ? 'bg-white/3 border-white/10' : 'bg-gray-100 border-gray-200'
+                        }`}>
+                            <XI icon={Swords} size={16} className="opacity-30 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                                <div className="font-pixel text-[8px] opacity-50 tracking-widest">ПОБЕДИТЕЛЯ НЕТ</div>
+                                <div className="text-[9px] font-mono opacity-30 mt-0.5">Нужно минимум {5} голосов за позицию</div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Champion banner */}
                     {bracket.winner && (
                         <div className="mb-4 p-3 rounded-2xl border flex items-center gap-3 bg-yellow-500/10 border-yellow-500/30">
@@ -606,42 +619,38 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                 </>
             )}
 
-            {/* ── History ──────────────────────────────────────────────────── */}
-            {history.length > 0 && (
-                <div className="mt-4">
-                    <div className={labelClass}>
-                        <XI icon={Trophy} size={9} className="text-yellow-500" /> ПРОШЛЫЕ ЧЕМПИОНЫ
+            {/* ── Last champion ─────────────────────────────────────────── */}
+            {history.length > 0 && history[0].winner && (() => {
+                const b = history[0];
+                const champion = getExhibit(b.winner);
+                const imgUrl = champion ? getFirstImageUrl(champion.imageUrls, 'thumbnail') : '';
+                return (
+                    <div className="mt-4">
+                        <div className={labelClass}>
+                            <XI icon={Trophy} size={9} className="text-yellow-500" /> ПРОШЛЫЙ ЧЕМПИОН
+                        </div>
+                        <div
+                            className={`flex items-center gap-3 p-2 rounded-xl border cursor-pointer hover:opacity-80 transition-opacity ${
+                                isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : 'bg-white/5 border-white/10'
+                            }`}
+                            onClick={() => champion && onExhibitClick(champion)}
+                        >
+                            <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                {imgUrl
+                                    ? <img src={imgUrl} alt={champion?.title} className="w-full h-full object-cover" />
+                                    : <div className="w-full h-full bg-white/5 flex items-center justify-center"><XI icon={Trophy} size={14} className="opacity-20" /></div>
+                                }
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="text-[7px] font-pixel truncate opacity-70">{champion?.title || '???'}</div>
+                                <div className="text-[7px] font-mono opacity-30">@{champion?.owner || '???'}</div>
+                                <div className="text-[6px] font-mono opacity-20 mt-0.5">{b.date}</div>
+                            </div>
+                            <XI icon={Trophy} size={14} className="text-yellow-500 flex-shrink-0" />
+                        </div>
                     </div>
-                    <div
-                        className="flex gap-3 overflow-x-auto pb-2"
-                        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
-                    >
-                        {history.map(b => {
-                            const champion = getExhibit(b.winner);
-                            const imgUrl = champion ? getFirstImageUrl(champion.imageUrls, 'thumbnail') : '';
-                            return (
-                                <div
-                                    key={b.id}
-                                    className={`flex-shrink-0 w-20 rounded-xl overflow-hidden border cursor-pointer hover:scale-105 transition-transform ${
-                                        isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : 'bg-white/5 border-white/10'
-                                    }`}
-                                    onClick={() => champion && onExhibitClick(champion)}
-                                >
-                                    {imgUrl
-                                        ? <img src={imgUrl} alt={champion?.title} className="w-full aspect-square object-cover" />
-                                        : <div className="w-full aspect-square bg-white/5 flex items-center justify-center"><XI icon={Trophy} size={16} className="opacity-20" /></div>
-                                    }
-                                    <div className="p-1.5">
-                                        <div className="text-[6px] font-mono opacity-25">{b.date}</div>
-                                        <div className="text-[7px] font-pixel truncate opacity-60">{champion?.title || '???'}</div>
-                                        <div className="text-[7px] font-pixel text-yellow-500">🏆</div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };

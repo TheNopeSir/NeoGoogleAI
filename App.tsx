@@ -859,7 +859,7 @@ export default function App() {
             style={isMainTabView ? {
                 transform: `translateX(${tabDragX}px)`,
                 transition: tabIsDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                willChange: 'transform',
+                willChange: tabIsDragging ? 'transform' : 'auto',
             } : undefined}
             {...(isMainTabView ? tabSwipeHandlers : backSwipeHandlers)}
         >

@@ -1555,6 +1555,18 @@ function buildBracket(category, participants, now) {
     };
 }
 
+const MIN_VOTES_TO_WIN = 5;
+
+function pickWinner(battle) {
+    const v1 = battle.votes1.length;
+    const v2 = battle.votes2.length;
+    const maxVotes = Math.max(v1, v2);
+    if (maxVotes >= MIN_VOTES_TO_WIN && v1 !== v2) {
+        return v1 > v2 ? battle.participant1 : battle.participant2;
+    }
+    return null; // no winner — insufficient votes or tie
+}
+
 function finalizeBracket(bracket, now) {
     let changed = false;
     const nowTs = now.getTime();
@@ -1562,27 +1574,36 @@ function finalizeBracket(bracket, now) {
     // Finalize expired semi-finals
     bracket.battles.forEach(battle => {
         if (battle.status === 'ACTIVE' && battle.round === 1 && new Date(battle.endTime).getTime() <= nowTs) {
-            battle.winner = battle.votes1.length >= battle.votes2.length ? battle.participant1 : battle.participant2;
+            battle.winner = pickWinner(battle);
             battle.status = 'COMPLETED';
             changed = true;
         }
     });
 
-    // Check if both semi-finals done -> activate final
+    // Check if both semi-finals done -> activate or cancel final
     const sf1 = bracket.battles.find(b => b.round === 1 && b.slotIndex === 0);
     const sf2 = bracket.battles.find(b => b.round === 1 && b.slotIndex === 1);
     const final = bracket.battles.find(b => b.round === 2);
 
     if (sf1?.status === 'COMPLETED' && sf2?.status === 'COMPLETED' && final?.status === 'PENDING') {
-        final.participant1 = sf1.winner;
-        final.participant2 = sf2.winner;
-        final.status = 'ACTIVE';
+        if (sf1.winner && sf2.winner) {
+            // Both semi-finals have winners — activate final
+            final.participant1 = sf1.winner;
+            final.participant2 = sf2.winner;
+            final.status = 'ACTIVE';
+        } else {
+            // One or both semis had no winner (< 5 votes or tie) — no final
+            final.winner = null;
+            final.status = 'COMPLETED';
+            bracket.winner = null;
+            bracket.status = 'COMPLETED';
+        }
         changed = true;
     }
 
     // Finalize expired final
     if (final?.status === 'ACTIVE' && new Date(final.endTime).getTime() <= nowTs) {
-        final.winner = final.votes1.length >= final.votes2.length ? final.participant1 : final.participant2;
+        final.winner = pickWinner(final);
         final.status = 'COMPLETED';
         bracket.winner = final.winner;
         bracket.status = 'COMPLETED';
@@ -1606,6 +1627,18 @@ api.get('/battles', async (req, res) => {
         const now = new Date();
 
         if (!bracket) {
+            // Find artifact IDs that won in the last 7 days — these are on cooldown
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const { rows: recentWinnerRows } = await query(
+                `SELECT data->>'winner' AS winner FROM battles
+                 WHERE data->>'category' = $1
+                   AND data->>'status' = 'COMPLETED'
+                   AND data->>'winner' IS NOT NULL
+                   AND data->>'date' >= $2`,
+                [category, sevenDaysAgo]
+            );
+            const cooldownIds = new Set(recentWinnerRows.map(r => r.winner).filter(Boolean));
+
             // Find 2 distinct subcategories within this category, each with ≥2 items
             const { rows: subcatRows } = await query(
                 `SELECT data->>'subcategory' AS subcategory, COUNT(*) AS cnt
@@ -1624,15 +1657,21 @@ api.get('/battles', async (req, res) => {
             if (subcatRows.length >= 2) {
                 const subA = subcatRows[0].subcategory;
                 const subB = subcatRows[1].subcategory;
+                // Fetch extra candidates and filter out cooldown winners
                 const [resA, resB] = await Promise.all([
-                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 2`, [subA]),
-                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 2`, [subB]),
+                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 10`, [subA]),
+                    query(`SELECT id FROM exhibits WHERE data->>'subcategory' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 10`, [subB]),
                 ]);
-                if (resA.rows.length < 2 || resB.rows.length < 2) {
+                // Prefer non-cooldown artifacts; fall back to any if not enough eligible
+                const eligibleA = resA.rows.filter(r => !cooldownIds.has(r.id));
+                const eligibleB = resB.rows.filter(r => !cooldownIds.has(r.id));
+                const pickA = eligibleA.length >= 2 ? eligibleA : resA.rows;
+                const pickB = eligibleB.length >= 2 ? eligibleB : resB.rows;
+                if (pickA.length < 2 || pickB.length < 2) {
                     return res.json({ bracket: null, reason: 'not_enough_artifacts' });
                 }
                 // participants: [A1, A2, B1, B2] — SF1 = A1 vs A2, SF2 = B1 vs B2
-                const participants = [resA.rows[0].id, resA.rows[1].id, resB.rows[0].id, resB.rows[1].id];
+                const participants = [pickA[0].id, pickA[1].id, pickB[0].id, pickB[1].id];
                 bracket = buildBracket(category, participants, now);
                 bracket.id = bracketId;
                 bracket.battles.forEach(b => { b.bracketId = bracketId; });
@@ -1644,11 +1683,13 @@ api.get('/battles', async (req, res) => {
             } else {
                 // Fallback: try picking any 4 from main category (no subcategory constraint)
                 const { rows: fallbackRows } = await query(
-                    `SELECT id FROM exhibits WHERE data->>'category' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 4`,
+                    `SELECT id FROM exhibits WHERE data->>'category' = $1 AND (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY RANDOM() LIMIT 10`,
                     [category]
                 );
-                if (fallbackRows.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
-                const participants = fallbackRows.map(r => r.id);
+                const eligibleFallback = fallbackRows.filter(r => !cooldownIds.has(r.id));
+                const pickFallback = eligibleFallback.length >= 4 ? eligibleFallback : fallbackRows;
+                if (pickFallback.length < 4) return res.json({ bracket: null, reason: 'not_enough_artifacts' });
+                const participants = pickFallback.slice(0, 4).map(r => r.id);
                 bracket = buildBracket(category, participants, now);
                 bracket.id = bracketId;
                 bracket.battles.forEach(b => { b.bracketId = bracketId; });
@@ -1721,10 +1762,20 @@ api.post('/battles/vote', async (req, res) => {
 
         const bracket = rows[0].data;
 
-        // Ensure bracket state is up-to-date (activates final if both semi-finals are done)
-        const stateChanged = finalizeBracket(bracket, new Date());
-        if (stateChanged) {
-            await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
+        // Activate pending final if both semi-finals are completed — but do NOT complete active battles
+        // yet (avoid race: if final's endTime just passed, we still want to record this vote first)
+        {
+            const sf1b = bracket.battles.find(b => b.round === 1 && b.slotIndex === 0);
+            const sf2b = bracket.battles.find(b => b.round === 1 && b.slotIndex === 1);
+            const finalb = bracket.battles.find(b => b.round === 2);
+            if (sf1b?.status === 'COMPLETED' && sf2b?.status === 'COMPLETED' && finalb?.status === 'PENDING') {
+                if (sf1b.winner && sf2b.winner) {
+                    finalb.participant1 = sf1b.winner;
+                    finalb.participant2 = sf2b.winner;
+                    finalb.status = 'ACTIVE';
+                    await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
+                }
+            }
         }
 
         const battle = bracket.battles.find(b => b.id === battleId);
@@ -1741,6 +1792,8 @@ api.post('/battles/vote', async (req, res) => {
         else if (exhibitId === battle.participant2) battle.votes2.push(username);
         else return res.status(400).json({ error: 'Invalid participant' });
 
+        // Run full finalization AFTER recording the vote
+        finalizeBracket(bracket, new Date());
         await query(`UPDATE battles SET data = $1, updated_at = NOW() WHERE id = $2`, [bracket, bracketId]);
         res.json({ battle });
 
@@ -1755,7 +1808,7 @@ api.post('/battles/vote', async (req, res) => {
 api.get('/battles/history', async (req, res) => {
     try {
         const subcategory = req.query.subcategory || req.query.category; // backward compat
-        const limit = req.query.limit || 5;
+        const limit = req.query.limit || 1;
         if (!subcategory) return res.status(400).json({ error: 'subcategory required' });
         const { rows } = await query(
             `SELECT data FROM battles WHERE data->>'category' = $1 AND data->>'status' = 'COMPLETED' ORDER BY data->>'date' DESC LIMIT $2`,
