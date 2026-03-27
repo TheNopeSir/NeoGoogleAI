@@ -668,6 +668,7 @@ export default function App() {
   // Swipe navigation between main tab views (mobile only)
   // Must be called before any early returns to satisfy Rules of Hooks
   const SWIPE_TAB_ORDER: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'ACTIVITY', 'USER_PROFILE'];
+  const TAB_LABELS: Record<string, string> = { FEED: 'ЛЕНТА', COMMUNITY_HUB: 'СООБЩЕСТВО', ACTIVITY: 'АКТИВНОСТЬ', USER_PROFILE: 'ПРОФИЛЬ' };
   const isMainTabView = SWIPE_TAB_ORDER.includes(view);
   const currentTabIndex = Math.max(0, SWIPE_TAB_ORDER.indexOf(view));
   const { dragX: tabDragX, isDragging: tabIsDragging, handlers: tabSwipeHandlers } = useSwipeTabs({
@@ -675,7 +676,11 @@ export default function App() {
       currentIndex: currentTabIndex,
       onNavigate: (dir) => {
           const idx = SWIPE_TAB_ORDER.indexOf(view);
-          if (dir === 'next' && idx >= 0 && idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
+          if (dir === 'next' && idx >= 0 && idx < SWIPE_TAB_ORDER.length - 1) {
+              const nextView = SWIPE_TAB_ORDER[idx + 1];
+              // Swipe to profile always opens own profile
+              navigateTo(nextView, nextView === 'USER_PROFILE' ? { username: user?.username } : undefined);
+          }
           if (dir === 'prev' && idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
       },
   });
@@ -791,7 +796,7 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`}>
+    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} style={{ overflowX: 'clip' }}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
@@ -853,6 +858,24 @@ export default function App() {
                     </div>
                 </nav>
             </>
+        )}
+
+        {/* Swipe peek: adjacent-tab preview slides in from the edge during drag */}
+        {isMainTabView && tabIsDragging && tabDragX < -10 && currentTabIndex < SWIPE_TAB_ORDER.length - 1 && (
+            <div
+                className={`fixed inset-0 z-0 flex items-start pt-16 pl-4 pointer-events-none ${getThemeClasses()}`}
+                style={{ transform: `translateX(calc(100vw + ${tabDragX}px))` }}
+            >
+                <span className="font-pixel text-xs opacity-30 mt-4">{TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex + 1]] ?? ''}</span>
+            </div>
+        )}
+        {isMainTabView && tabIsDragging && tabDragX > 10 && currentTabIndex > 0 && (
+            <div
+                className={`fixed inset-0 z-0 flex items-start pt-16 pl-4 pointer-events-none ${getThemeClasses()}`}
+                style={{ transform: `translateX(calc(-100vw + ${tabDragX}px))` }}
+            >
+                <span className="font-pixel text-xs opacity-30 mt-4">{TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex - 1]] ?? ''}</span>
+            </div>
         )}
 
         <div

@@ -432,14 +432,24 @@ const FeedView: React.FC<FeedViewProps> = ({
 
                 {/* Category Pills */}
                 <div className="space-y-2">
-                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                    <div
+                        className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide"
+                        onTouchStart={e => e.stopPropagation()}
+                        onTouchMove={e => e.stopPropagation()}
+                        onTouchEnd={e => e.stopPropagation()}
+                    >
                         <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (isXp ? 'bg-xp-navy text-white shadow-md' : isLight ? 'bg-black text-white shadow-md' : 'bg-white text-black shadow-md') : (isXp ? 'bg-xp-navy/[0.07] text-xp-navy/60 hover:text-xp-navy/90 hover:bg-xp-navy/[0.12]' : isLight ? 'bg-black/[0.05] text-black/50 hover:text-black/80' : 'bg-white/[0.06] text-white/50 hover:text-white/80')}`}>ВСЕ</button>
                         {Object.values(DefaultCategory).map(cat => (
                             <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white ring-1 ring-xp-navy/30' : isLight ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40') : (isXp ? 'bg-xp-navy/[0.05] text-xp-navy/50 hover:text-xp-navy/80 hover:bg-xp-navy/[0.1]' : isLight ? 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]' : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.07]')}`}>{cat}</button>
                         ))}
                     </div>
                     {selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] && (
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2 duration-150">
+                        <div
+                            className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2 duration-150"
+                            onTouchStart={e => e.stopPropagation()}
+                            onTouchMove={e => e.stopPropagation()}
+                            onTouchEnd={e => e.stopPropagation()}
+                        >
                             <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ВСЕ</button>
                             {CATEGORY_SUBCATEGORIES[selectedCategory].map(sub => (
                                 <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>{sub}</button>
@@ -498,7 +508,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                                 <span className={sectionHeaderClass}>🔥 ГОРЯЧЕЕ</span>
                                 <div className={dividerClass} />
                             </div>
-                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                            <div
+                                className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+                                onTouchStart={e => e.stopPropagation()}
+                                onTouchMove={e => e.stopPropagation()}
+                                onTouchEnd={e => e.stopPropagation()}
+                            >
                                 {trendingExhibits.map(item => (
                                     <TrendingCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} />
                                 ))}
@@ -513,7 +528,12 @@ const FeedView: React.FC<FeedViewProps> = ({
                                 <span className={sectionHeaderClass}>👁 НЕДАВНО ПРОСМОТРЕННЫЕ</span>
                                 <div className={dividerClass} />
                             </div>
-                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                            <div
+                                className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+                                onTouchStart={e => e.stopPropagation()}
+                                onTouchMove={e => e.stopPropagation()}
+                                onTouchEnd={e => e.stopPropagation()}
+                            >
                                 {recentlyViewedExhibits.map(item => (
                                     <TrendingCard
                                         key={item.id}
