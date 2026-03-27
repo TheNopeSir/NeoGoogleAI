@@ -2,13 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  background-color: #09090b;
+}
+
 body {
   transition: background-color 0.3s, color 0.3s;
   overscroll-behavior-y: none;
   font-family: 'Exo 2', sans-serif;
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
 }
 
 .pt-safe { padding-top: env(safe-area-inset-top); }

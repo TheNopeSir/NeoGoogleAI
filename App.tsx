@@ -796,7 +796,7 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} style={{ overflowX: 'clip' }}>
+    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} style={{ overflowX: 'clip', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
