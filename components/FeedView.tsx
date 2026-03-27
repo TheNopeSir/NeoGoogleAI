@@ -43,6 +43,7 @@ interface FeedViewProps {
   userCollections?: Collection[];
   onAddToCollection?: (exhibitId: string, collectionId: string) => void;
   onAddToWishlist?: (exhibit: Exhibit, priority: WishlistPriority) => void;
+  onRefresh?: () => void;
 }
 
 type SortMode = 'NEW' | 'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC' | 'RARITY';
@@ -118,6 +119,7 @@ const FeedView: React.FC<FeedViewProps> = ({
   userCollections = [],
   onAddToCollection,
   onAddToWishlist,
+  onRefresh,
 }) => {
   const isWinamp = theme === 'winamp';
   const isLight = theme === 'light';
@@ -146,6 +148,40 @@ const FeedView: React.FC<FeedViewProps> = ({
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
   }, []);
+
+  // Pull-to-refresh
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullStartY = useRef<number | null>(null);
+  const PULL_THRESHOLD = 72;
+
+  const handlePullStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0 && !isRefreshing) {
+      pullStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handlePullMove = (e: React.TouchEvent) => {
+    if (pullStartY.current === null || isRefreshing) return;
+    const dy = e.touches[0].clientY - pullStartY.current;
+    if (dy > 0) {
+      setPullY(Math.min(dy * 0.55, PULL_THRESHOLD * 1.2));
+    }
+  };
+
+  const handlePullEnd = () => {
+    if (pullY >= PULL_THRESHOLD && onRefresh) {
+      setIsRefreshing(true);
+      onRefresh();
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setPullY(0);
+      }, 1200);
+    } else {
+      setPullY(0);
+    }
+    pullStartY.current = null;
+  };
 
   // Reset subcategory, visible count, sort, price filter on main filter changes
   useEffect(() => {
@@ -305,8 +341,25 @@ const FeedView: React.FC<FeedViewProps> = ({
   const dividerClass = `h-[1px] flex-1 ${isLight ? 'bg-black/10' : 'bg-white/10'}`;
 
   return (
-    <div className="pb-24 space-y-4 animate-in fade-in isolate">
+    <div
+      className="pb-24 space-y-4 animate-in fade-in isolate"
+      onTouchStart={handlePullStart}
+      onTouchMove={handlePullMove}
+      onTouchEnd={handlePullEnd}
+    >
         <SEO title="NeoArchive | Лента" />
+
+        {/* PULL-TO-REFRESH INDICATOR */}
+        <div
+          className="md:hidden flex items-center justify-center overflow-hidden transition-all duration-200"
+          style={{ height: isRefreshing ? 52 : pullY > 0 ? Math.min(pullY * 0.75, 52) : 0 }}
+        >
+          <Loader2
+            className={`transition-all duration-200 ${isRefreshing ? 'animate-spin opacity-80' : 'opacity-50'} ${isWinamp ? 'text-[#00ff00]' : 'text-green-500'}`}
+            size={22}
+            style={!isRefreshing ? { transform: `rotate(${Math.min(pullY / PULL_THRESHOLD, 1) * 360}deg)` } : undefined}
+          />
+        </div>
 
         {/* 1. MOBILE HEADER */}
         <header className="md:hidden flex justify-between items-center px-4 pt-4 bg-transparent">
@@ -317,7 +370,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         </header>
 
         {/* 3. CONTROLS AREA */}
-        <div className={`sticky top-0 md:top-16 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050] backdrop-blur-md' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8 backdrop-blur-xl' : 'bg-zinc-950/90 border-white/[0.06] backdrop-blur-xl'}`}>
+        <div className={`z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050]' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8' : 'bg-zinc-950/90 border-white/[0.06]'}`}>
             <div className="max-w-6xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}

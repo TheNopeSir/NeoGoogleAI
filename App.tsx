@@ -39,6 +39,7 @@ import * as db from './services/storageService';
 import { UserProfile, Exhibit, Collection, ViewState, Notification, Message, GuestbookEntry, Comment, WishlistItem, TradeRequest, UserStatus, Reaction, MessageReactionEmoji, MessageReaction, WishlistPriority, WishlistItemStatus, ProcessedImage, AchievementProgress } from './types';
 import { getArtifactTier, BADGE_CONFIG } from './constants';
 import useSwipe from './hooks/useSwipe';
+import useSwipeTabs from './hooks/useSwipeTabs';
 import XI from './components/XI';
 
 const CACHE_VERSION = 'v6.0_CLEAN_ID';
@@ -668,14 +669,14 @@ export default function App() {
   // Must be called before any early returns to satisfy Rules of Hooks
   const SWIPE_TAB_ORDER: ViewState[] = ['FEED', 'COMMUNITY_HUB', 'ACTIVITY', 'USER_PROFILE'];
   const isMainTabView = SWIPE_TAB_ORDER.includes(view);
-  const swipeHandlers = useSwipe({
-      onSwipeLeft: () => {
+  const currentTabIndex = Math.max(0, SWIPE_TAB_ORDER.indexOf(view));
+  const { dragX: tabDragX, isDragging: tabIsDragging, handlers: tabSwipeHandlers } = useSwipeTabs({
+      tabCount: SWIPE_TAB_ORDER.length,
+      currentIndex: currentTabIndex,
+      onNavigate: (dir) => {
           const idx = SWIPE_TAB_ORDER.indexOf(view);
-          if (idx >= 0 && idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
-      },
-      onSwipeRight: () => {
-          const idx = SWIPE_TAB_ORDER.indexOf(view);
-          if (idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
+          if (dir === 'next' && idx >= 0 && idx < SWIPE_TAB_ORDER.length - 1) navigateTo(SWIPE_TAB_ORDER[idx + 1]);
+          if (dir === 'prev' && idx > 0) navigateTo(SWIPE_TAB_ORDER[idx - 1]);
       },
   });
   const backSwipeHandlers = useSwipe({ onSwipeRight: handleBack });
@@ -798,7 +799,7 @@ export default function App() {
         <ToastContainer cardFlipEnabled={user?.settings?.cardFlipAnimation ?? true} />
 
         {isOffline && (
-            <div className="fixed top-16 md:top-20 left-0 right-0 z-40 bg-yellow-500/90 text-black text-center py-1 px-4 text-xs font-bold font-mono flex justify-center items-center gap-2">
+            <div className="sticky top-0 left-0 right-0 z-40 bg-yellow-500/90 text-black text-center py-1 px-4 text-xs font-bold font-mono flex justify-center items-center gap-2">
                 <XI icon={WifiOff} size={14}/> OFFLINE MODE / SYNCHRONIZING...
             </div>
         )}
@@ -806,7 +807,7 @@ export default function App() {
         {user && (
             <>
                 {/* DESKTOP NAV */}
-                <nav className={`hidden md:flex fixed top-0 left-0 w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
+                <nav className={`hidden md:flex w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
                         <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'xp' ? 'border-xp-bg bg-xp-bg text-xp-navy' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
                         <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
@@ -854,7 +855,14 @@ export default function App() {
             </>
         )}
 
-        <div className="md:pt-16" {...(isMainTabView ? swipeHandlers : backSwipeHandlers)}>
+        <div
+            style={isMainTabView ? {
+                transform: `translateX(${tabDragX}px)`,
+                transition: tabIsDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                willChange: 'transform',
+            } : undefined}
+            {...(isMainTabView ? tabSwipeHandlers : backSwipeHandlers)}
+        >
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
                     if (c.owner === user.username) return true;
@@ -865,7 +873,7 @@ export default function App() {
                         return owner?.followers?.includes(user.username) ?? false;
                     }
                     return true;
-                })} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} />
+                })} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} onRefresh={refreshData} />
             )}
 
             {view === 'ACTIVITY' && user && (
