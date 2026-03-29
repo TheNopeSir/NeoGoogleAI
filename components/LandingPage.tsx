@@ -424,15 +424,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           </div>
           <span className="font-mono text-[10px] text-white/20">© {new Date().getFullYear()} NeoArchive. Все права защищены.</span>
         </div>
-        <div className="max-w-4xl mx-auto mt-4 pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="font-mono text-[10px] text-white/20">
-            Самозанятый: Демидов Константин Андреевич · ИНН 615011868785
-          </span>
+        <div className="max-w-4xl mx-auto mt-4 pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="/oferta"
+            href="/privacy"
             className="font-mono text-[10px] text-white/30 hover:text-green-400 transition-colors underline underline-offset-2"
           >
-            Публичная оферта
+            Политика конфиденциальности
+          </a>
+          <a
+            href="/terms"
+            className="font-mono text-[10px] text-white/30 hover:text-green-400 transition-colors underline underline-offset-2"
+          >
+            Условия использования
           </a>
         </div>
       </footer>
