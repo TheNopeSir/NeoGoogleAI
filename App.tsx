@@ -33,6 +33,8 @@ import ToastContainer from './components/ToastContainer';
 import MyCollection from './components/MyCollection';
 import LandingPage from './components/LandingPage';
 import OfertaPage from './components/OfertaPage';
+import PrivacyPolicyPage from './components/PrivacyPolicyPage';
+import TermsOfUsePage from './components/TermsOfUsePage';
 import { ThemeContext } from './components/ThemeContext';
 
 import * as db from './services/storageService';
@@ -274,6 +276,8 @@ export default function App() {
       if (!root) { setView('FEED'); return; }
 
       if (root === 'oferta') { setView('OFERTA'); return; }
+      if (root === 'privacy') { setView('PRIVACY'); return; }
+      if (root === 'terms') { setView('TERMS'); return; }
 
       if (root === 'community') setView('COMMUNITY_HUB');
       else if (root === 'activity') setView('ACTIVITY');
@@ -354,6 +358,8 @@ export default function App() {
       else if (newView === 'CREATE_HUB') path = '/create';
       else if (newView === 'MY_COLLECTION') path = '/my-collection';
       else if (newView === 'OFERTA') path = '/oferta';
+      else if (newView === 'PRIVACY') path = '/privacy';
+      else if (newView === 'TERMS') path = '/terms';
 
       window.history.pushState({ view: newView, params }, '', path);
       window.scrollTo(0, 0);
@@ -433,6 +439,10 @@ export default function App() {
                   await syncFromUrl();
               } else if (window.location.pathname === '/oferta') {
                   setView('OFERTA');
+              } else if (window.location.pathname === '/privacy') {
+                  setView('PRIVACY');
+              } else if (window.location.pathname === '/terms') {
+                  setView('TERMS');
               } else {
                   setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
                   window.history.replaceState({}, document.title, '/');
@@ -707,6 +717,28 @@ export default function App() {
   if (view === 'OFERTA') {
     return (
       <OfertaPage
+        onBack={() => {
+          window.history.back();
+          setView('LANDING');
+        }}
+      />
+    );
+  }
+
+  if (view === 'PRIVACY') {
+    return (
+      <PrivacyPolicyPage
+        onBack={() => {
+          window.history.back();
+          setView('LANDING');
+        }}
+      />
+    );
+  }
+
+  if (view === 'TERMS') {
+    return (
+      <TermsOfUsePage
         onBack={() => {
           window.history.back();
           setView('LANDING');

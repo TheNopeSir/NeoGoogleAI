@@ -341,7 +341,18 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
                 })()}
 
                 {error && <div className="text-red-500 text-[10px] font-mono text-center">{error}</div>}
-                
+
+                <p className="text-[9px] font-mono text-white/30 text-center leading-relaxed">
+                  Регистрируясь, вы принимаете{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">
+                    Условия использования
+                  </a>{' '}
+                  и{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">
+                    Политику конфиденциальности
+                  </a>
+                </p>
+
                 <button type="submit" disabled={isLoading} className="mt-2 py-3 font-bold font-pixel text-xs uppercase bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2">{isLoading ? <XI icon={Loader2} size={14} className="animate-spin" /> : 'СОЗДАТЬ'}</button>
                 <div className="flex justify-between items-center">
                     <button type="button" onClick={() => { setStep('ENTRY'); resetForm(); }} className="text-[10px] font-mono opacity-50 hover:underline text-white">НАЗАД</button>
