@@ -71,12 +71,9 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack }) => {
         </Section>
 
         <Section title="Оператор персональных данных">
-          <p>Оператором персональных данных является:</p>
+          <p>Оператором персональных данных является сервис NeoArchive.</p>
           <ul className="list-disc list-inside space-y-1 pl-2">
-            <li>Демидов Константин Андреевич (самозанятый)</li>
-            <li>ИНН: 615011868785</li>
             <li>E-mail: <a href="mailto:kennyornope@gmail.com" className="text-green-400 hover:underline">kennyornope@gmail.com</a></li>
-            <li>Телефон: +7 900 134-23-87</li>
           </ul>
         </Section>
 
@@ -206,7 +203,6 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack }) => {
           </p>
           <ul className="list-disc list-inside space-y-1 pl-2">
             <li>E-mail: <a href="mailto:kennyornope@gmail.com" className="text-green-400 hover:underline">kennyornope@gmail.com</a></li>
-            <li>Телефон: +7 900 134-23-87</li>
           </ul>
         </Section>
 

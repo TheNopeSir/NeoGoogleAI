@@ -208,7 +208,6 @@ const TermsOfUsePage: React.FC<TermsOfUsePageProps> = ({ onBack }) => {
           <p>По вопросам, связанным с настоящими Условиями, обращайтесь:</p>
           <ul className="list-disc list-inside space-y-1 pl-2">
             <li>E-mail: <a href="mailto:kennyornope@gmail.com" className="text-green-400 hover:underline">kennyornope@gmail.com</a></li>
-            <li>Телефон: +7 900 134-23-87</li>
           </ul>
         </Section>
 
