@@ -174,13 +174,8 @@ const TermsOfUsePage: React.FC<TermsOfUsePageProps> = ({ onBack }) => {
 
         <Section title="Платные функции">
           <p>
-            Часть функций Сервиса может предоставляться на платной основе. Условия оплаты,
-            возврата средств и порядок оказания платных услуг определяются Публичной офертой,
-            размещённой по адресу{' '}
-            <a href="https://neoarchive.ru/oferta" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">
-              neoarchive.ru/oferta
-            </a>
-            .
+            Часть функций Сервиса может предоставляться на платной основе. Условия оплаты
+            и возврата средств сообщаются пользователю при оформлении соответствующей услуги.
           </p>
         </Section>
 
