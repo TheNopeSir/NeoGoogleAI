@@ -15,6 +15,9 @@ RUN npm install --os=linux --libc=musl --cpu=x64 sharp
 
 RUN echo "[3/4] Copying source and building frontend..."
 COPY . .
+# VITE_* vars must be available at build time (they get embedded into the JS bundle by Vite)
+ARG VITE_VAPID_PUBLIC_KEY
+ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 RUN npm run build
 
 RUN echo "[4/4] Builder stage complete."

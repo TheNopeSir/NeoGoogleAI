@@ -55,7 +55,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
     };
 
     const [tab, setTab] = useState<'TRENDS' | 'PEOPLE' | 'TRADE' | 'BATTLES'>(getInitialTab);
-    const [trendWindow, setTrendWindow] = useState<'48H' | 'ALL'>('48H');
+    const [trendWindow, setTrendWindow] = useState<'48H' | 'ALL'>('ALL');
     const [tradeFilter, setTradeFilter] = useState<'ALL' | 'SALE' | 'TRADE' | 'GIFT'>('ALL');
     const [peopleSearch, setPeopleSearch] = useState('');
     const [peopleSort, setPeopleSort] = useState<'SCORE' | 'POSTS' | 'FOLLOWERS'>('SCORE');
@@ -116,7 +116,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
 
     const trendingExhibits = useMemo(() => {
         const pool = (trendWindow === '48H' && recentExhibits48h.length >= 6) ? recentExhibits48h : exhibits.filter(e => !e.isDraft);
-        return pool.sort((a, b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views)).slice(0, 6);
+        return [...pool].sort((a, b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views)).slice(0, 6);
     }, [exhibits, trendWindow, recentExhibits48h]);
 
     const newExhibits = useMemo(() =>

@@ -691,6 +691,19 @@ export default function App() {
   });
   const backSwipeHandlers = useSwipe({ onSwipeRight: handleBack });
 
+  // Track swipe transition so transform is only applied during actual drag/snap-back.
+  // Without this, transform:translateX(0px) persists at rest and breaks sticky positioning
+  // inside CommunityHub (and other tab views).
+  const [swipeTransitionActive, setSwipeTransitionActive] = useState(false);
+  const swipeTransitionTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    if (!tabIsDragging) {
+      setSwipeTransitionActive(true);
+      swipeTransitionTimer.current = setTimeout(() => setSwipeTransitionActive(false), 300);
+    }
+    return () => clearTimeout(swipeTransitionTimer.current);
+  }, [tabIsDragging]);
+
   if (isInitializing || showSplash) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -937,7 +950,7 @@ export default function App() {
         )}
 
         <div
-            style={isMainTabView ? {
+            style={isMainTabView && (tabIsDragging || swipeTransitionActive) ? {
                 transform: `translateX(${tabDragX}px)`,
                 transition: tabIsDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                 willChange: tabIsDragging ? 'transform' : 'auto',
