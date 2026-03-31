@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
   Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon,
-  ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare, Flame
+  ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare
 } from 'lucide-react';
 import { UserProfile, Exhibit, WishlistItem, Collection, WishlistPriority } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, calculateWishlistMatchScore, WISHLIST_MATCH_THRESHOLD } from '../constants';
@@ -259,23 +259,6 @@ const FeedView: React.FC<FeedViewProps> = ({
   // --- TRENDING BLOCK ---
   // Score = shares*5 + likes*4 + comments*3 + views*1
   // Shares weighted highest (active intent), comments (engagement), likes, views
-  const trendingExhibits = useMemo(() => {
-      const score = (e: Exhibit) =>
-          (e.shares ?? 0) * 5 +
-          (e.likes ?? 0) * 4 +
-          (e.comments?.length ?? 0) * 3 +
-          (e.views ?? 0);
-      return exhibits
-          .filter(e =>
-              !e.isDraft &&
-              e.owner !== user.username &&
-              e.postType !== 'WANTED' &&
-              score(e) > 0
-          )
-          .sort((a, b) => score(b) - score(a))
-          .slice(0, 6);
-  }, [exhibits, user.username]);
-
   // --- RECENTLY VIEWED (from localStorage) ---
   const recentlyViewedExhibits = useMemo(() => {
       try {
@@ -506,26 +489,6 @@ const FeedView: React.FC<FeedViewProps> = ({
         <div className="px-4 max-w-6xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
-                    {/* 🔥 ГОРЯЧЕЕ block */}
-                    {trendingExhibits.length > 0 && (
-                        <div className="mb-5">
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className={sectionHeaderClass}>📈 СЕЙЧАС ПОПУЛЯРНО</span>
-                                <div className={dividerClass} />
-                            </div>
-                            <div
-                                className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
-                                onTouchStart={e => e.stopPropagation()}
-                                onTouchMove={e => e.stopPropagation()}
-                                onTouchEnd={e => e.stopPropagation()}
-                            >
-                                {trendingExhibits.map(item => (
-                                    <TrendingCard key={item.id} item={item} theme={theme} onClick={onExhibitClick} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* 👁 НЕДАВНО ПРОСМОТРЕННЫЕ block */}
                     {recentlyViewedExhibits.length > 0 && (
                         <div className="mb-5">
