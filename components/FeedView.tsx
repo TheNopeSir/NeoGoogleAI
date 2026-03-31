@@ -270,12 +270,11 @@ const FeedView: React.FC<FeedViewProps> = ({
               !e.isDraft &&
               e.owner !== user.username &&
               e.postType !== 'WANTED' &&
-              (feedType === 'FOLLOWING' ? user.following.includes(e.owner) : true)
+              score(e) > 0
           )
-          .filter(e => score(e) > 0)
           .sort((a, b) => score(b) - score(a))
           .slice(0, 6);
-  }, [exhibits, user.username, user.following, feedType]);
+  }, [exhibits, user.username]);
 
   // --- RECENTLY VIEWED (from localStorage) ---
   const recentlyViewedExhibits = useMemo(() => {
