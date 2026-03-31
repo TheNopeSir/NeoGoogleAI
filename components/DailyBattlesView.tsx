@@ -18,7 +18,8 @@ interface DailyBattlesViewProps {
 
 const MAIN_CATEGORIES = Object.keys(CATEGORY_SUBCATEGORIES);
 
-const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+// 11-day cycle: 7 days battle + 4 days pause
+const FOUR_DAYS_MS = 11 * 24 * 60 * 60 * 1000;
 
 function formatCountdown(endTime: string): string {
     const diff = new Date(endTime).getTime() - Date.now();
@@ -460,7 +461,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
                 <div className="flex items-center gap-2">
                     <MatrixIcon icon={Swords} size={16} color="#fb923c" theme={theme} glow={2} />
                     <h2 className="font-pixel text-sm tracking-widest">БИТВЫ</h2>
-                    <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">3Д + 1Д ПАУЗА</span>
+                    <span className="text-[7px] font-mono opacity-25 border border-white/10 rounded px-1.5 py-0.5">7Д + 4Д ПАУЗА</span>
                 </div>
                 <div className="text-[8px] font-mono opacity-25">
                     {new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -576,7 +577,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
                     {/* ── Semi-finals: 4-in-a-row ──────────────────────────── */}
                     <div className={labelClass}>
-                        <MatrixIcon icon={Swords} size={9} color="#4ade80" theme={theme} /> ПОЛУФИНАЛЫ · 36Ч
+                        <MatrixIcon icon={Swords} size={9} color="#4ade80" theme={theme} /> ПОЛУФИНАЛЫ · 3.5Д
                     </div>
 
                     <div className="flex flex-col md:flex-row items-stretch gap-2 mb-4">
@@ -603,7 +604,7 @@ const DailyBattlesView: React.FC<DailyBattlesViewProps> = ({ theme, exhibits, cu
 
                     {/* ── Final ─────────────────────────────────────────────── */}
                     <div className={`${labelClass} text-yellow-400/50`}>
-                        <MatrixIcon icon={Trophy} size={9} color="#fbbf24" glow={2} theme={theme} /> ФИНАЛ · 36Ч
+                        <MatrixIcon icon={Trophy} size={9} color="#fbbf24" glow={2} theme={theme} /> ФИНАЛ · 3.5Д
                     </div>
                     {final && renderFinal(final)}
 

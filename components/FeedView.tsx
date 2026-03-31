@@ -256,9 +256,12 @@ const FeedView: React.FC<FeedViewProps> = ({
       wishlist.filter(w => w.owner === user.username && (!w.status || w.status === 'SEARCHING')),
   [wishlist, user.username]);
 
-  // --- TRENDING BLOCK (top 3 from last 48h) ---
+  // --- TRENDING BLOCK (recency-weighted score, last 7 days, top 6) ---
+  // Score = (likes * 10 + views) / (hoursOld + 2)^1.2
+  // This naturally puts recent active items first regardless of total age
   const trendingExhibits = useMemo(() => {
-      const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+      const now = Date.now();
+      const cutoff = now - 7 * 24 * 60 * 60 * 1000;
       return exhibits
           .filter(e =>
               !e.isDraft &&
@@ -267,8 +270,14 @@ const FeedView: React.FC<FeedViewProps> = ({
               new Date(e.timestamp).getTime() >= cutoff &&
               (feedType === 'FOLLOWING' ? user.following.includes(e.owner) : true)
           )
-          .sort((a, b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views))
-          .slice(0, 3);
+          .map(e => {
+              const hoursOld = (now - new Date(e.timestamp).getTime()) / 3_600_000;
+              const score = ((e.likes * 10) + e.views) / Math.pow(hoursOld + 2, 1.2);
+              return { e, score };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 6)
+          .map(({ e }) => e);
   }, [exhibits, user.username, user.following, feedType]);
 
   // --- RECENTLY VIEWED (from localStorage) ---
@@ -505,7 +514,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {trendingExhibits.length > 0 && (
                         <div className="mb-5">
                             <div className="flex items-center gap-3 mb-3">
-                                <span className={sectionHeaderClass}>🔥 ГОРЯЧЕЕ</span>
+                                <span className={sectionHeaderClass}>📈 СЕЙЧАС ПОПУЛЯРНО</span>
                                 <div className={dividerClass} />
                             </div>
                             <div

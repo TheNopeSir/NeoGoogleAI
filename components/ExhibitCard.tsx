@@ -520,29 +520,32 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             </div>
           )}
 
-          {/* Author + Stats row */}
-          <div className="flex items-center justify-between gap-2">
-            <div
-              onClick={() => handleAuthorClick(item.owner)}
-              className="flex items-center gap-1.5 cursor-pointer interactive group/author min-w-0 flex-1"
-            >
-              <img
-                src={getUserAvatar(item.owner)}
-                className={`w-4 h-4 rounded-full border shrink-0 ${isXP || isLight ? 'border-gray-200' : 'border-white/20'}`}
-                alt={item.owner}
-              />
-              <span className={`text-[10px] transition-colors font-pixel truncate min-w-0 ${isXP ? 'text-gray-500 group-hover/author:!text-xp-navy' : isLight ? 'text-gray-500 group-hover/author:!text-gray-900 group-hover/author:text-white' : 'text-white/60 group-hover/author:text-white'}`}>
-                @{item.owner}
-              </span>
-            </div>
+          {/* Author row */}
+          <div
+            onClick={() => handleAuthorClick(item.owner)}
+            className="flex items-center gap-1.5 cursor-pointer interactive group/author min-w-0 w-full"
+          >
+            <img
+              src={getUserAvatar(item.owner)}
+              className={`w-4 h-4 rounded-full border shrink-0 ${isXP || isLight ? 'border-gray-200' : 'border-white/20'}`}
+              alt={item.owner}
+            />
+            <span className={`text-[10px] transition-colors font-pixel truncate min-w-0 flex-1 ${isXP ? 'text-gray-500 group-hover/author:!text-xp-navy' : isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-white/60 group-hover/author:text-white'}`}>
+              @{item.owner}
+            </span>
+          </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+          {/* Stats row */}
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-2">
               <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
                 <MatrixIcon icon={Eye} size={11} theme={theme} glow={0} /> <span>{uniqueViews}</span>
               </div>
               <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
                 <MatrixIcon icon={MessageSquare} size={11} color="#60a5fa" theme={theme} glow={0} /> <span>{commentCount}</span>
               </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={handleLike}

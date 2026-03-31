@@ -6,7 +6,7 @@ import {
   LayoutGrid, PlusCircle, Search, Bell, FolderPlus, ArrowLeft, Folder, Plus, Globe,
   Heart, SkipBack, Play, Square, Pause, User, WifiOff, AlertTriangle,
   ListMusic, Radio, Zap, Activity, Disc,
-  LayoutTemplate, FilePlus2, Flag, UserCheck
+  LayoutTemplate, FilePlus2, Flag, UserCheck, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 import MatrixRain from './components/MatrixRain';
@@ -876,21 +876,63 @@ export default function App() {
             </>
         )}
 
+        {/* Static edge swipe hints — visible on mobile when not dragging */}
+        {isMainTabView && !tabIsDragging && (
+            <>
+                {currentTabIndex > 0 && (
+                    <div className="fixed left-0 top-1/2 -translate-y-1/2 z-10 pointer-events-none md:hidden">
+                        <div className={`pl-1 pr-2 py-5 rounded-r-xl flex items-center ${theme === 'dark' ? 'bg-white/5' : theme === 'winamp' ? 'bg-[#191919]/80' : 'bg-black/5'}`}>
+                            <ChevronLeft size={12} className="opacity-25" />
+                        </div>
+                    </div>
+                )}
+                {currentTabIndex < SWIPE_TAB_ORDER.length - 1 && (
+                    <div className="fixed right-0 top-1/2 -translate-y-1/2 z-10 pointer-events-none md:hidden">
+                        <div className={`pr-1 pl-2 py-5 rounded-l-xl flex items-center ${theme === 'dark' ? 'bg-white/5' : theme === 'winamp' ? 'bg-[#191919]/80' : 'bg-black/5'}`}>
+                            <ChevronRight size={12} className="opacity-25" />
+                        </div>
+                    </div>
+                )}
+            </>
+        )}
+
         {/* Swipe peek: adjacent-tab preview slides in from the edge during drag */}
         {isMainTabView && tabIsDragging && tabDragX < -10 && currentTabIndex < SWIPE_TAB_ORDER.length - 1 && (
             <div
-                className={`fixed inset-0 z-0 flex items-start pt-16 pl-4 pointer-events-none ${getThemeClasses()}`}
+                className={`fixed inset-0 z-0 flex flex-col items-start justify-center pl-5 pointer-events-none ${getThemeClasses()}`}
                 style={{ transform: `translateX(calc(100vw + ${tabDragX}px))` }}
             >
-                <span className="font-pixel text-xs opacity-30 mt-4">{TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex + 1]] ?? ''}</span>
+                <div className="flex items-center gap-2 opacity-60">
+                    <ChevronLeft size={16} className={theme === 'winamp' ? 'text-[#00ff00]' : theme === 'xp' ? 'text-xp-navy' : 'text-green-400'} />
+                    <span className={`font-pixel text-sm tracking-widest ${theme === 'winamp' ? 'text-[#00ff00]' : theme === 'xp' ? 'text-xp-navy' : 'text-white'}`}>
+                        {TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex + 1]] ?? ''}
+                    </span>
+                </div>
+                {/* Progress dots */}
+                <div className="flex gap-1.5 mt-3">
+                    {SWIPE_TAB_ORDER.map((_, i) => (
+                        <div key={i} className={`rounded-full transition-all ${i === currentTabIndex + 1 ? 'w-4 h-1.5 bg-green-400' : 'w-1.5 h-1.5 bg-white/20'}`} />
+                    ))}
+                </div>
             </div>
         )}
         {isMainTabView && tabIsDragging && tabDragX > 10 && currentTabIndex > 0 && (
             <div
-                className={`fixed inset-0 z-0 flex items-start pt-16 pl-4 pointer-events-none ${getThemeClasses()}`}
+                className={`fixed inset-0 z-0 flex flex-col items-end justify-center pr-5 pointer-events-none ${getThemeClasses()}`}
                 style={{ transform: `translateX(calc(-100vw + ${tabDragX}px))` }}
             >
-                <span className="font-pixel text-xs opacity-30 mt-4">{TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex - 1]] ?? ''}</span>
+                <div className="flex items-center gap-2 opacity-60">
+                    <span className={`font-pixel text-sm tracking-widest ${theme === 'winamp' ? 'text-[#00ff00]' : theme === 'xp' ? 'text-xp-navy' : 'text-white'}`}>
+                        {TAB_LABELS[SWIPE_TAB_ORDER[currentTabIndex - 1]] ?? ''}
+                    </span>
+                    <ChevronRight size={16} className={theme === 'winamp' ? 'text-[#00ff00]' : theme === 'xp' ? 'text-xp-navy' : 'text-green-400'} />
+                </div>
+                {/* Progress dots */}
+                <div className="flex gap-1.5 mt-3">
+                    {SWIPE_TAB_ORDER.map((_, i) => (
+                        <div key={i} className={`rounded-full transition-all ${i === currentTabIndex - 1 ? 'w-4 h-1.5 bg-green-400' : 'w-1.5 h-1.5 bg-white/20'}`} />
+                    ))}
+                </div>
             </div>
         )}
 

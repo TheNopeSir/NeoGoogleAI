@@ -1471,18 +1471,20 @@ api.get('/delivery/track/:trackingId', async (req, res) => {
 // ⚔️ DAILY BATTLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 4-day period bucket: 72h active battles + 24h pause (stable across restarts)
-const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+// 11-day period bucket: 7 days (168h) active battles + 4-day (96h) pause (stable across restarts)
+const BATTLE_CYCLE_MS = 11 * 24 * 60 * 60 * 1000;
+// Keep FOUR_DAYS_MS as alias to avoid touching every reference
+const FOUR_DAYS_MS = BATTLE_CYCLE_MS;
 function getPeriodStart() {
-    const bucketStart = new Date(Math.floor(Date.now() / FOUR_DAYS_MS) * FOUR_DAYS_MS);
+    const bucketStart = new Date(Math.floor(Date.now() / BATTLE_CYCLE_MS) * BATTLE_CYCLE_MS);
     return bucketStart.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 // Keep getTodayUTC as alias for compatibility
 const getTodayUTC = getPeriodStart;
 
-// Semi-final duration: 36h; final duration: 36h → total 72h active; remaining 24h = pause
-const SEMI_DURATION_MS = 36 * 60 * 60 * 1000;
-const FINAL_DURATION_MS = 36 * 60 * 60 * 1000;
+// Semi-final duration: 84h (3.5 days); final duration: 84h (3.5 days) → total 168h = 7 days active; remaining 96h (4 days) = pause
+const SEMI_DURATION_MS = 84 * 60 * 60 * 1000;
+const FINAL_DURATION_MS = 84 * 60 * 60 * 1000;
 
 function buildBracket(category, participants, now) {
     const date = getPeriodStart();
