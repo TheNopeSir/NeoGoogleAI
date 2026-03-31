@@ -1083,6 +1083,38 @@ api.get('/exhibits/:id', async (req, res) => {
     }
 });
 
+api.post('/exhibits/:id/shares', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) return res.status(400).json({ error: 'Username required' });
+
+        const result = await query('SELECT data FROM exhibits WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+
+        const exhibit = result.rows[0].data;
+        const sharedBy = exhibit.sharedBy ?? [];
+
+        if (sharedBy.includes(username)) {
+            return res.json({ success: true, shares: exhibit.shares ?? 0, alreadyShared: true });
+        }
+
+        const updatedData = {
+            ...exhibit,
+            shares: (exhibit.shares ?? 0) + 1,
+            sharedBy: [...sharedBy, username],
+        };
+
+        await query(
+            'UPDATE exhibits SET data = $1, updated_at = NOW() WHERE id = $2',
+            [updatedData, req.params.id]
+        );
+        cache.flushPattern('feed:');
+        res.json({ success: true, shares: updatedData.shares });
+    } catch (e) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 api.delete('/exhibits/:id', async (req, res) => {
     try {
         const { username } = req.query;

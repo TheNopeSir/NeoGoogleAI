@@ -647,7 +647,7 @@ export const incrementShares = async (id: string) => {
     notifyListeners();
     const db = await getDB();
     await db.put('exhibits', updated);
-    apiCall(`/exhibits/${id}/shares`, 'POST').catch(() => {});
+    apiCall(`/exhibits/${id}/shares`, 'POST', { username }).catch(() => {});
 };
 
 export const deleteExhibit = async (id: string) => {
