@@ -72,6 +72,8 @@ export interface Exhibit {
   reactions?: Reaction[];
   views: number;
   viewedBy?: string[];
+  shares?: number;
+  sharedBy?: string[];
   condition?: string;
   quality: string;
   specs: Record<string, string>;

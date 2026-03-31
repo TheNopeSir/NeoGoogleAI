@@ -269,6 +269,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
         case 'pin': window.open(`https://pinterest.com/pin/create/button/?url=${url}&media=${media}&description=${text}`); break;
         case 'copy': navigator.clipboard.writeText(publicUrl); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); break;
     }
+    onShare(exhibit.id);
     setShowShareMenu(false);
   };
 
@@ -686,8 +687,9 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                     </div>
                 )}
                 <div className="h-4 w-[1px] bg-white/10"></div>
-                <div className="relative">
+                <div className="relative flex items-center gap-1">
                     <button onClick={() => setShowShareMenu(!showShareMenu)} className={`hover:text-white transition-all ${shareCopied ? 'text-green-500' : 'text-gray-400'}`}><XI icon={Share2} size={16}/></button>
+                    {(exhibit.shares ?? 0) > 0 && <span className="text-[10px] font-mono text-white/40">{exhibit.shares}</span>}
                     {showShareMenu && (
                         <div className={`absolute right-0 top-6 w-40 border rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2 ${isXp ? 'bg-white border-gray-200' : 'bg-dark-surface border-white/10'}`}>
                             <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Send} size={12} className="text-blue-400"/> TELEGRAM</button>

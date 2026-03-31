@@ -632,6 +632,24 @@ export const updateExhibit = async (e: Exhibit) => {
     }
 };
 
+export const incrementShares = async (id: string) => {
+    const username = await getActiveUsername();
+    if (!username) return;
+    const exhibit = hotCache.exhibits.find(e => e.id === id);
+    if (!exhibit) return;
+    if ((exhibit.sharedBy ?? []).includes(username)) return; // уже шарил
+    const updated = {
+        ...exhibit,
+        shares: (exhibit.shares ?? 0) + 1,
+        sharedBy: [...(exhibit.sharedBy ?? []), username],
+    };
+    hotCache.exhibits = hotCache.exhibits.map(e => e.id === id ? updated : e);
+    notifyListeners();
+    const db = await getDB();
+    await db.put('exhibits', updated);
+    apiCall(`/exhibits/${id}/shares`, 'POST').catch(() => {});
+};
+
 export const deleteExhibit = async (id: string) => {
     const username = await getActiveUsername();
     const qs = username ? `?username=${encodeURIComponent(username)}` : '';

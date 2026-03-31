@@ -114,9 +114,17 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
         exhibits.filter(e => !e.isDraft && new Date(e.timestamp).getTime() > cutoff48h),
         [exhibits]);
 
+    // Score = likes*4 + comments*3 + shares*5 + views*1
+    // Shares weighted highest (active intent), then comments (engagement), likes, views
+    const trendScore = (e: Exhibit) =>
+        (e.likes ?? 0) * 4 +
+        (e.comments?.length ?? 0) * 3 +
+        (e.shares ?? 0) * 5 +
+        (e.views ?? 0);
+
     const trendingExhibits = useMemo(() => {
         const pool = (trendWindow === '48H' && recentExhibits48h.length >= 6) ? recentExhibits48h : exhibits.filter(e => !e.isDraft);
-        return [...pool].sort((a, b) => ((b.likes * 10) + b.views) - ((a.likes * 10) + a.views)).slice(0, 6);
+        return [...pool].sort((a, b) => trendScore(b) - trendScore(a)).slice(0, 6);
     }, [exhibits, trendWindow, recentExhibits48h]);
 
     const newExhibits = useMemo(() =>
@@ -234,7 +242,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
             </div>
 
             {/* Navigation */}
-            <div className={`flex mb-6 sticky top-0 md:top-16 z-30 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-b border-[#8592B5]' : isLight ? 'bg-white/90 border-b border-gray-200 backdrop-blur-md' : 'border-b border-white/10 bg-black/80 backdrop-blur-md'}`}>
+            <div className={`flex mb-6 ${isWinamp ? 'bg-[#292929] border-b border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-b border-[#8592B5]' : isLight ? 'bg-white/90 border-b border-gray-200' : 'border-b border-white/10'}`}>
                 {renderTabButton('TRENDS', <XI icon={TrendingUp} size={20} />, 'ТРЕНДЫ')}
                 {renderTabButton('PEOPLE', <XI icon={Users} size={20} />, 'ЛЮДИ')}
                 {renderTabButton('TRADE', <XI icon={RefreshCw} size={20} />, 'ОБМЕН')}
