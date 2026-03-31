@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Capacitor } from '@capacitor/core';
-import { Exhibit, Collection, Notification, Message, UserProfile, GuestbookEntry, WishlistItem, Guild, Duel, TradeRequest, NotificationType, ArtifactBattle, DailyBracket } from '../types';
+import { type Exhibit, type Collection, type Notification, type Message, type UserProfile, type GuestbookEntry, type WishlistItem, type Guild, type Duel, type TradeRequest, type NotificationType, type ArtifactBattle, type DailyBracket } from '../types';
 import { calculateWishlistMatchScore, WISHLIST_MATCH_THRESHOLD } from '../constants';
 
 // ==========================================
