@@ -256,28 +256,25 @@ const FeedView: React.FC<FeedViewProps> = ({
       wishlist.filter(w => w.owner === user.username && (!w.status || w.status === 'SEARCHING')),
   [wishlist, user.username]);
 
-  // --- TRENDING BLOCK (recency-weighted score, last 7 days, top 6) ---
-  // Score = (likes * 10 + views) / (hoursOld + 2)^1.2
-  // This naturally puts recent active items first regardless of total age
+  // --- TRENDING BLOCK ---
+  // Score = shares*5 + likes*4 + comments*3 + views*1
+  // Shares weighted highest (active intent), comments (engagement), likes, views
   const trendingExhibits = useMemo(() => {
-      const now = Date.now();
-      const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+      const score = (e: Exhibit) =>
+          (e.shares ?? 0) * 5 +
+          (e.likes ?? 0) * 4 +
+          (e.comments?.length ?? 0) * 3 +
+          (e.views ?? 0);
       return exhibits
           .filter(e =>
               !e.isDraft &&
               e.owner !== user.username &&
               e.postType !== 'WANTED' &&
-              new Date(e.timestamp).getTime() >= cutoff &&
               (feedType === 'FOLLOWING' ? user.following.includes(e.owner) : true)
           )
-          .map(e => {
-              const hoursOld = (now - new Date(e.timestamp).getTime()) / 3_600_000;
-              const score = ((e.likes * 10) + e.views) / Math.pow(hoursOld + 2, 1.2);
-              return { e, score };
-          })
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 6)
-          .map(({ e }) => e);
+          .filter(e => score(e) > 0)
+          .sort((a, b) => score(b) - score(a))
+          .slice(0, 6);
   }, [exhibits, user.username, user.following, feedType]);
 
   // --- RECENTLY VIEWED (from localStorage) ---
