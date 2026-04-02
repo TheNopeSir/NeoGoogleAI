@@ -1898,6 +1898,91 @@ setupAdminAPI(app, query, cache);
 
 app.use('/api/*', (req, res) => { res.status(404).json({ error: 'Endpoint not found' }); });
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// ── OG Meta Injection для шеринга артефактов ──────────────────────────────
+// Telegram/WhatsApp/VK и другие боты не выполняют JS, поэтому OG-теги
+// нужно вставить на сервере ПЕРЕД отправкой index.html.
+const _getOgImageUrl = (imageData) => {
+    if (!imageData) return null;
+    if (typeof imageData === 'string' && !imageData.startsWith('data:')) return imageData;
+    if (typeof imageData === 'object') {
+        return imageData.large || imageData.medium || imageData.thumbnail || null;
+    }
+    return null;
+};
+
+const _escapeHtml = (str) => String(str || '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+app.get('/artifact/:id', async (req, res) => {
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    try {
+        const result = await query('SELECT * FROM exhibits WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) return res.sendFile(indexPath);
+
+        const exhibit = mapRow(result.rows[0]);
+        const title = _escapeHtml(exhibit.title || 'Артефакт');
+        const description = _escapeHtml(
+            exhibit.description
+                ? exhibit.description.slice(0, 200)
+                : `Артефакт @${exhibit.owner || ''} на NeoArchive`
+        );
+        const pageUrl = `https://neoarchive.ru/artifact/${req.params.id}`;
+
+        // Достаём URL фото (предпочитаем large)
+        const imgs = Array.isArray(exhibit.imageUrls) ? exhibit.imageUrls : [];
+        const ogImageUrl = _getOgImageUrl(imgs[0]) || 'https://neoarchive.ru/icon-512.png';
+        const ogImage = _escapeHtml(ogImageUrl);
+
+        let html = fs.readFileSync(indexPath, 'utf8');
+
+        // Заменяем/вставляем OG-теги в <head>
+        const inject = `
+    <title>${title} | NeoArchive</title>
+    <meta property="og:title" content="${title} | NeoArchive" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${ogImage}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title} | NeoArchive" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${ogImage}" />`;
+
+        // Заменяем существующие теги через регексы (поддерживаем и property= и name=)
+        const ogAttr = (key) => `(?:property|name)="${key}"`;
+        const replaceOg = (h, key, val) =>
+            h.replace(new RegExp(`(<meta\\s+${ogAttr(key)}\\s+content=")[^"]*(")`,'g'), `$1${val}$2`)
+             .replace(new RegExp(`(<meta\\s+content="[^"]*"\\s+${ogAttr(key)}[^>]*>)`,'g'),
+                      `<meta property="${key}" content="${val}" />`);
+
+        html = html
+            .replace(/<title>[^<]*<\/title>/, `<title>${title} | NeoArchive</title>`);
+        html = replaceOg(html, 'og:title',       `${title} | NeoArchive`);
+        html = replaceOg(html, 'og:description', description);
+        html = replaceOg(html, 'og:image',       ogImage);
+        html = replaceOg(html, 'og:url',         pageUrl);
+        html = replaceOg(html, 'og:type',        'article');
+        html = replaceOg(html, 'twitter:title',       `${title} | NeoArchive`);
+        html = replaceOg(html, 'twitter:description', description);
+        html = replaceOg(html, 'twitter:image',       ogImage);
+
+        // На случай если каких-то тегов не было — добавляем в <head>
+        if (!html.includes('og:image:width')) {
+            html = html.replace('</head>', `${inject}\n</head>`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (e) {
+        console.error('[OG] Error injecting meta for artifact:', e.message);
+        res.sendFile(indexPath);
+    }
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server on ${PORT}`));

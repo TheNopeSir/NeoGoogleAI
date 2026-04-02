@@ -373,10 +373,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                     <div className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold font-pixel shadow-lg ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : 'bg-amber-600 text-white'}`}>
                                                         {i + 1}
                                                     </div>
-                                                    {/* Score badge */}
-                                                    <div className="absolute top-1.5 right-1.5 bg-black/70 rounded px-1 py-0.5">
-                                                        <span className={`text-[8px] font-pixel ${RANK_COLORS[i]}`}>🔥{score}</span>
-                                                    </div>
                                                     {/* Title overlay */}
                                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-2 py-1.5">
                                                         <p className="text-[9px] font-bold text-white truncate leading-tight">{item.title}</p>
@@ -419,7 +415,6 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                 <div className="flex items-center gap-2 flex-shrink-0">
                                                     <span className="text-[9px] opacity-50">👁 {item.views ?? 0}</span>
                                                     <span className="text-[9px] opacity-50">❤️ {item.likes ?? 0}</span>
-                                                    <span className={`text-[9px] font-pixel ${isWinamp ? 'text-wa-gold' : 'text-green-400'}`}>🔥{score}</span>
                                                 </div>
                                             </div>
                                         );
