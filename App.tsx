@@ -21,6 +21,7 @@ import SEO from './components/SEO';
 import HallOfFame from './components/HallOfFame';
 import CollectionDetailPage from './components/CollectionDetailPage';
 import DirectChat from './components/DirectChat';
+import GlobalChat from './components/GlobalChat';
 import CreateArtifactView from './components/CreateArtifactView';
 import CreateCollectionView from './components/CreateCollectionView';
 import CreateWishlistItemView from './components/CreateWishlistItemView';
@@ -889,25 +890,6 @@ export default function App() {
             </>
         )}
 
-        {/* Static edge swipe hints — visible on mobile when not dragging */}
-        {isMainTabView && !tabIsDragging && (
-            <>
-                {currentTabIndex > 0 && (
-                    <div className="fixed left-0 top-1/2 -translate-y-1/2 z-10 pointer-events-none md:hidden">
-                        <div className={`pl-1 pr-2 py-5 rounded-r-xl flex items-center ${theme === 'dark' ? 'bg-white/5' : theme === 'winamp' ? 'bg-[#191919]/80' : 'bg-black/5'}`}>
-                            <ChevronLeft size={12} className="opacity-25" />
-                        </div>
-                    </div>
-                )}
-                {currentTabIndex < SWIPE_TAB_ORDER.length - 1 && (
-                    <div className="fixed right-0 top-1/2 -translate-y-1/2 z-10 pointer-events-none md:hidden">
-                        <div className={`pr-1 pl-2 py-5 rounded-l-xl flex items-center ${theme === 'dark' ? 'bg-white/5' : theme === 'winamp' ? 'bg-[#191919]/80' : 'bg-black/5'}`}>
-                            <ChevronRight size={12} className="opacity-25" />
-                        </div>
-                    </div>
-                )}
-            </>
-        )}
 
         {/* Swipe peek: adjacent-tab preview slides in from the edge during drag */}
         {isMainTabView && tabIsDragging && tabDragX < -10 && currentTabIndex < SWIPE_TAB_ORDER.length - 1 && (
@@ -1048,12 +1030,18 @@ export default function App() {
 
             {view === 'COMMUNITY_HUB' && (
                 <div className="p-4 pb-24">
-                    <CommunityHub theme={theme} users={allUsers} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} currentUsername={user?.username} onReact={handleReaction} onFollow={async (u) => { if(user) { const wasFollowing = user.following.includes(u); await db.toggleFollow(user.username, u); if (!wasFollowing) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} />
+                    <CommunityHub theme={theme} users={allUsers} exhibits={exhibits} onExhibitClick={handleExhibitClick} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onBack={() => navigateTo('FEED')} currentUser={user} currentUsername={user?.username} onReact={handleReaction} onFollow={async (u) => { if(user) { const wasFollowing = user.following.includes(u); await db.toggleFollow(user.username, u); if (!wasFollowing) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} onOpenGlobalChat={() => navigateTo('GLOBAL_CHAT')} />
                 </div>
             )}
 
             {view === 'DIRECT_CHAT' && user && (
                 <DirectChat theme={theme} currentUser={user} partnerUsername={viewedProfileUsername} messages={messages.filter(m => (m.sender.toLowerCase() === user.username.toLowerCase() && m.receiver.toLowerCase() === viewedProfileUsername.toLowerCase()) || (m.sender.toLowerCase() === viewedProfileUsername.toLowerCase() && m.receiver.toLowerCase() === user.username.toLowerCase()))} users={allUsers} onBack={handleBack} onSendMessage={async (text) => { const msg = { id: crypto.randomUUID(), sender: user.username, receiver: viewedProfileUsername, text, timestamp: new Date().toLocaleString(), isRead: false }; await db.saveMessage(msg); }} onReactToMessage={handleMessageReaction} />
+            )}
+
+            {view === 'GLOBAL_CHAT' && user && (
+                <div className="p-4 pb-24">
+                    <GlobalChat theme={theme} currentUser={user} onBack={handleBack} />
+                </div>
             )}
 
             {/* Other views (Create, Edit etc) */}

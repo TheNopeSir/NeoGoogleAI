@@ -890,6 +890,14 @@ export const startLiveUpdates = () => {
             hotCache.notifications = notifs;
             notifyListeners();
         } catch (e) {}
+
+        // Обновление экспонатов для блока "Сейчас популярно"
+        try {
+            const fresh = await apiCall('/feed?limit=50');
+            if (!Array.isArray(fresh)) return;
+            hotCache.exhibits = mergeUnique(hotCache.exhibits, fresh);
+            notifyListeners();
+        } catch (e) {}
     }, 30000);
 };
 
@@ -898,6 +906,21 @@ export const stopLiveUpdates = () => {
         clearInterval(_liveUpdateInterval);
         _liveUpdateInterval = null;
     }
+};
+
+// --- GLOBAL CHAT ---
+export const getGlobalChatMessages = async (): Promise<any[]> => {
+    try {
+        const data = await apiCall('/global_chat?limit=100');
+        if (!Array.isArray(data)) return [];
+        return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    } catch (e) {
+        return [];
+    }
+};
+
+export const sendGlobalChatMessage = async (msg: { id: string; sender: string; text: string; timestamp: string }): Promise<void> => {
+    await apiCall('/global_chat', 'POST', msg);
 };
 
 export const getStorageEstimate = async (): Promise<StorageEstimate | undefined> => {

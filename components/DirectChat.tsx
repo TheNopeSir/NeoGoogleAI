@@ -160,7 +160,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                         return (
                             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
                                 <div
-                                    className={`max-w-[80%] p-4 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
+                                    className={`max-w-[80%] p-4 rounded-2xl font-mono text-sm leading-relaxed break-all whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
                                     onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
                                     onTouchStart={e => {
                                         const touch = e.touches[0];

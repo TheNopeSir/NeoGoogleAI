@@ -456,7 +456,7 @@ const ActivityView: React.FC<ActivityViewProps> = ({
                                                 <span className={`font-bold font-pixel text-xs ${hasUnread ? 'text-green-500' : ''}`}>@{partner}</span>
                                                 <span className="text-[9px] opacity-40 font-mono">{new Date(lastMsg.timestamp).toLocaleDateString()}</span>
                                             </div>
-                                            <div className={`text-xs font-mono truncate ${hasUnread ? (isLight ? 'text-gray-900 font-bold' : 'text-white') : 'opacity-60'}`}>
+                                            <div className={`text-xs font-mono line-clamp-2 break-words ${hasUnread ? (isLight ? 'text-gray-900 font-bold' : 'text-white') : 'opacity-60'}`}>
                                                 {lastMsg.sender.toLowerCase() === currentUser.username.toLowerCase() && <span className="opacity-50">Вы: </span>}
                                                 {lastMsg.text}
                                             </div>

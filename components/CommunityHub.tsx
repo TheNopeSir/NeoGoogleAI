@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles, Swords } from 'lucide-react';
+import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles, Swords, MessageCircle } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
 import DailyBattlesView from './DailyBattlesView';
 import { ExhibitCard } from './ExhibitCard';
@@ -19,6 +19,7 @@ interface CommunityHubProps {
     onReact: (id: string) => void;
     onFollow?: (username: string) => void;
     currentUsername?: string;
+    onOpenGlobalChat?: () => void;
 }
 
 // Winamp Helper wrapper
@@ -42,7 +43,7 @@ const MEDAL = [
 ];
 
 const CommunityHub: React.FC<CommunityHubProps> = ({
-    theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser, onReact, onFollow, currentUsername
+    theme, users = [], exhibits = [], onExhibitClick, onUserClick, onBack, currentUser, onReact, onFollow, currentUsername, onOpenGlobalChat
 }) => {
     // Read initial tab from URL
     const getInitialTab = () => {
@@ -247,6 +248,15 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                 {renderTabButton('PEOPLE', <XI icon={Users} size={20} />, 'ЛЮДИ')}
                 {renderTabButton('TRADE', <XI icon={RefreshCw} size={20} />, 'ОБМЕН')}
                 {renderTabButton('BATTLES', <XI icon={Swords} size={20} />, 'БИТВЫ')}
+                {onOpenGlobalChat && (
+                    <button
+                        onClick={onOpenGlobalChat}
+                        className={`flex flex-col items-center gap-1 p-3 flex-1 transition-all border-b-2 border-transparent opacity-50 hover:opacity-100`}
+                    >
+                        <XI icon={MessageCircle} size={20} />
+                        <span className="text-[9px] font-pixel uppercase">ЧАТ</span>
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}

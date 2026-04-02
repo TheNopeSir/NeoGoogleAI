@@ -23,6 +23,7 @@ import ReactionBar from './ReactionBar';
 import { renderTextWithMentions } from '../utils/textUtils';
 import { MessageReactionEmoji } from '../types';
 import XI from './XI';
+import SEO from './SEO';
 
 interface ExhibitDetailPageProps {
   exhibit: Exhibit;
@@ -525,9 +526,19 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       ? exhibit.description.slice(0, MAX_DESCRIPTION_LENGTH) + '...'
       : exhibit.description;
 
+  const ogImage = exhibit.imageUrls?.[0]
+      ? getImageUrl(exhibit.imageUrls[0], 'large')
+      : undefined;
+
   return (
     <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-      
+      <SEO
+          title={`${exhibit.title} | NeoArchive`}
+          description={exhibit.description || `Артефакт @${exhibit.owner} на NeoArchive`}
+          image={ogImage}
+          type="article"
+      />
+
       {showTradeModal && currentUserProfile && allExhibits && recipientProfile && (
           <TradeOfferModal
             targetItem={exhibit}

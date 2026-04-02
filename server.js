@@ -320,7 +320,7 @@ const ensureSchema = async () => {
     )`;
 
     // Tables logic
-    const tables = ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests', 'battles'];
+    const tables = ['exhibits', 'collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests', 'battles', 'global_chat'];
     
     // Ensure USERS table (special case: might have username instead of id)
     await query(`CREATE TABLE IF NOT EXISTS users (
@@ -1255,13 +1255,14 @@ const createCrud = (router, table) => {
 // --- ANTI-SPAM ROUTE BINDINGS ---
 // Должны быть зарегистрированы ДО createCrud, чтобы middleware выполнялся первым (порядок регистрации в Express).
 api.post('/messages',       messageLimiter,       spamFilter);
+api.post('/global_chat',    messageLimiter,       spamFilter);
 api.post('/guestbook',      guestbookLimiter,     spamFilter);
 api.post('/collections',    contentCreateLimiter);
 api.post('/wishlist',       contentCreateLimiter);
 api.post('/trade_requests', contentCreateLimiter);
 api.post('/notifications',  notificationLimiter);
 
-['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests'].forEach(t => createCrud(api, t));
+['collections', 'notifications', 'messages', 'guestbook', 'wishlist', 'trade_requests', 'global_chat'].forEach(t => createCrud(api, t));
 
 // Special Route for marking notifications read
 api.post('/notifications/read-all', async (req, res) => {

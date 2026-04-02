@@ -50,8 +50,8 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
     const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
     const [showPickupMap, setShowPickupMap] = useState(false);
 
-    // Delivery step is shown for all trade types except GIFT
-    const hasDeliveryStep = tradeType !== 'GIFT';
+    // Delivery temporarily disabled
+    const hasDeliveryStep = false; // const hasDeliveryStep = tradeType !== 'GIFT';
 
     // Filter locked items
     const availableMyItems = useMemo(() => userInventory.filter(i => !i.isDraft && !i.lockedInTradeId), [userInventory]);
@@ -137,27 +137,28 @@ const TradeOfferModal: React.FC<TradeOfferModalProps> = ({
     };
 
     const handleSubmit = async () => {
-        // Delivery step validation (only for non-GIFT trades that use delivery)
-        if (hasDeliveryStep) {
-            if (!deliveryMethod) return alert("Выберите способ доставки");
-            if (!validateAddress(senderAddress)) return alert("Заполните адрес отправителя");
-            if (deliveryMethod === 'COURIER' && !validateAddress(recipientAddress)) return alert("Заполните адрес получателя");
-            if (deliveryMethod === 'PICKUP_POINT' && !selectedPickupPoint) return alert("Выберите пункт выдачи на карте");
-        }
+        // Delivery step validation disabled
+        // if (hasDeliveryStep) {
+        //     if (!deliveryMethod) return alert("Выберите способ доставки");
+        //     if (!validateAddress(senderAddress)) return alert("Заполните адрес отправителя");
+        //     if (deliveryMethod === 'COURIER' && !validateAddress(recipientAddress)) return alert("Заполните адрес получателя");
+        //     if (deliveryMethod === 'PICKUP_POINT' && !selectedPickupPoint) return alert("Выберите пункт выдачи на карте");
+        // }
 
         setIsSubmitting(true);
         try {
-            const shipmentPayload = hasDeliveryStep && deliveryMethod && selectedTariff ? {
-                provider: 'yandex' as const,
-                method: deliveryMethod,
-                cost: selectedTariff.cost,
-                status: 'PENDING' as const,
-                senderAddress: senderAddress as ShippingAddress,
-                recipientAddress: deliveryMethod === 'COURIER' ? recipientAddress as ShippingAddress : undefined,
-                pickupPointId: selectedPickupPoint?.id,
-                pickupPointAddress: selectedPickupPoint?.address,
-                createdAt: new Date().toISOString(),
-            } : undefined;
+            const shipmentPayload = undefined; // Delivery disabled
+            // const shipmentPayload = hasDeliveryStep && deliveryMethod && selectedTariff ? {
+            //     provider: 'yandex' as const,
+            //     method: deliveryMethod,
+            //     cost: selectedTariff.cost,
+            //     status: 'PENDING' as const,
+            //     senderAddress: senderAddress as ShippingAddress,
+            //     recipientAddress: deliveryMethod === 'COURIER' ? recipientAddress as ShippingAddress : undefined,
+            //     pickupPointId: selectedPickupPoint?.id,
+            //     pickupPointAddress: selectedPickupPoint?.address,
+            //     createdAt: new Date().toISOString(),
+            // } : undefined;
 
             await sendTradeRequest({
                 recipient: recipient.username,

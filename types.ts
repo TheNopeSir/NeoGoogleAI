@@ -282,7 +282,14 @@ export interface TradeRequest {
     shipment?: ShipmentInfo;
 }
 
-export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'SHIPMENTS' | 'DAILY_BATTLES' | 'PRIVACY' | 'TERMS';
+export type ViewState = 'LANDING' | 'AUTH' | 'FEED' | 'PROFILE' | 'USER_PROFILE' | 'USER_WISHLIST' | 'CREATE_HUB' | 'CREATE_ARTIFACT' | 'CREATE_WISHLIST' | 'EDIT_ARTIFACT' | 'CREATE_COLLECTION' | 'EDIT_COLLECTION' | 'EXHIBIT' | 'COLLECTIONS' | 'COLLECTION_DETAIL' | 'ADMIN' | 'SETTINGS' | 'ACTIVITY' | 'SEARCH' | 'HALL_OF_FAME' | 'DIRECT_CHAT' | 'GLOBAL_CHAT' | 'SOCIAL_LIST' | 'WISHLIST_DETAIL' | 'COMMUNITY_HUB' | 'MY_COLLECTION' | 'GUILD_DETAIL' | 'SHIPMENTS' | 'DAILY_BATTLES' | 'PRIVACY' | 'TERMS';
+
+export interface GlobalChatMessage {
+    id: string;
+    sender: string;
+    text: string;
+    timestamp: string;
+}
 
 export interface ArtifactBattle {
   id: string;
