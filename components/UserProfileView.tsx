@@ -107,7 +107,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const isWinamp = theme === 'winamp';
     const isPlaceholderEmail = user.email?.includes('placeholder') || user.email?.includes('tg_');
 
-    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST' | 'SHIPMENTS'>('SHELF');
+    const [activeSection, setActiveSection] = useState<'SHELF' | 'FAVORITES' | 'LOGS' | 'CONFIG' | 'WISHLIST'>('SHELF');
     const [localProfileTab, setLocalProfileTab] = useState<'ARTIFACTS' | 'COLLECTIONS'>('ARTIFACTS');
     const [showPassword, setShowPassword] = useState(false);
     const [localSettings, setLocalSettings] = useState<AppSettings>(user?.settings || { theme: 'dark' });
@@ -115,6 +115,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     const [pushEnabled, setPushEnabled] = useState(false);
     const [passwordRequestSent, setPasswordRequestSent] = useState(false);
     const [emailRequestSent, setEmailRequestSent] = useState(false);
+    const [editTgChannel, setEditTgChannel] = useState(user.tgChannel || '');
 
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -152,6 +153,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
             bio: editBio,
             status: editStatus,
             telegram: editTelegram,
+            tgChannel: editTgChannel,
         };
         await db.updateUserProfile(updated);
 
@@ -311,6 +313,32 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 block">О себе</label>
                                             <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={3} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-green-500 outline-none resize-none"/>
                                         </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2">✈️ Telegram (личный)</label>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs opacity-40 font-mono pl-1">@</span>
+                                                    <input
+                                                        value={editTelegram}
+                                                        onChange={(e) => setEditTelegram(e.target.value.replace(/^@/, ''))}
+                                                        placeholder="username"
+                                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-blue-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-1 flex items-center gap-2">📢 Telegram-канал</label>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs opacity-40 font-mono pl-1">@</span>
+                                                    <input
+                                                        value={editTgChannel}
+                                                        onChange={(e) => setEditTgChannel(e.target.value.replace(/^@/, ''))}
+                                                        placeholder="channel_name"
+                                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:border-blue-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div>
                                             <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Статус присутствия</label>
                                             <div className="flex flex-wrap gap-2">
@@ -374,6 +402,30 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                                             </div>
                                         </div>
                                         {profileUser.bio && <p className="font-mono text-xs opacity-70 whitespace-pre-wrap leading-relaxed max-w-2xl">{profileUser.bio}</p>}
+                                        {(profileUser.telegram || profileUser.tgChannel) && (
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                {profileUser.telegram && (
+                                                    <a
+                                                        href={`https://t.me/${profileUser.telegram}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-mono hover:bg-blue-500/25 transition-colors"
+                                                    >
+                                                        ✈️ @{profileUser.telegram}
+                                                    </a>
+                                                )}
+                                                {profileUser.tgChannel && (
+                                                    <a
+                                                        href={`https://t.me/${profileUser.tgChannel}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-mono hover:bg-blue-500/25 transition-colors"
+                                                    >
+                                                        📢 @{profileUser.tgChannel}
+                                                    </a>
+                                                )}
+                                            </div>
+                                        )}
                                         {isCurrentUser && isPlaceholderEmail && !isEditingProfile && (
                                             <div onClick={() => setIsEditingProfile(true)} className="mt-2 bg-red-500/10 border border-red-500/50 p-2 rounded flex items-center gap-2 cursor-pointer hover:bg-red-500/20">
                                                 <XI icon={AlertCircle} size={14} className="text-red-500"/>
@@ -393,7 +445,8 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <button onClick={() => setActiveSection('FAVORITES')} className={`flex-1 pb-3 text-center ${activeSection === 'FAVORITES' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Heart} size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('LOGS')} className={`flex-1 pb-3 text-center ${activeSection === 'LOGS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={MessageSquare} size={20} className="mx-auto"/></button>
                 <button onClick={() => setActiveSection('WISHLIST')} className={`flex-1 pb-3 text-center ${activeSection === 'WISHLIST' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Search} size={20} className="mx-auto"/></button>
-                {isCurrentUser && <button onClick={() => setActiveSection('SHIPMENTS')} className={`flex-1 pb-3 text-center relative ${activeSection === 'SHIPMENTS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Truck} size={20} className="mx-auto"/></button>}
+                {/* Доставка временно отключена */}
+                {/* {isCurrentUser && <button onClick={() => setActiveSection('SHIPMENTS')} className={`flex-1 pb-3 text-center relative ${activeSection === 'SHIPMENTS' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Truck} size={20} className="mx-auto"/></button>} */}
                 {isCurrentUser && <button onClick={() => setActiveSection('CONFIG')} className={`flex-1 pb-3 text-center ${activeSection === 'CONFIG' ? 'border-b-2 border-green-500 text-green-500' : 'opacity-50'}`}><XI icon={Settings} size={20} className="mx-auto"/></button>}
             </div>
 
@@ -509,16 +562,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
             )}
 
-            {isCurrentUser && activeSection === 'SHIPMENTS' && (
-                <div className="animate-in fade-in -mx-4">
-                    <ShipmentsView
-                        tradeRequests={tradeRequests}
-                        currentUser={user}
-                        onBack={() => {}}
-                        embedded
-                    />
-                </div>
-            )}
+            {/* SHIPMENTS section временно отключена */}
 
             {isCurrentUser && activeSection === 'CONFIG' && (
                 <div className="p-6 rounded-xl border flex flex-col gap-6 animate-in fade-in bg-white/5 border-white/10 mx-0 md:mx-0">

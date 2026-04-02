@@ -170,10 +170,42 @@ const notificationLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// --- STOP WORDS (серверная проверка) ---
+const _normalizeForFilter = t =>
+    t.toLowerCase()
+     .replace(/a/g,'а').replace(/e/g,'е').replace(/o/g,'о').replace(/p/g,'р')
+     .replace(/c/g,'с').replace(/x/g,'х').replace(/y/g,'у').replace(/b/g,'в')
+     .replace(/m/g,'м').replace(/h/g,'н').replace(/k/g,'к').replace(/t/g,'т')
+     .replace(/0/g,'о').replace(/3/g,'е').replace(/\|/g,'и')
+     .replace(/[\s\-_.*]+/g,'');
+
+const STOP_PATTERNS = [
+    /хуй|хуе|хуя|хую|хуем|хуев|хуях|хуищ|хуёв/,
+    /пизд|пизж/,
+    /ёбан|ебан|еба[лн]|ёба[лн]|ебё|ёбё|ёбат|ебат|ебли|ебут|ёбут|заеб|заёб|наеб|поеб|уеб|уёб|выеб|отеб|ибан/,
+    /бляд|блядь|блять|бляк/,
+    /мудак|мудил|мудозвон/,
+    /пидор|пидар|педик|пидрил|пидрас|питух/,
+    /залуп/,
+    /наркот|героин|кокаин|метамф|мефедрон|спайс|закладк|кладмен|амфетам|фенамин|экстази|мдма/,
+    /казино|рулетк|1win|1хбет|1xbet|mostbet|melbet|вавада|vavada|betwinner/,
+    /кредит.*онлайн|займ.*срочно|деньги.*быстро.*без/,
+    /отмыва|обнал|накрут.*подписч|накрут.*лайк/,
+    /купить.*паспорт|купи.*права|поддельн.*документ/,
+    /fuck|shit|\bcunt\b|nigger|nigga|faggot|\bfag\b|\bwhore\b|\bslut\b/,
+];
+
+const containsStopWords = text => {
+    const n = _normalizeForFilter(text);
+    return STOP_PATTERNS.some(re => re.test(n));
+};
+
 // --- ANTI-SPAM CONTENT FILTER ---
 const spamFilter = (req, res, next) => {
-    const text = req.body?.text || req.body?.description || req.body?.notes || '';
-    if (typeof text !== 'string' || !text.trim()) return next();
+    // Check multiple text fields including nested comments
+    const comments = Array.isArray(req.body?.comments) ? req.body.comments.map(c => c?.text || '').join(' ') : '';
+    const text = [req.body?.text, req.body?.description, req.body?.notes, comments].filter(Boolean).join(' ');
+    if (!text.trim()) return next();
 
     const trimmed = text.trim();
 
@@ -195,6 +227,10 @@ const spamFilter = (req, res, next) => {
     // Слишком много ссылок
     if ((trimmed.match(/https?:\/\//gi) || []).length > 3)
         return res.status(400).json({ error: 'Слишком много ссылок в сообщении.' });
+
+    // Стоп-слова
+    if (containsStopWords(trimmed))
+        return res.status(400).json({ error: 'Сообщение содержит недопустимые слова.' });
 
     // Защита от дублей (60 секунд, по IP + содержимому)
     const dupKey = `spam_dup:${req.ip}:${trimmed.toLowerCase().replace(/\s+/g, ' ')}`;
@@ -1282,7 +1318,7 @@ api.post('/notifications/read-all', async (req, res) => {
 });
 
 // Special Exhibits Handler (POST)
-api.post('/exhibits', contentCreateLimiter, async (req, res) => {
+api.post('/exhibits', contentCreateLimiter, spamFilter, async (req, res) => {
     try {
         const { id, imageUrls } = req.body;
         let processedData = { ...req.body };

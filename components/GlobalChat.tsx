@@ -9,9 +9,10 @@ interface GlobalChatProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
     currentUser: UserProfile;
     onBack: () => void;
+    onUserClick?: (username: string) => void;
 }
 
-const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack }) => {
+const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onUserClick }) => {
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -135,14 +136,17 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack }) =
                         return (
                             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
                                 {!isMe && (
-                                    <div className="flex items-center gap-1.5 mb-1 ml-1">
+                                    <button
+                                        className="flex items-center gap-1.5 mb-1 ml-1 hover:opacity-100 opacity-70 transition-opacity"
+                                        onClick={() => onUserClick?.(msg.sender)}
+                                    >
                                         <img
                                             src={getUserAvatar(msg.sender)}
                                             className="w-4 h-4 rounded-full"
                                             alt={msg.sender}
                                         />
-                                        <span className="text-[9px] font-pixel opacity-60">@{msg.sender}</span>
-                                    </div>
+                                        <span className="text-[9px] font-pixel hover:underline">@{msg.sender}</span>
+                                    </button>
                                 )}
                                 <div className={`max-w-[80%] p-3 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap ${bubbleBg}`}>
                                     {msg.text}

@@ -173,6 +173,7 @@ export interface UserProfile {
   password?: string;
   isAdmin?: boolean;
   telegram?: string;
+  tgChannel?: string;
   guildId?: string;
   reputation?: number;
   tradeStats?: {

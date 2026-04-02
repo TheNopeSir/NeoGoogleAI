@@ -1040,7 +1040,7 @@ export default function App() {
 
             {view === 'GLOBAL_CHAT' && user && (
                 <div className="p-4 pb-24">
-                    <GlobalChat theme={theme} currentUser={user} onBack={handleBack} />
+                    <GlobalChat theme={theme} currentUser={user} onBack={handleBack} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} />
                 </div>
             )}
 

@@ -20,7 +20,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import EmojiPicker from './EmojiPicker';
 import MessageReactionPicker from './MessageReactionPicker';
 import ReactionBar from './ReactionBar';
-import { renderTextWithMentions } from '../utils/textUtils';
+import { renderTextWithMentions, validateMessageText } from '../utils/textUtils';
 import { MessageReactionEmoji } from '../types';
 import XI from './XI';
 import SEO from './SEO';
@@ -1039,6 +1039,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                                 className={`flex-1 border px-3 py-2.5 font-mono text-xs focus:outline-none transition-colors rounded-lg ${isWinamp ? 'bg-black/40 border-white/10 text-[#00ff00] placeholder-gray-600 focus:border-green-500' : isXp ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-xp-navy' : 'bg-black/40 border-white/10 focus:border-green-500'}`}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && commentText.trim()) {
+                                        const err = validateMessageText(commentText);
+                                        if (err) { alert(err); return; }
                                         onPostComment(exhibit.id, commentText, replyTo?.id);
                                         setCommentText('');
                                         setReplyTo(null);
@@ -1056,6 +1058,8 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             <button
                                 onClick={() => {
                                     if (commentText.trim()) {
+                                        const err = validateMessageText(commentText);
+                                        if (err) { alert(err); return; }
                                         onPostComment(exhibit.id, commentText, replyTo?.id);
                                         setCommentText('');
                                         setReplyTo(null);

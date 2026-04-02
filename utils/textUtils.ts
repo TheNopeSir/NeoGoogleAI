@@ -40,11 +40,59 @@ export const renderTextWithMentions = (
     });
 };
 
+// --- STOP WORDS ---
+// Нормализация текста: нижний регистр + замена латинских омоглифов на кириллицу
+const normalizeForFilter = (text: string): string =>
+    text
+        .toLowerCase()
+        .replace(/a/g, 'а').replace(/e/g, 'е').replace(/o/g, 'о')
+        .replace(/p/g, 'р').replace(/c/g, 'с').replace(/x/g, 'х')
+        .replace(/y/g, 'у').replace(/b/g, 'в').replace(/m/g, 'м')
+        .replace(/h/g, 'н').replace(/k/g, 'к').replace(/t/g, 'т')
+        .replace(/0/g, 'о').replace(/3/g, 'е').replace(/\|/g, 'и')
+        .replace(/[\s\-_.*]+/g, ''); // убираем пробелы и разделители
+
+// Корни стоп-слов (паттерны регексов для поиска вхождений в нормализованном тексте)
+const STOP_WORD_PATTERNS: RegExp[] = [
+    // Русский мат — основные корни
+    /хуй|хуе|хуя|хую|хуем|хуев|хуях|хуищ|хуёв|хуёт|хуёт/,
+    /пизд|пизж/,
+    /ёбан|ебан|еба[лн]|ёба[лн]|ебё|ёбё|ёбат|ебат|ебли|ебут|ёбут|ебла|ебло|ебёт|заеб|заёб|наеб|наёб|поеб|поёб|проеб|уеб|уёб|выеб|выёб|отеб|отёб|ибан/,
+    /бляд|блядь|блять|блядства|бляк|блядун/,
+    /мудак|мудил|мудозвон/,
+    /сука|суки|суку|суке|сукин/,
+    /пидор|пидар|педик|пидрил|пидрас|питух/,
+    /залуп|залупа/,
+    /ёбан|ёбну|ёбать|ёбнут/,
+    /👹|🖕/,
+    // Наркотики
+    /наркот|героин|кокаин|метамф|мефедрон|спайс|закладк|кладмен|амфетам|фенамин|лсд|экстази|мдма|каннаби/,
+    // Спам / мошенничество
+    /казино|рулетк|ставки.*выигр|выигр.*ставки|1win|1хбет|1xbet|mostbet|melbet|вавада|vavada|betwinner/,
+    /кредит.*онлайн|займ.*срочно|деньги.*быстро.*без|мфо.*без|одобрим.*кредит/,
+    /отмыва|обнал|отмыт.*деньг|накрут.*подписч|накрут.*лайк|накрут.*просмотр/,
+    /купить.*паспорт|купи.*права|поддельн.*документ|фальшивые.*документ/,
+    // English profanity
+    /\bfuck\b|fucki|fucker|motherfuck/,
+    /\bshit\b|bullshit/,
+    /\bcunt\b/,
+    /\bnigger\b|\bnigga\b/,
+    /\bfaggot\b|\bfag\b/,
+    /\bwhore\b|\bslut\b/,
+    /\bbitchin\b/,
+];
+
+export const containsStopWords = (text: string): boolean => {
+    const normalized = normalizeForFilter(text);
+    return STOP_WORD_PATTERNS.some(re => re.test(normalized));
+};
+
 export const validateMessageText = (text: string): string | null => {
     const t = text.trim();
     if (t.length > 2000) return 'Сообщение слишком длинное (максимум 2000 символов).';
     if (/(.)\1{9,}/u.test(t)) return 'Не используйте повторяющиеся символы.';
     if ((t.match(/https?:\/\//gi) || []).length > 3) return 'Слишком много ссылок.';
+    if (containsStopWords(t)) return 'Сообщение содержит недопустимые слова.';
     return null;
 };
 

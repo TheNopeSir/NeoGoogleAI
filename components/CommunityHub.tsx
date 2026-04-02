@@ -321,8 +321,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                             </div>
                         </div>
 
-                        {/* Hot Categories */}
-                        {/* Trending Exhibits */}
+                        {/* СЕЙЧАС ПОПУЛЯРНО — перестроенный блок */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className={`${sectionLabel} mb-0`}><XI icon={Star} size={14} className="text-red-400" /> СЕЙЧАС ПОПУЛЯРНО</h3>
@@ -342,21 +341,91 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                 </div>
                             </div>
                             {trendWindow === '48H' && recentExhibits48h.length < 6 && (
-                                <p className="text-[9px] opacity-40 font-mono mb-3">За 48ч меньше 6 предметов — показываем всё время.</p>
+                                <p className="text-[9px] opacity-40 font-mono mb-2">За 48ч меньше 6 предметов — показываем всё время.</p>
                             )}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {trendingExhibits.map(item => (
-                                    <ExhibitCard
-                                        key={item.id}
-                                        item={item}
-                                        theme={theme}
-                                        onClick={onExhibitClick}
-                                        currentUsername={currentUser?.username || ''}
-                                        onReact={() => onReact(item.id)}
-                                        onAuthorClick={onUserClick}
-                                    />
-                                ))}
-                            </div>
+                            {trendingExhibits.length === 0 ? (
+                                <p className="text-[10px] opacity-40 font-mono text-center py-8">Нет данных для отображения.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* Top-3 крупными карточками */}
+                                    <div className="grid grid-cols-3 gap-2 mb-3">
+                                        {trendingExhibits.slice(0, 3).map((item, i) => {
+                                            const img = getFirstImageUrl(item.imageUrls, 'thumbnail');
+                                            const RANK_COLORS = ['text-yellow-400', 'text-gray-300', 'text-amber-600'];
+                                            const RANK_BG = ['border-yellow-400/40', 'border-gray-300/30', 'border-amber-600/30'];
+                                            const score = trendScore(item);
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    onClick={() => onExhibitClick(item)}
+                                                    className={`relative cursor-pointer group rounded-xl overflow-hidden border-2 ${RANK_BG[i]} ${i === 0 ? 'col-span-1' : 'col-span-1'} transition-transform hover:scale-[1.03] active:scale-95`}
+                                                >
+                                                    <div className="aspect-square w-full bg-black/30">
+                                                        {img ? (
+                                                            <img src={img} alt={item.title} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center opacity-20">
+                                                                <XI icon={Package} size={28} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Rank badge */}
+                                                    <div className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold font-pixel shadow-lg ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : 'bg-amber-600 text-white'}`}>
+                                                        {i + 1}
+                                                    </div>
+                                                    {/* Score badge */}
+                                                    <div className="absolute top-1.5 right-1.5 bg-black/70 rounded px-1 py-0.5">
+                                                        <span className={`text-[8px] font-pixel ${RANK_COLORS[i]}`}>🔥{score}</span>
+                                                    </div>
+                                                    {/* Title overlay */}
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-2 py-1.5">
+                                                        <p className="text-[9px] font-bold text-white truncate leading-tight">{item.title}</p>
+                                                        <p
+                                                            className="text-[8px] opacity-60 truncate hover:opacity-100 transition-opacity cursor-pointer"
+                                                            onClick={e => { e.stopPropagation(); onUserClick(item.owner); }}
+                                                        >@{item.owner}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Позиции 4-6 — компактный список */}
+                                    {trendingExhibits.slice(3).map((item, i) => {
+                                        const img = getFirstImageUrl(item.imageUrls, 'thumbnail');
+                                        const score = trendScore(item);
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                onClick={() => onExhibitClick(item)}
+                                                className={`flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all hover:border-opacity-60 active:scale-[0.99] ${isWinamp ? 'bg-[#1a1a1a] border-[#505050]' : isLight ? 'bg-gray-50 border-gray-200' : isXP ? 'bg-[#ECE9D8] border-[#8592B5]' : 'bg-white/5 border-white/10'}`}
+                                            >
+                                                <span className="font-pixel text-[10px] w-5 text-center opacity-50">#{i + 4}</span>
+                                                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 border border-white/10">
+                                                    {img ? (
+                                                        <img src={img} alt={item.title} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center opacity-20 bg-white/5">
+                                                            <XI icon={Package} size={16} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] font-bold truncate">{item.title}</p>
+                                                    <p
+                                                        className="text-[9px] opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+                                                        onClick={e => { e.stopPropagation(); onUserClick(item.owner); }}
+                                                    >@{item.owner}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <span className="text-[9px] opacity-50">👁 {item.views ?? 0}</span>
+                                                    <span className="text-[9px] opacity-50">❤️ {item.likes ?? 0}</span>
+                                                    <span className={`text-[9px] font-pixel ${isWinamp ? 'text-wa-gold' : 'text-green-400'}`}>🔥{score}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         {/* New Today */}
