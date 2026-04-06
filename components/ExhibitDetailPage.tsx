@@ -90,9 +90,20 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const initialPinchDistanceRef = React.useRef<number | null>(null);
   const initialPinchZoomRef = React.useRef<number>(1);
+
+  // Refs for drag — bypass React state in the hot path to avoid 60fps re-renders
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  const panRef = React.useRef({ x: 0, y: 0 });
+  const isDraggingRef = React.useRef(false);
+  const dragStartRef = React.useRef({ x: 0, y: 0 });
+
+  const applyTransform = React.useCallback((x: number, y: number, zoom: number, animated = false) => {
+      if (!imgRef.current) return;
+      imgRef.current.style.transition = animated ? 'transform 0.2s ease-out' : 'none';
+      imgRef.current.style.transform = `scale(${zoom}) translate3d(${x / zoom}px, ${y / zoom}px, 0)`;
+  }, []);
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
@@ -185,8 +196,10 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
   }, [exhibit.id]);
 
   useEffect(() => {
+      panRef.current = { x: 0, y: 0 };
       setPanPosition({ x: 0, y: 0 });
-  }, [currentSlideIndex, zoomLevel]);
+      applyTransform(0, 0, zoomLevel, false);
+  }, [currentSlideIndex, zoomLevel, applyTransform]);
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -298,19 +311,30 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent) => {
       if (zoomLevel > 1) {
+          e.preventDefault();
+          isDraggingRef.current = true;
           setIsDragging(true);
-          setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+          dragStartRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
       }
   };
 
+  // No setState here — direct DOM write avoids 60fps re-renders
   const handleMouseMove = (e: React.MouseEvent) => {
-      if (isDragging && zoomLevel > 1) {
-          setPanPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      if (isDraggingRef.current && zoomLevel > 1) {
+          const x = e.clientX - dragStartRef.current.x;
+          const y = e.clientY - dragStartRef.current.y;
+          panRef.current = { x, y };
+          applyTransform(x, y, zoomLevel);
       }
   };
 
   const handleMouseUp = () => {
-      setIsDragging(false);
+      if (isDraggingRef.current) {
+          isDraggingRef.current = false;
+          setIsDragging(false);
+          setPanPosition({ ...panRef.current });
+          applyTransform(panRef.current.x, panRef.current.y, zoomLevel, true);
+      }
   };
 
   const getPinchDistance = (touches: React.TouchList) =>
@@ -321,47 +345,54 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
 
   const handleTouchStart = (e: React.TouchEvent) => {
       if (e.touches.length === 2) {
-          // Start pinch-to-zoom — stop propagation so page-level swipe-back doesn't fire
           e.stopPropagation();
           initialPinchDistanceRef.current = getPinchDistance(e.touches);
           initialPinchZoomRef.current = zoomLevel;
+          isDraggingRef.current = false;
           setIsDragging(false);
       } else if (zoomLevel > 1 && e.touches.length === 1) {
-          // Panning when zoomed — also stop propagation to avoid triggering swipe-back
           e.stopPropagation();
+          isDraggingRef.current = true;
           setIsDragging(true);
-          setDragStart({
-              x: e.touches[0].clientX - panPosition.x,
-              y: e.touches[0].clientY - panPosition.y
-          });
+          dragStartRef.current = {
+              x: e.touches[0].clientX - panRef.current.x,
+              y: e.touches[0].clientY - panRef.current.y,
+          };
       }
   };
 
+  // No setState in the hot path — direct DOM write only
   const handleTouchMove = (e: React.TouchEvent) => {
       if (e.touches.length === 2 && initialPinchDistanceRef.current !== null) {
           e.stopPropagation();
-          // Pinch zoom
           const currentDist = getPinchDistance(e.touches);
           const ratio = currentDist / initialPinchDistanceRef.current;
           const newZoom = Math.max(1, Math.min(4, initialPinchZoomRef.current * ratio));
           setZoomLevel(newZoom);
-          if (newZoom === 1) setPanPosition({ x: 0, y: 0 });
-      } else if (isDragging && zoomLevel > 1 && e.touches.length === 1) {
+          if (newZoom === 1) {
+              panRef.current = { x: 0, y: 0 };
+              setPanPosition({ x: 0, y: 0 });
+          }
+      } else if (isDraggingRef.current && zoomLevel > 1 && e.touches.length === 1) {
           e.stopPropagation();
-          setPanPosition({
-              x: e.touches[0].clientX - dragStart.x,
-              y: e.touches[0].clientY - dragStart.y
-          });
+          const x = e.touches[0].clientX - dragStartRef.current.x;
+          const y = e.touches[0].clientY - dragStartRef.current.y;
+          panRef.current = { x, y };
+          applyTransform(x, y, zoomLevel);
       }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-      // If we were pinching or panning, stop the event from triggering swipe-back
-      if (initialPinchDistanceRef.current !== null || isDragging) {
+      if (initialPinchDistanceRef.current !== null || isDraggingRef.current) {
           e.stopPropagation();
       }
       initialPinchDistanceRef.current = null;
-      setIsDragging(false);
+      if (isDraggingRef.current) {
+          isDraggingRef.current = false;
+          setIsDragging(false);
+          setPanPosition({ ...panRef.current });
+          applyTransform(panRef.current.x, panRef.current.y, zoomLevel, true);
+      }
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -438,6 +469,13 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                       <div className="flex items-center gap-2">
                           <button onClick={() => onCommentLike(c.id)} className={`flex items-center gap-1 text-[10px] transition-colors ${isCommentLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
                               <XI icon={Heart} size={12} fill={isCommentLiked ? "currentColor" : "none"} /> {c.likes > 0 && c.likes}
+                          </button>
+                          <button
+                              onClick={(e) => openCommentReactionPicker(e, c.id)}
+                              className="text-gray-500 hover:text-yellow-400 transition-colors"
+                              title="Реакция"
+                          >
+                              <SmilePlus size={12} />
                           </button>
                           <button onClick={() => handleReply(c)} className="text-gray-500 hover:text-white transition-colors" title="Ответить">
                               <CornerDownRight size={14} />
@@ -630,11 +668,14 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                   >
                       {slides[currentSlideIndex].type === 'image' ? (
                           <img
+                            ref={imgRef}
                             src={slides[currentSlideIndex].largeUrl || slides[currentSlideIndex].url}
                             className="max-w-full max-h-full object-contain select-none"
                             style={{
-                                transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
-                                transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                                transform: `scale(${zoomLevel}) translate3d(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px, 0)`,
+                                transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                                willChange: 'transform',
+                                touchAction: 'none',
                             }}
                             draggable={false}
                           />

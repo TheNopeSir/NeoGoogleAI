@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Globe, Shield } from 'lucide-react';
-import { UserProfile } from '../types';
-import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage } from '../services/storageService';
+import { ArrowLeft, Send, Globe, Shield, Smile, Reply, Trash2, Crown } from 'lucide-react';
+import { UserProfile, GlobalChatMessage } from '../types';
+import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlobalChatMessage } from '../services/storageService';
 import { validateMessageText } from '../utils/textUtils';
 import XI from './XI';
 
@@ -10,20 +10,35 @@ interface GlobalChatProps {
     currentUser: UserProfile;
     onBack: () => void;
     onUserClick?: (username: string) => void;
+    allUsers?: UserProfile[];
 }
 
-const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onUserClick }) => {
-    const [messages, setMessages] = useState<any[]>([]);
+const EMOJIS = [
+    '😀','😂','🥰','😎','🤔','😅','😭','🤣','😏','🤩',
+    '👍','👎','❤️','🔥','💯','👀','💀','🎉','🚀','💪',
+    '🎮','🕹️','📺','🎯','🏆','⭐','💎','🤝','✌️','🙌',
+    '😤','🫡','🥹','🫠','😬','🤯','🥴','😇','🤖','👾',
+];
+
+const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onUserClick, allUsers = [] }) => {
+    const [messages, setMessages] = useState<GlobalChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = useState<GlobalChatMessage | null>(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionAtPos, setMentionAtPos] = useState<number>(0);
+    const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const lastSendRef = useRef<number>(0);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
     const isLight = theme === 'light';
+    const isAdmin = currentUser.isAdmin === true;
 
     const loadMessages = useCallback(async () => {
         const data = await getGlobalChatMessages();
@@ -33,16 +48,44 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     useEffect(() => {
         loadMessages();
         pollingRef.current = setInterval(loadMessages, 5000);
-        return () => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-        };
+        return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
     }, [loadMessages]);
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }, [messages]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setInput(val);
+        setSendError(null);
+        if (showEmojiPicker) setShowEmojiPicker(false);
+
+        const cursorPos = e.target.selectionStart ?? val.length;
+        const textBefore = val.slice(0, cursorPos);
+        const atMatch = textBefore.match(/@(\w*)$/);
+        if (atMatch) {
+            setMentionQuery(atMatch[1]);
+            setMentionAtPos(cursorPos - atMatch[0].length);
+        } else {
+            setMentionQuery(null);
+        }
+    };
+
+    const insertMention = (username: string) => {
+        const queryLen = (mentionQuery ?? '').length;
+        const before = input.slice(0, mentionAtPos);
+        const after = input.slice(mentionAtPos + 1 + queryLen);
+        setInput(before + '@' + username + ' ' + after);
+        setMentionQuery(null);
+        setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
+    const insertEmoji = (emoji: string) => {
+        setInput(prev => prev + emoji);
+        setShowEmojiPicker(false);
+        setTimeout(() => inputRef.current?.focus(), 0);
+    };
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -57,39 +100,99 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
         setIsSending(true);
         setSendError(null);
         setInput('');
+        setMentionQuery(null);
+        const savedReply = replyingTo;
+        setReplyingTo(null);
+
         try {
-            const msg = {
+            const msg: GlobalChatMessage = {
                 id: crypto.randomUUID(),
                 sender: currentUser.username,
                 text,
                 timestamp: new Date().toISOString(),
+                ...(savedReply && {
+                    replyTo: {
+                        id: savedReply.id,
+                        sender: savedReply.sender,
+                        text: savedReply.text.slice(0, 120),
+                    },
+                }),
             };
             await sendGlobalChatMessage(msg);
-            // Optimistic update
             setMessages(prev => [...prev, msg]);
         } catch {
             setSendError('Ошибка отправки');
             setInput(text);
+            setReplyingTo(savedReply);
         } finally {
             setIsSending(false);
         }
     };
 
+    const handleDelete = async (msgId: string) => {
+        if (!isAdmin) return;
+        await deleteGlobalChatMessage(msgId);
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+    };
+
+    const handleReply = (msg: GlobalChatMessage) => {
+        setReplyingTo(msg);
+        setShowEmojiPicker(false);
+        setMentionQuery(null);
+        setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
+    // Render message text with @mentions highlighted
+    const renderText = (text: string) => {
+        const parts = text.split(/(@\w+)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('@') && part.length > 1) {
+                return (
+                    <span
+                        key={i}
+                        className={`font-bold cursor-pointer hover:underline ${isWinamp ? 'text-[#00ff88]' : 'text-green-400'}`}
+                        onClick={() => onUserClick?.(part.slice(1))}
+                    >
+                        {part}
+                    </span>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
+
+    // Get sender role badge
+    const getSenderBadge = (username: string) => {
+        const u = allUsers.find(x => x.username === username);
+        if (!u) return null;
+        if (u.isAdmin) return <XI icon={Crown} size={10} className="text-yellow-400" title="Администратор" />;
+        return null;
+    };
+
+    // Mention autocomplete list
+    const mentionSuggestions = mentionQuery !== null
+        ? allUsers
+            .filter(u => u.username !== currentUser.username && u.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+            .slice(0, 5)
+        : [];
+
+    // Styles
     const headerBg = isWinamp
         ? 'bg-[#191919] border-[#505050]'
-        : isXP
-        ? 'bg-[#ECE9D8] border-[#ACA899]'
-        : isLight
-        ? 'bg-white border-gray-200'
+        : isXP ? 'bg-[#ECE9D8] border-[#ACA899]'
+        : isLight ? 'bg-white border-gray-200'
         : 'border-white/10 bg-white/5';
 
     const inputBg = isWinamp
         ? 'bg-black/40 border border-[#505050] text-[#00ff00] placeholder-gray-600'
-        : isXP
-        ? 'bg-white border border-[#ACA899] text-black'
-        : isLight
-        ? 'bg-gray-50 border border-gray-200 text-gray-900'
+        : isXP ? 'bg-white border border-[#ACA899] text-black'
+        : isLight ? 'bg-gray-50 border border-gray-200 text-gray-900'
         : 'bg-black/40 border border-white/10';
+
+    const footerBg = isWinamp ? 'bg-[#191919] border-[#505050]'
+        : isXP ? 'bg-[#ECE9D8] border-[#ACA899]'
+        : isLight ? 'bg-white border-gray-200'
+        : 'bg-white/5 border-white/10';
 
     return (
         <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
@@ -111,10 +214,15 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                         </div>
                     </div>
                 </div>
+                {isAdmin && (
+                    <div className="flex items-center gap-1 text-[9px] font-mono text-yellow-400 border border-yellow-400/30 px-2 py-1 rounded-full">
+                        <XI icon={Crown} size={10} /> ADMIN
+                    </div>
+                )}
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide no-scrollbar">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide no-scrollbar">
                 {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
                         <XI icon={Globe} size={48} />
@@ -134,25 +242,82 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                             : 'bg-white/10 text-white rounded-tl-none';
 
                         return (
-                            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
+                            <div
+                                key={msg.id}
+                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2 group`}
+                                onMouseEnter={() => setHoveredMsgId(msg.id)}
+                                onMouseLeave={() => setHoveredMsgId(null)}
+                            >
                                 {!isMe && (
                                     <button
                                         className="flex items-center gap-1.5 mb-1 ml-1 hover:opacity-100 opacity-70 transition-opacity"
                                         onClick={() => onUserClick?.(msg.sender)}
                                     >
-                                        <img
-                                            src={getUserAvatar(msg.sender)}
-                                            className="w-4 h-4 rounded-full"
-                                            alt={msg.sender}
-                                        />
+                                        <img src={getUserAvatar(msg.sender)} className="w-4 h-4 rounded-full" alt={msg.sender} />
                                         <span className="text-[9px] font-pixel hover:underline">@{msg.sender}</span>
+                                        {getSenderBadge(msg.sender)}
                                     </button>
                                 )}
-                                <div className={`max-w-[80%] p-3 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap ${bubbleBg}`}>
-                                    {msg.text}
-                                    <div className={`text-[9px] mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
-                                        {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+
+                                <div className="flex items-end gap-1.5">
+                                    {/* Action buttons (left side for others' messages) */}
+                                    {!isMe && (
+                                        <div className={`flex flex-col gap-1 transition-opacity ${hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0'}`}>
+                                            <button
+                                                onClick={() => handleReply(msg)}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                                title="Ответить"
+                                            >
+                                                <XI icon={Reply} size={12} className="opacity-60" />
+                                            </button>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDelete(msg.id)}
+                                                    className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
+                                                    title="Удалить"
+                                                >
+                                                    <XI icon={Trash2} size={12} className="text-red-400 opacity-60" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className={`max-w-[80%] p-3 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap ${bubbleBg}`}>
+                                        {/* Reply preview */}
+                                        {msg.replyTo && (
+                                            <div
+                                                className={`text-[10px] mb-2 border-l-2 pl-2 opacity-70 truncate cursor-pointer hover:opacity-100 transition-opacity ${isMe ? 'border-black/30' : isWinamp ? 'border-[#00ff00]/40' : 'border-white/30'}`}
+                                                onClick={() => {
+                                                    const el = document.getElementById(`msg-${msg.replyTo!.id}`);
+                                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                }}
+                                            >
+                                                <span className="font-bold">@{msg.replyTo.sender}: </span>
+                                                {msg.replyTo.text.slice(0, 80)}{msg.replyTo.text.length > 80 ? '…' : ''}
+                                            </div>
+                                        )}
+
+                                        <div id={`msg-${msg.id}`}>{renderText(msg.text)}</div>
+
+                                        <div className={`text-[9px] mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
+                                            {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
                                     </div>
+
+                                    {/* Action buttons (right side for own messages) */}
+                                    {isMe && (
+                                        <div className={`flex flex-col gap-1 transition-opacity ${hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0'}`}>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDelete(msg.id)}
+                                                    className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
+                                                    title="Удалить"
+                                                >
+                                                    <XI icon={Trash2} size={12} className="text-red-400 opacity-60" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -160,26 +325,84 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                 )}
             </div>
 
-            {/* Input */}
-            <form onSubmit={handleSend} className={`p-4 border-t rounded-b-3xl relative ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#ACA899]' : isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-                {sendError && <p className="text-red-400 text-[10px] font-mono px-1 pb-1">{sendError}</p>}
-                <div className="flex gap-2">
+            {/* Input area */}
+            <div className={`border-t rounded-b-3xl relative ${footerBg}`}>
+                {/* Reply bar */}
+                {replyingTo && (
+                    <div className={`flex items-center justify-between px-4 pt-3 pb-1 border-b ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <XI icon={Reply} size={12} className="text-green-500 flex-shrink-0" />
+                            <span className="text-[10px] font-mono opacity-60 truncate">
+                                <span className="text-green-400 font-bold">@{replyingTo.sender}:</span> {replyingTo.text.slice(0, 60)}{replyingTo.text.length > 60 ? '…' : ''}
+                            </span>
+                        </div>
+                        <button onClick={() => setReplyingTo(null)} className="text-[10px] opacity-40 hover:opacity-80 transition-opacity ml-2 flex-shrink-0">✕</button>
+                    </div>
+                )}
+
+                {/* Mention autocomplete */}
+                {mentionSuggestions.length > 0 && (
+                    <div className={`absolute bottom-full left-4 right-4 mb-1 rounded-xl overflow-hidden shadow-lg border z-20 ${isLight ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gray-900 border-white/10'}`}>
+                        {mentionSuggestions.map(u => (
+                            <button
+                                key={u.username}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-green-500/10 transition-colors`}
+                                onMouseDown={e => { e.preventDefault(); insertMention(u.username); }}
+                            >
+                                <img src={getUserAvatar(u.username)} className="w-5 h-5 rounded-full" alt={u.username} />
+                                <span className="text-xs font-mono">@{u.username}</span>
+                                {u.isAdmin && <XI icon={Crown} size={10} className="text-yellow-400" />}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Emoji picker */}
+                {showEmojiPicker && (
+                    <div className={`absolute bottom-full left-4 mb-1 p-2 rounded-xl shadow-lg border z-20 grid grid-cols-10 gap-1 ${isLight ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gray-900 border-white/10'}`}>
+                        {EMOJIS.map(emoji => (
+                            <button
+                                key={emoji}
+                                className="w-7 h-7 text-base hover:scale-125 transition-transform flex items-center justify-center rounded"
+                                onMouseDown={e => { e.preventDefault(); insertEmoji(emoji); }}
+                            >
+                                {emoji}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {sendError && <p className="text-red-400 text-[10px] font-mono px-4 pt-2">{sendError}</p>}
+
+                <form onSubmit={handleSend} className="flex gap-2 p-4">
+                    <button
+                        type="button"
+                        onClick={() => { setShowEmojiPicker(v => !v); setMentionQuery(null); }}
+                        className={`p-3 rounded-xl transition-all flex-shrink-0 ${showEmojiPicker ? 'bg-green-500/20 text-green-400' : isLight ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}
+                    >
+                        <XI icon={Smile} size={18} />
+                    </button>
                     <input
+                        ref={inputRef}
                         value={input}
-                        onChange={e => { setInput(e.target.value); setSendError(null); }}
-                        placeholder="СООБЩЕНИЕ В ЭФИР..."
+                        onChange={handleInputChange}
+                        onKeyDown={e => {
+                            if (e.key === 'Escape') { setReplyingTo(null); setShowEmojiPicker(false); setMentionQuery(null); }
+                        }}
+                        placeholder={replyingTo ? `Ответить @${replyingTo.sender}...` : 'СООБЩЕНИЕ В ЭФИР...'}
                         className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
                         maxLength={500}
+                        autoComplete="off"
                     />
                     <button
                         type="submit"
                         disabled={isSending || !input.trim()}
-                        className={`p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${(isSending || !input.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`p-3 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${(isSending || !input.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <XI icon={Send} size={20} />
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search } from 'lucide-react';
+import { Package, FolderPlus, ArrowLeft, Archive, Heart, Search, Upload, Pencil } from 'lucide-react';
 import { UserProfile, Exhibit, Collection, WishlistItem } from '../types';
 import { ExhibitCard } from './ExhibitCard';
 import CollectionCard from './CollectionCard';
@@ -18,6 +18,8 @@ interface MyCollectionProps {
     onCollectionClick: (col: Collection) => void;
     onReact: (id: string) => void;
     onWishlistClick?: (item: WishlistItem) => void;
+    onPublishDraft?: (item: Exhibit) => void;
+    onEditDraft?: (item: Exhibit) => void;
 }
 
 const MyCollection: React.FC<MyCollectionProps> = ({ 
@@ -27,11 +29,13 @@ const MyCollection: React.FC<MyCollectionProps> = ({
     allExhibits = [], // Default to empty if not provided 
     collections,
     wishlist = [],
-    onBack, 
-    onExhibitClick, 
-    onCollectionClick, 
+    onBack,
+    onExhibitClick,
+    onCollectionClick,
     onReact,
-    onWishlistClick
+    onWishlistClick,
+    onPublishDraft,
+    onEditDraft
 }) => {
     const [activeTab, setActiveTab] = useState<'MY_ITEMS' | 'COLLECTIONS' | 'DRAFTS' | 'FAVORITES' | 'WISHLIST'>('MY_ITEMS');
 
@@ -97,16 +101,34 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {drafts.map(item => (
-                                <div key={item.id} className="relative group opacity-80 hover:opacity-100">
-                                    <div className="absolute top-2 right-2 z-10 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded font-pixel">DRAFT</div>
-                                    <ExhibitCard 
-                                        item={item} 
-                                        theme={theme}
-                                        onClick={onExhibitClick}
-                                        currentUsername={user.username}
-                                        onReact={() => onReact(item.id)}
-                                        onAuthorClick={() => {}}
-                                    />
+                                <div key={item.id} className="relative group opacity-80 hover:opacity-100 flex flex-col gap-2">
+                                    <div className="relative">
+                                        <div className="absolute top-2 left-2 z-10 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded font-pixel">DRAFT</div>
+                                        <ExhibitCard
+                                            item={item}
+                                            theme={theme}
+                                            onClick={() => onEditDraft?.(item)}
+                                            currentUsername={user.username}
+                                            onReact={() => onReact(item.id)}
+                                            onAuthorClick={() => {}}
+                                        />
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <button
+                                            onClick={() => onEditDraft?.(item)}
+                                            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-pixel font-bold transition-all border ${isWinamp ? 'border-[#505050] hover:bg-[#505050]/30' : 'border-white/10 hover:border-white/20 hover:bg-white/5'}`}
+                                            title="Редактировать черновик"
+                                        >
+                                            <XI icon={Pencil} size={10} /> EDIT
+                                        </button>
+                                        <button
+                                            onClick={() => onPublishDraft?.(item)}
+                                            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-pixel font-bold bg-green-500 text-black hover:bg-green-400 transition-all"
+                                            title="Опубликовать артефакт"
+                                        >
+                                            <XI icon={Upload} size={10} /> PUBLISH
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

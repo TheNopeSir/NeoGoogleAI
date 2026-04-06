@@ -218,7 +218,10 @@ const ActivityView: React.FC<ActivityViewProps> = ({
             new Map<string, { id: string; title: string }>(
                 group.items
                     .filter((n: any) => n.targetId && n.targetPreview)
-                    .map((n: any) => [n.targetId, { id: n.targetId, title: n.targetPreview }])
+                    .map((n: any) => {
+                        const currentExhibit = exhibits.find((ex: Exhibit) => ex.id === n.targetId);
+                        return [n.targetId, { id: n.targetId, title: currentExhibit?.title || n.targetPreview }];
+                    })
             ).values()
         );
 

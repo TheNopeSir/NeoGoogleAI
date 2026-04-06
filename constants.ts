@@ -305,6 +305,8 @@ export const getSimilarArtifacts = (current: Exhibit, all: Exhibit[], limit: num
 // --- WISHLIST MATCH SCORING ---
 export const WISHLIST_MATCH_THRESHOLD = 25;
 
+const KNOWN_BRANDS = ['sony', 'nintendo', 'sega', 'apple', 'nokia', 'gameboy', 'atari', 'casio', 'panasonic', 'motorola', 'samsung', 'philips', 'toshiba', 'aiwa', 'sharp', 'pioneer', 'kenwood', 'lg', 'nec', 'commodore', 'amiga'];
+
 export const calculateWishlistMatchScore = (exhibit: Exhibit, wishItem: WishlistItem): number => {
     if (exhibit.category !== wishItem.category) return 0;
     let score = 10;
@@ -318,11 +320,22 @@ export const calculateWishlistMatchScore = (exhibit: Exhibit, wishItem: Wishlist
 
     if (exhibit.subcategory && exhibit.subcategory === wishItem.category) score += 25;
 
-    const exhibitTokens = tokenize(exhibit.title + ' ' + (exhibit.description || ''));
-    const wishTokens = tokenize(wishItem.title + ' ' + (wishItem.notes || ''));
+    // Build full text including title, description, AND specs
+    const exhibitFullText = exhibit.title + ' ' + (exhibit.description || '') + ' ' + Object.values(exhibit.specs || {}).join(' ');
+    const wishFullText = wishItem.title + ' ' + (wishItem.notes || '');
 
-    for (const wt of wishTokens) {
-        for (const et of exhibitTokens) {
+    const exhibitTokens = tokenize(exhibitFullText);
+    const wishTokens = tokenize(wishFullText);
+
+    // Separate brand tokens from model/descriptor tokens
+    const wishBrands = wishTokens.filter(t => KNOWN_BRANDS.includes(t));
+    const wishModelTokens = wishTokens.filter(t => !KNOWN_BRANDS.includes(t));
+    const exhibitBrands = exhibitTokens.filter(t => KNOWN_BRANDS.includes(t));
+    const exhibitModelTokens = exhibitTokens.filter(t => !KNOWN_BRANDS.includes(t));
+
+    // Model/descriptor token matching (brands excluded to avoid false positives)
+    for (const wt of wishModelTokens) {
+        for (const et of exhibitModelTokens) {
             if (et.includes(wt) || wt.includes(et)) {
                 score += 15;
                 break;
@@ -330,13 +343,18 @@ export const calculateWishlistMatchScore = (exhibit: Exhibit, wishItem: Wishlist
         }
     }
 
-    const brands = ['sony', 'nintendo', 'sega', 'apple', 'nokia', 'gameboy', 'atari', 'casio', 'panasonic'];
-    if (exhibit.specs) {
-        const specValues = Object.values(exhibit.specs).join(' ').toLowerCase();
-        for (const brand of brands) {
-            if (specValues.includes(brand) && wishTokens.some(t => t.includes(brand))) {
-                score += 20;
-            }
+    // Brand matching: require model match when wishlist specifies a model
+    const matchingBrands = wishBrands.filter(b => exhibitBrands.includes(b));
+    if (matchingBrands.length > 0) {
+        if (wishModelTokens.length === 0) {
+            // Wishlist item is brand-only (e.g. "Motorola") — any exhibit with that brand qualifies
+            score += 20;
+        } else {
+            // Wishlist has brand + model — require at least one model token to match
+            const hasModelMatch = wishModelTokens.some(wt =>
+                exhibitModelTokens.some(et => et.includes(wt) || wt.includes(et))
+            );
+            if (hasModelMatch) score += 20;
         }
     }
 

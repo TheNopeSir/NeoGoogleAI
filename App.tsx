@@ -937,7 +937,7 @@ export default function App() {
                 transition: tabIsDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                 willChange: tabIsDragging ? 'transform' : 'auto',
             } : undefined}
-            {...(isMainTabView ? tabSwipeHandlers : backSwipeHandlers)}
+            {...(isMainTabView ? tabSwipeHandlers : (['CREATE_ARTIFACT', 'EDIT_ARTIFACT', 'CREATE_COLLECTION', 'EDIT_COLLECTION', 'CREATE_WISHLIST', 'SETTINGS', 'ADMIN'].includes(view) ? {} : backSwipeHandlers))}
         >
             {view === 'FEED' && user && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
@@ -959,7 +959,7 @@ export default function App() {
             )}
             
             {view === 'MY_COLLECTION' && user && (
-                <MyCollection theme={theme} user={user} exhibits={exhibits.filter(e => e.owner === user.username)} allExhibits={exhibits} collections={collections.filter(c => c.owner === user.username)} wishlist={wishlist} onBack={() => navigateTo('FEED')} onExhibitClick={(item) => { if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item }); else handleExhibitClick(item); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} onReact={handleReaction} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} />
+                <MyCollection theme={theme} user={user} exhibits={exhibits.filter(e => e.owner === user.username)} allExhibits={exhibits} collections={collections.filter(c => c.owner === user.username)} wishlist={wishlist} onBack={() => navigateTo('FEED')} onExhibitClick={(item) => { if (item.isDraft) navigateTo('CREATE_ARTIFACT', { initialData: item }); else handleExhibitClick(item); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} onReact={handleReaction} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onEditDraft={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onPublishDraft={async (item) => { await db.updateExhibit({ ...item, isDraft: false }); refreshData(); }} />
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (
@@ -1040,7 +1040,7 @@ export default function App() {
 
             {view === 'GLOBAL_CHAT' && user && (
                 <div className="p-4 pb-24">
-                    <GlobalChat theme={theme} currentUser={user} onBack={handleBack} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} />
+                    <GlobalChat theme={theme} currentUser={user} onBack={handleBack} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} allUsers={allUsers} />
                 </div>
             )}
 

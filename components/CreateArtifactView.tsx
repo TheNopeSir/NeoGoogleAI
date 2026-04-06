@@ -285,6 +285,8 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               <span className="text-[10px] font-pixel">ДОБАВИТЬ_ФОТО</span>
             </button>
             <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
+            {/* Spacer so the last item isn't clipped by the overflow container */}
+            <div className="w-2 flex-shrink-0" aria-hidden="true" />
           </div>
           <p className="text-[10px] font-mono opacity-40 text-center md:text-left">
              Загрузите до 5 фотографий. Перетаскивайте для изменения порядка. Первое фото — главное превью.
@@ -379,7 +381,7 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                   )}
                 </div>
                 <div>
-                    <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={Award} size={12}/> Грейд / Состояние</label>
+                    <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={Award} size={12}/> Состояние</label>
                     <select 
                         value={condition} 
                         onChange={e => setCondition(e.target.value)}

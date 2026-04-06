@@ -290,6 +290,11 @@ export interface GlobalChatMessage {
     sender: string;
     text: string;
     timestamp: string;
+    replyTo?: {
+        id: string;
+        sender: string;
+        text: string;
+    };
 }
 
 export interface ArtifactBattle {

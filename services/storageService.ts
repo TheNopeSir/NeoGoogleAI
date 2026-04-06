@@ -919,8 +919,14 @@ export const getGlobalChatMessages = async (): Promise<any[]> => {
     }
 };
 
-export const sendGlobalChatMessage = async (msg: { id: string; sender: string; text: string; timestamp: string }): Promise<void> => {
+export const sendGlobalChatMessage = async (msg: { id: string; sender: string; text: string; timestamp: string; replyTo?: { id: string; sender: string; text: string } }): Promise<void> => {
     await apiCall('/global_chat', 'POST', msg);
+};
+
+export const deleteGlobalChatMessage = async (id: string): Promise<void> => {
+    try {
+        await apiCall(`/global_chat/${id}`, 'DELETE');
+    } catch (e) {}
 };
 
 export const getStorageEstimate = async (): Promise<StorageEstimate | undefined> => {

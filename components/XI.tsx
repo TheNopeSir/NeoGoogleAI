@@ -61,7 +61,7 @@ const XI: React.FC<XIProps> = ({
       style={style}
       onClick={onClick}
       color={color}
-      fill={fill}
+      fill={fill ?? 'none'}
       strokeWidth={strokeWidth}
       {...(rest as Record<string, unknown>)}
     />
