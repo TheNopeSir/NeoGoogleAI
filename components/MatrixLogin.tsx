@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mail, Lock, UserPlus, User, AlertCircle, CheckSquare, Square, Send, Wand2, Eye, EyeOff, Terminal, RefreshCw, Activity, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { UserProfile } from '../types';
 import * as db from '../services/storageService';
 import XI from './XI';
@@ -36,6 +37,24 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
   const [newPassword, setNewPassword] = useState('');
 
   const isNative = Capacitor.isNativePlatform();
+  const REMOTE_BASE = 'https://neoarchive.ru';
+
+  const openOAuth = async (provider: 'google' | 'yandex') => {
+    if (isNative) {
+      await Browser.open({ url: `${REMOTE_BASE}/api/auth/${provider}/redirect?native=1` });
+    } else {
+      window.location.href = `/api/auth/${provider}/redirect`;
+    }
+  };
+
+  const openTelegram = async () => {
+    if (isNative) {
+      await Browser.open({ url: `${REMOTE_BASE}/telegram-auth?native=1` });
+    } else {
+      setStep('TELEGRAM');
+      resetForm();
+    }
+  };
 
   const handleConfirmAction = async (code: string, endpoint: string, successMsg: string) => {
       setStep('VERIFYING');
@@ -257,16 +276,19 @@ const MatrixLogin: React.FC<MatrixLoginProps> = ({ theme, onLogin, initialCode, 
                     </button>
                 </div>
                 
-                {/* Hide Telegram on Native Apps because of domain validation issues */}
-                {!isNative ? (
-                    <button onClick={() => { setStep('TELEGRAM'); resetForm(); }} className="py-4 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
-                        <XI icon={Send} size={16} /> TELEGRAM
+                <div className="flex flex-col gap-2">
+                    <button onClick={openTelegram} className="py-3 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#0088cc] hover:text-white hover:border-[#0088cc] transition-colors flex items-center justify-center gap-2 border-white/20 text-white/60">
+                        <XI icon={Send} size={14} /> TELEGRAM
                     </button>
-                ) : (
-                    <div className="text-[9px] text-center text-white/30 font-mono">
-                        Вход через Telegram доступен только в Web-версии
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => openOAuth('google')} className="py-3 border font-pixel text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-1 border-white/20 text-white/60">
+                            GOOGLE
+                        </button>
+                        <button onClick={() => openOAuth('yandex')} className="py-3 border font-pixel text-[10px] uppercase tracking-widest hover:bg-[#fc3f1d] hover:text-white hover:border-[#fc3f1d] transition-colors flex items-center justify-center gap-1 border-white/20 text-white/60">
+                            ЯНДЕКС
+                        </button>
                     </div>
-                )}
+                </div>
                 
                 {userCount !== null && (
                     <div className="mt-4 flex items-center justify-center gap-2 opacity-50">

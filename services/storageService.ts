@@ -560,6 +560,17 @@ export const loginViaTelegram = async (tgUser: any) => {
     return user;
 };
 
+export const loginViaOAuth = async (username: string): Promise<UserProfile> => {
+    const user = await apiCall(`/users/${encodeURIComponent(username)}`, 'GET');
+    const db = await getDB();
+    await db.put('system', { key: SESSION_USER_KEY, value: user.username }, SESSION_USER_KEY);
+    await db.put('users', user);
+    hotCache.users = mergeUniqueUsers(hotCache.users, [user]);
+    notifyListeners();
+    performBackgroundSync(user.username);
+    return user;
+};
+
 export const recoverPassword = async (email: string) => {
     return await apiCall('/auth/recover', 'POST', { email });
 };

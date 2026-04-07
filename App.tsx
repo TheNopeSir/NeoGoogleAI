@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 
 const APP_ORIGIN = Capacitor.isNativePlatform() ? 'https://neoarchive.ru' : window.location.origin;
 import { 
@@ -259,6 +260,21 @@ export default function App() {
       const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get('code');
       const type = searchParams.get('type');
+      const session = searchParams.get('session');
+
+      // OAuth web callback: /?session=username&type=OAUTH
+      if (type === 'OAUTH' && session) {
+          window.history.replaceState({}, document.title, '/');
+          try {
+              const userProfile = await db.loginViaOAuth(session);
+              setUser(userProfile);
+              if (userProfile.settings?.theme) setTheme(userProfile.settings.theme);
+              setView('FEED');
+          } catch (e) {
+              setView('AUTH');
+          }
+          return;
+      }
 
       if (code && type) {
           setVerificationCode(code);
@@ -448,6 +464,25 @@ export default function App() {
       finally { setIsInitializing(false); setTimeout(() => setShowSplash(false), 50); }
     };
     init();
+
+    // Deep link listener for native OAuth callbacks (ru.neoarchive.app://auth?session=xxx&type=OAUTH)
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener('appUrlOpen', async ({ url }) => {
+        try {
+          const urlObj = new URL(url);
+          const session = urlObj.searchParams.get('session');
+          const type = urlObj.searchParams.get('type');
+          if (type === 'OAUTH' && session) {
+            const userProfile = await db.loginViaOAuth(session);
+            setUser(userProfile);
+            if (userProfile.settings?.theme) setTheme(userProfile.settings.theme);
+            setView('FEED');
+          }
+        } catch (e) {
+          setView('AUTH');
+        }
+      });
+    }
   }, []);
 
   const handleExhibitClick = async (item: Exhibit) => {

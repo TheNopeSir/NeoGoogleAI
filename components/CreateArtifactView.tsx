@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical, Search } from 'lucide-react';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, SUBCATEGORY_SPECS_TEMPLATES, CARTRIDGE_RELEASE_OPTIONS, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS, SUBCATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
@@ -41,6 +41,18 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isNearBottom, setIsNearBottom] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const scrolled = window.scrollY + window.innerHeight;
+      const total = document.documentElement.scrollHeight;
+      setIsNearBottom(scrolled >= total - 200);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Category autocomplete
   const [categorySearch, setCategorySearch] = useState<string>(initialData?.category || DefaultCategory.PHONES);
@@ -74,14 +86,15 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newImages = [...images];
-      for (let i = 0; i < e.target.files.length; i++) {
-        // Here we can either upload immediately or just convert to base64 for preview
-        // Since saving happens on submit, we use base64 for preview
+      const remaining = 5 - newImages.length;
+      if (remaining <= 0) return;
+      for (let i = 0; i < Math.min(e.target.files.length, remaining); i++) {
         const b64 = await fileToBase64(e.target.files[i]);
         newImages.push(b64);
       }
       setImages(newImages);
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const toggleRelated = (id: string) => {
@@ -127,14 +140,14 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
   };
 
   const handleSubmit = (asDraft: boolean = false) => {
-    if (!title) {
-      alert(isWanted ? "Укажите что вы ищете" : "Укажите название артефакта");
-      return;
-    }
+    const derivedTitle = title ||
+      [specs['Бренд'], specs['Модель']].filter(Boolean).join(' ') ||
+      [specs['Исполнитель'], specs['Альбом']].filter(Boolean).join(' — ') ||
+      (category + (subcategory ? ` / ${subcategory}` : ''));
     onSave({
       ...initialData,
       id: initialData?.id,
-      title,
+      title: derivedTitle,
       description,
       category,
       subcategory,
@@ -277,13 +290,16 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 </button>
               </div>
             ))}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl transition-all ${isWinamp ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'dark' ? 'border-white/10 hover:border-green-500/50 bg-white/5' : 'border-black/10 hover:border-black/30'}`}
-            >
-              <XI icon={Camera} size={28} />
-              <span className="text-[10px] font-pixel">ДОБАВИТЬ_ФОТО</span>
-            </button>
+            {images.length < 5 && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl transition-all ${isWinamp ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'dark' ? 'border-white/10 hover:border-green-500/50 bg-white/5' : 'border-black/10 hover:border-black/30'}`}
+              >
+                <XI icon={Camera} size={28} />
+                <span className="text-[10px] font-pixel">ДОБАВИТЬ_ФОТО</span>
+                <span className="text-[9px] font-mono opacity-40">{images.length}/5</span>
+              </button>
+            )}
             <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
             {/* Spacer so the last item isn't clipped by the overflow container */}
             <div className="w-2 flex-shrink-0" aria-hidden="true" />
@@ -297,18 +313,6 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
         <div className={`p-8 rounded-3xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : theme === 'dark' ? 'bg-dark-surface border-white/10' : 'bg-white border-black/10 shadow-xl'}`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div>
-                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">
-                  {isWanted ? 'Что вы ищете' : 'Название экспоната'}
-                </label>
-                <input
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWanted ? 'focus:border-amber-500' : ''} ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
-                  placeholder={isWanted ? 'Ищу: Nokia N-Gage, Gameboy Color...' : 'Введите название или модель...'}
-                />
-              </div>
-
               {!isWanted && <div>
                   <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2"><XI icon={Video} size={12}/> Ссылка на видео (YouTube/Rutube)</label>
                   <input
@@ -571,13 +575,13 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
         </div>
 
         <div className="flex flex-col md:flex-row gap-4">
-          <button 
+          <button
             onClick={() => handleSubmit(false)}
             className="flex-1 py-5 bg-green-500 text-black rounded-2xl font-pixel text-sm tracking-[0.2em] hover:scale-[1.01] active:scale-95 transition-all shadow-[0_0_30px_rgba(74,222,128,0.4)] flex items-center justify-center gap-3 font-black"
           >
             <XI icon={Save} size={20} /> СОХРАНИТЬ В АРХИВ
           </button>
-          <button 
+          <button
             onClick={() => handleSubmit(true)}
             className="px-8 py-5 bg-white/5 border-2 border-white/10 rounded-2xl font-pixel text-[10px] opacity-60 hover:opacity-100 hover:bg-white/10 transition-all flex items-center justify-center gap-3 tracking-widest"
           >
@@ -585,6 +589,21 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
           </button>
         </div>
       </div>
+
+      {/* Scroll to bottom / top floating button */}
+      <button
+        onClick={() => {
+          if (isNearBottom) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+          }
+        }}
+        className={`fixed bottom-8 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 ${isWinamp ? 'bg-[#191919] border border-[#00ff00] text-[#00ff00]' : 'bg-zinc-900 border border-white/20 text-white hover:border-green-500 hover:text-green-400'}`}
+        title={isNearBottom ? 'Наверх' : 'Вниз'}
+      >
+        <XI icon={isNearBottom ? ChevronLeft : ChevronRight} size={20} className={`transition-transform ${isNearBottom ? 'rotate-90' : '-rotate-90'}`} />
+      </button>
     </div>
   );
 };

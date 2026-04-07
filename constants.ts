@@ -51,15 +51,15 @@ export const CATEGORY_SUBCATEGORIES: Record<string, string[]> = {
 export const CATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {
   [DefaultCategory.PHONES]: ['Бренд', 'Модель', 'Год выпуска', 'Стандарт связи', 'Тип корпуса'],
   [DefaultCategory.GADGETS]: ['Бренд', 'Модель', 'Год выпуска', 'Тип', 'Питание'],
-  [DefaultCategory.GAMES]: ['Платформа', 'Название', 'Регион', 'Год', 'Комплектация'],
-  [DefaultCategory.MAGAZINES]: ['Название', 'Номер', 'Год', 'Издательство', 'Язык'],
+  [DefaultCategory.GAMES]: ['Платформа', 'Регион', 'Год', 'Комплектация'],
+  [DefaultCategory.MAGAZINES]: ['Номер', 'Год', 'Издательство', 'Язык'],
   [DefaultCategory.MUSIC]: ['Исполнитель', 'Альбом', 'Год', 'Носитель', 'Лейбл'],
-  [DefaultCategory.VIDEO]: ['Название / Модель', 'Год', 'Носитель / Тип', 'Бренд', 'Регион / Стандарт'],
-  [DefaultCategory.TOYS]: ['Название', 'Серия', 'Бренд', 'Год', 'Материал'],
+  [DefaultCategory.VIDEO]: ['Год', 'Носитель / Тип', 'Бренд', 'Регион / Стандарт'],
+  [DefaultCategory.TOYS]: ['Серия', 'Бренд', 'Год', 'Материал'],
   [DefaultCategory.COMPUTERS]: ['Бренд', 'Модель', 'Процессор', 'ОЗУ', 'Год'],
   [DefaultCategory.CAMERAS]: ['Бренд', 'Модель', 'Тип', 'Матрица/Пленка', 'Год'],
   [DefaultCategory.CONSOLES]: ['Бренд', 'Модель', 'Регион', 'Ревизия / Версия', 'Год выпуска'],
-  [DefaultCategory.MISC]: ['Название', 'Производитель', 'Год', 'Описание']
+  [DefaultCategory.MISC]: ['Производитель', 'Год', 'Описание']
 };
 
 export const SUBCATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {

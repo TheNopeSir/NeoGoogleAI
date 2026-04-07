@@ -643,6 +643,212 @@ api.post('/auth/telegram', async (req, res) => {
     }
 });
 
+// ==========================================
+// OAUTH: findOrCreateOAuthUser helper
+// ==========================================
+const findOrCreateOAuthUser = async (provider, providerId, email, name, avatarUrl) => {
+    const providerIdField = `${provider}Id`;
+
+    // 1. Search by providerId in JSONB
+    let result = await query(
+        `SELECT username, data FROM users WHERE data->>'${providerIdField}' = $1`, [String(providerId)]
+    );
+    if (result.rows.length > 0) return mapRow(result.rows[0]);
+
+    // 2. Search by email
+    if (email) {
+        result = await query(`SELECT username, data FROM users WHERE data->>'email' = $1`, [email]);
+        if (result.rows.length > 0) {
+            const existing = mapRow(result.rows[0]);
+            // Link providerId to existing account
+            const updated = { ...existing, [providerIdField]: String(providerId) };
+            await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
+                [updated, existing.username]);
+            return updated;
+        }
+    }
+
+    // 3. Create new user
+    let baseUsername = (name || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || 'user';
+    let username = baseUsername;
+    let attempts = 0;
+    while (true) {
+        const exists = await query('SELECT 1 FROM users WHERE username = $1', [username]);
+        if (exists.rows.length === 0) break;
+        username = `${baseUsername}${++attempts}`;
+    }
+
+    const newUser = {
+        username,
+        email: email || `${provider}_${providerId}@placeholder.com`,
+        tagline: `Вошёл через ${provider}`,
+        bio: '',
+        avatarUrl: avatarUrl || '',
+        joinedDate: new Date().toLocaleDateString('ru-RU'),
+        following: [],
+        followers: [],
+        achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+        password: null,
+        settings: { theme: 'dark' },
+        [providerIdField]: String(providerId)
+    };
+    await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+    return newUser;
+};
+
+const OAUTH_REDIRECT_BASE = process.env.OAUTH_REDIRECT_BASE || 'https://neoarchive.ru';
+const APP_DEEP_LINK = process.env.APP_DEEP_LINK || 'ru.neoarchive.app://auth';
+
+// ==========================================
+// OAUTH: Google
+// ==========================================
+api.get('/auth/google/redirect', (req, res) => {
+    const state = req.query.native ? 'native' : 'web';
+    const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        redirect_uri: `${OAUTH_REDIRECT_BASE}/api/auth/google/callback`,
+        response_type: 'code',
+        scope: 'email profile',
+        state
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+api.get('/auth/google/callback', async (req, res) => {
+    try {
+        const { code, state } = req.query;
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                code,
+                client_id: process.env.GOOGLE_CLIENT_ID,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET,
+                redirect_uri: `${OAUTH_REDIRECT_BASE}/api/auth/google/callback`,
+                grant_type: 'authorization_code'
+            })
+        });
+        const tokenData = await tokenRes.json();
+        if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+
+        const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` }
+        });
+        const profile = await profileRes.json();
+
+        const user = await findOrCreateOAuthUser('google', profile.id, profile.email, profile.name, profile.picture);
+        const isNative = state === 'native';
+        const redirect = isNative
+            ? `${APP_DEEP_LINK}?session=${encodeURIComponent(user.username)}&type=OAUTH`
+            : `${OAUTH_REDIRECT_BASE}/?session=${encodeURIComponent(user.username)}&type=OAUTH`;
+        res.redirect(redirect);
+    } catch (e) {
+        console.error('[OAuth Google]', e);
+        res.redirect(`${OAUTH_REDIRECT_BASE}/?error=oauth_failed`);
+    }
+});
+
+// ==========================================
+// OAUTH: Yandex
+// ==========================================
+api.get('/auth/yandex/redirect', (req, res) => {
+    const state = req.query.native ? 'native' : 'web';
+    const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: process.env.YANDEX_CLIENT_ID,
+        redirect_uri: `${OAUTH_REDIRECT_BASE}/api/auth/yandex/callback`,
+        state
+    });
+    res.redirect(`https://oauth.yandex.ru/authorize?${params}`);
+});
+
+api.get('/auth/yandex/callback', async (req, res) => {
+    try {
+        const { code, state } = req.query;
+        const credentials = Buffer.from(`${process.env.YANDEX_CLIENT_ID}:${process.env.YANDEX_CLIENT_SECRET}`).toString('base64');
+        const tokenRes = await fetch('https://oauth.yandex.ru/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${credentials}`
+            },
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: `${OAUTH_REDIRECT_BASE}/api/auth/yandex/callback`
+            })
+        });
+        const tokenData = await tokenRes.json();
+        if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+
+        const profileRes = await fetch('https://login.yandex.ru/info?format=json', {
+            headers: { Authorization: `OAuth ${tokenData.access_token}` }
+        });
+        const profile = await profileRes.json();
+
+        const avatarUrl = profile.default_avatar_id
+            ? `https://avatars.yandex.net/get-yapic/${profile.default_avatar_id}/islands-200`
+            : '';
+        const user = await findOrCreateOAuthUser('yandex', profile.id, profile.default_email, profile.real_name, avatarUrl);
+        const isNative = state === 'native';
+        const redirect = isNative
+            ? `${APP_DEEP_LINK}?session=${encodeURIComponent(user.username)}&type=OAUTH`
+            : `${OAUTH_REDIRECT_BASE}/?session=${encodeURIComponent(user.username)}&type=OAUTH`;
+        res.redirect(redirect);
+    } catch (e) {
+        console.error('[OAuth Yandex]', e);
+        res.redirect(`${OAUTH_REDIRECT_BASE}/?error=oauth_failed`);
+    }
+});
+
+// ==========================================
+// OAUTH: Telegram (native APK via browser)
+// ==========================================
+api.get('/auth/telegram/native', async (req, res) => {
+    try {
+        const tgData = req.query;
+        if (process.env.TELEGRAM_BOT_TOKEN && !verifyTelegramHash(tgData)) {
+            return res.status(401).send('Invalid Telegram signature');
+        }
+        const name = [tgData.first_name, tgData.last_name].filter(Boolean).join(' ') || `tg_${tgData.id}`;
+        const user = await findOrCreateOAuthUser('telegram', tgData.id, null, name, tgData.photo_url || null);
+        res.redirect(`${APP_DEEP_LINK}?session=${encodeURIComponent(user.username)}&type=OAUTH`);
+    } catch (e) {
+        console.error('[OAuth Telegram Native]', e);
+        res.redirect(`${OAUTH_REDIRECT_BASE}/?error=oauth_failed`);
+    }
+});
+
+// Telegram auth page for native APK (opened in Chrome Custom Tabs)
+app.get('/telegram-auth', (req, res) => {
+    const isNative = req.query.native === '1';
+    const authUrl = isNative
+        ? `${OAUTH_REDIRECT_BASE}/api/auth/telegram/native`
+        : null;
+    const botName = process.env.TELEGRAM_BOT_NAME || 'TrusterStoryBot';
+    res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Вход через Telegram</title>
+<style>
+  body{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;background:#0a0a0a;font-family:monospace;color:#fff;gap:16px;}
+  h2{font-size:13px;letter-spacing:0.2em;opacity:0.6;}
+</style>
+</head><body>
+<h2>TELEGRAM AUTH</h2>
+<script async src="https://telegram.org/js/telegram-widget.js?22"
+  data-telegram-login="${botName}"
+  data-size="large" data-radius="10" data-request-access="write"
+  ${authUrl ? `data-auth-url="${authUrl}"` : `data-onauth="onTelegramAuth(user)"`}
+></script>
+${!authUrl ? `<script>
+function onTelegramAuth(user) {
+  if (window.opener) { window.opener.postMessage({type:'telegram_auth',user}, '*'); window.close(); }
+  else { window.location.href = '/'; }
+}
+</script>` : ''}
+</body></html>`);
+});
+
 api.post('/auth/verify-email', async (req, res) => {
     try {
         const { code } = req.body;
@@ -1053,6 +1259,16 @@ api.get('/sync', async (req, res) => {
 });
 
 // USERS CRUD (Fixed to use username)
+api.get('/users/:username', async (req, res) => {
+    try {
+        const result = await query(`SELECT username, data FROM users WHERE username = $1`, [req.params.username]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json(mapRow(result.rows[0]));
+    } catch (e) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 api.get('/users', async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit) || 100, 500);
