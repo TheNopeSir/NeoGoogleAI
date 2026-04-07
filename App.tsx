@@ -454,8 +454,9 @@ export default function App() {
               const searchParams = new URLSearchParams(window.location.search);
               const code = searchParams.get('code');
               const type = searchParams.get('type');
-              if (code && type) {
-                  // Email link — open AUTH with verification params
+              const session = searchParams.get('session');
+              if ((code && type) || (session && type === 'OAUTH')) {
+                  // Email verification link OR OAuth callback
                   await syncFromUrl();
               } else if (window.location.pathname === '/privacy') {
                   setView('PRIVACY');
