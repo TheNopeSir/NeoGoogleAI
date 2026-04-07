@@ -816,9 +816,33 @@ api.get('/auth/telegram/native', async (req, res) => {
         if (process.env.TELEGRAM_BOT_TOKEN && !verifyTelegramHash(tgData)) {
             return res.status(401).send('Invalid Telegram signature');
         }
-        const name = [tgData.first_name, tgData.last_name].filter(Boolean).join(' ') || `tg_${tgData.id}`;
-        const user = await findOrCreateOAuthUser('telegram', tgData.id, null, name, tgData.photo_url || null);
-        res.redirect(`${APP_DEEP_LINK}?session=${encodeURIComponent(user.username)}&type=OAUTH`);
+
+        // Используем ту же логику, что и веб-версия (/auth/telegram POST):
+        // Ищем по username или tg_${id} — совместимо со старыми аккаунтами
+        const username = tgData.username || `tg_${tgData.id}`;
+        const result = await query(`SELECT * FROM users WHERE username = $1`, [username]);
+
+        if (result.rows.length > 0) {
+            const user = mapRow(result.rows[0]);
+            console.log(`[OAuth:telegram] LOGIN  @${user.username} (id=${tgData.id})`);
+            return res.redirect(`${APP_DEEP_LINK}?session=${encodeURIComponent(user.username)}&type=OAUTH`);
+        }
+
+        // Новый пользователь
+        const newUser = {
+            username,
+            email: `tg_${tgData.id}@placeholder.com`,
+            tagline: 'Telegram User',
+            joinedDate: new Date().toLocaleDateString('ru-RU'),
+            following: [],
+            followers: [],
+            achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+            avatarUrl: tgData.photo_url || null,
+            settings: { theme: 'dark' }
+        };
+        await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+        console.log(`[OAuth:telegram] REGISTER @${username} (id=${tgData.id})`);
+        res.redirect(`${APP_DEEP_LINK}?session=${encodeURIComponent(username)}&type=OAUTH`);
     } catch (e) {
         console.error('[OAuth Telegram Native]', e);
         res.redirect(`${OAUTH_REDIRECT_BASE}/?error=oauth_failed`);
