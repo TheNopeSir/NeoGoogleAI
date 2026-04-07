@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, ArrowLeft, Save, X, Info, Archive, Video, RefreshCw, Link2, Award, DollarSign, User, Star, ChevronLeft, ChevronRight, GripVertical, Search } from 'lucide-react';
-import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS, SUBCATEGORY_CONDITIONS } from '../constants';
+import { DefaultCategory, CATEGORY_SUBCATEGORIES, CATEGORY_SPECS_TEMPLATES, SUBCATEGORY_SPECS_TEMPLATES, CARTRIDGE_RELEASE_OPTIONS, TRADE_STATUS_CONFIG, CATEGORY_CONDITIONS, SUBCATEGORY_CONDITIONS } from '../constants';
 import { fileToBase64 } from '../services/storageService';
 import { Exhibit, TradeStatus, UserProfile } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -518,15 +518,28 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
                 </h3>
               </div>
               <div className={`grid grid-cols-1 gap-4 p-5 rounded-2xl border border-white/5 ${isWinamp ? 'bg-black' : 'bg-black/20'}`}>
-                {(CATEGORY_SPECS_TEMPLATES[category] || ['Производитель', 'Год', 'Модель']).map(spec => (
+                {(SUBCATEGORY_SPECS_TEMPLATES[subcategory] || CATEGORY_SPECS_TEMPLATES[category] || ['Производитель', 'Год', 'Модель']).map(spec => (
                   <div key={spec}>
                     <label className="text-[9px] font-mono opacity-40 uppercase mb-1 block">{spec}</label>
-                    <input
-                      value={specs[spec] || ''}
-                      onChange={e => setSpecs(prev => ({...prev, [spec]: e.target.value}))}
-                      className={`w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 font-mono text-xs focus:border-green-500 outline-none transition-all ${isWinamp ? 'text-[#00ff00]' : ''}`}
-                      placeholder={`Укажите ${spec}...`}
-                    />
+                    {spec === 'ВЫПУСК КАРТРИДЖА' ? (
+                      <select
+                        value={specs[spec] || ''}
+                        onChange={e => setSpecs(prev => ({...prev, [spec]: e.target.value}))}
+                        className={`w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 font-mono text-xs focus:border-green-500 outline-none transition-all ${isWinamp ? 'text-[#00ff00]' : 'text-white'}`}
+                      >
+                        <option value="">— Выберите тип выпуска —</option>
+                        {CARTRIDGE_RELEASE_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={specs[spec] || ''}
+                        onChange={e => setSpecs(prev => ({...prev, [spec]: e.target.value}))}
+                        className={`w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 font-mono text-xs focus:border-green-500 outline-none transition-all ${isWinamp ? 'text-[#00ff00]' : ''}`}
+                        placeholder={`Укажите ${spec}...`}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

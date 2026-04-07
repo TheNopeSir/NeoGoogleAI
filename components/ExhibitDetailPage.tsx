@@ -969,13 +969,21 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
                             <h3 className={`font-pixel text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : 'opacity-70'}`}>
                                 <XI icon={Info} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
                             </h3>
-                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-4 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-gray-100 border-gray-300' : 'bg-black/20 border-white/5'}`}>
-                                {nonEmptySpecs.map(([key, val]) => (
-                                    <div key={key} className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider mb-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}>{key}</div>
-                                        <div className={`font-bold font-mono text-xs break-words leading-tight ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{val}</div>
+                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-gray-100 border-gray-300' : 'bg-black/20 border-white/5'}`}>
+                                {nonEmptySpecs.map(([key, val]) => {
+                                    const parenIdx = key.indexOf('(');
+                                    const mainLabel = parenIdx > -1 ? key.slice(0, parenIdx).trim() : key;
+                                    const subLabel  = parenIdx > -1 ? key.slice(parenIdx) : null;
+                                    return (
+                                    <div key={key} className={`px-3 py-2.5 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+                                        <div className={`text-[8px] uppercase tracking-wider leading-tight ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}>
+                                            {mainLabel}
+                                            {subLabel && <span className="opacity-60 normal-case tracking-normal"> {subLabel}</span>}
+                                        </div>
+                                        <div className={`font-bold font-mono text-xs break-words leading-tight mt-1 ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{val}</div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                                 {exhibit.condition && (
                                     <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
                                         <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>

@@ -281,12 +281,12 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                     return (
                                         <div key={u.username} className="flex flex-col items-center gap-2 min-w-[88px]">
                                             <div
-                                                className="relative cursor-pointer group pb-1 pr-1"
+                                                className="relative cursor-pointer group p-1"
                                                 onClick={() => onUserClick(u.username)}
                                             >
                                                 <img
                                                     src={u.avatarUrl || getUserAvatar(u.username)}
-                                                    className={`w-14 h-14 rounded-full border-2 transition-transform group-hover:scale-110 ${medal ? `ring-2 ${medal.ring} shadow-lg ${medal.glow}` : 'border-white/20'}`}
+                                                    className={`w-14 h-14 rounded-full border-2 object-cover transition-transform group-hover:scale-110 ${medal ? `ring-2 ${medal.ring} shadow-lg ${medal.glow}` : 'border-white/20'}`}
                                                     alt={u.username}
                                                     onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = getUserAvatar(u.username); }}
                                                 />

@@ -62,6 +62,22 @@ export const CATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {
   [DefaultCategory.MISC]: ['Название', 'Производитель', 'Год', 'Описание']
 };
 
+export const SUBCATEGORY_SPECS_TEMPLATES: Record<string, string[]> = {
+  'Картриджи 8-bit':    ['ГОД', 'РЕГИОН', 'ПЛАТФОРМА', 'НАЗВАНИЕ ИГРЫ', 'ВЫПУСК КАРТРИДЖА', 'КОМПЛЕКТАЦИЯ (CIB/LOOSE)'],
+  'Картриджи 16-bit':   ['ГОД', 'РЕГИОН', 'ПЛАТФОРМА', 'НАЗВАНИЕ ИГРЫ', 'ВЫПУСК КАРТРИДЖА', 'КОМПЛЕКТАЦИЯ (CIB/LOOSE)'],
+  'Картриджи 32/64-bit':['ГОД', 'РЕГИОН', 'ПЛАТФОРМА', 'НАЗВАНИЕ ИГРЫ', 'ВЫПУСК КАРТРИДЖА', 'КОМПЛЕКТАЦИЯ (CIB/LOOSE)'],
+};
+
+export const CARTRIDGE_RELEASE_OPTIONS: string[] = [
+  'Оригинал (Original)',
+  'Оригинал стар. (Vintage Original)',
+  'Лицензионный (Licensed)',
+  'Пиратский (Bootleg/Pirate)',
+  'Репро (Repro)',
+  'Хоумбрю (Homebrew)',
+  'Dev Cart / Test Cart',
+];
+
 export const TRADE_STATUS_CONFIG: Record<TradeStatus, any> = {
     'NONE': { label: '', color: '', icon: null },
     'FOR_TRADE': { label: 'ОБМЕН', color: 'text-blue-300 border-blue-500 bg-blue-500/20', icon: RefreshCw, badge: 'ОБМЕН' },
