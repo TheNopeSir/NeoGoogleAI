@@ -56,6 +56,7 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   
   const [user, setUser] = useState<UserProfile | null>(null);
+  const userRef = useRef<UserProfile | null>(null);
   const [exhibits, setExhibits] = useState<Exhibit[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
@@ -320,8 +321,13 @@ export default function App() {
       } else { setView('FEED'); }
   }, []);
 
+  useEffect(() => { userRef.current = user; }, [user]);
+
   useEffect(() => {
-      const handlePopState = () => syncFromUrl();
+      const handlePopState = () => {
+          if (userRef.current) syncFromUrl();
+          else setView('AUTH');
+      };
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
   }, [syncFromUrl]);
