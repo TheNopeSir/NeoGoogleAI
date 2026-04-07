@@ -653,7 +653,11 @@ const findOrCreateOAuthUser = async (provider, providerId, email, name, avatarUr
     let result = await query(
         `SELECT username, data FROM users WHERE data->>'${providerIdField}' = $1`, [String(providerId)]
     );
-    if (result.rows.length > 0) return mapRow(result.rows[0]);
+    if (result.rows.length > 0) {
+        const existing = mapRow(result.rows[0]);
+        console.log(`[OAuth:${provider}] LOGIN  @${existing.username} (id=${providerId})`);
+        return existing;
+    }
 
     // 2. Search by email
     if (email) {
@@ -664,6 +668,7 @@ const findOrCreateOAuthUser = async (provider, providerId, email, name, avatarUr
             const updated = { ...existing, [providerIdField]: String(providerId) };
             await query(`UPDATE users SET data = $1, updated_at = NOW() WHERE username = $2`,
                 [updated, existing.username]);
+            console.log(`[OAuth:${provider}] LINKED @${existing.username} (email match, id=${providerId})`);
             return updated;
         }
     }
@@ -693,6 +698,7 @@ const findOrCreateOAuthUser = async (provider, providerId, email, name, avatarUr
         [providerIdField]: String(providerId)
     };
     await query(`INSERT INTO users (username, data, updated_at) VALUES ($1, $2, NOW())`, [username, newUser]);
+    console.log(`[OAuth:${provider}] REGISTER @${username} name="${name}" email="${email || 'none'}" id=${providerId}`);
     return newUser;
 };
 
