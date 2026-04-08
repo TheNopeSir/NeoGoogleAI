@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Send, Terminal, Shield, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Shield, MessageSquare, Reply } from 'lucide-react';
 import { UserProfile, Message, MessageReactionEmoji } from '../types';
 import { getUserAvatar } from '../services/storageService';
 import MessageReactionPicker from './MessageReactionPicker';
@@ -25,17 +25,19 @@ const DirectChat: React.FC<DirectChatProps> = ({
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
     const [reactionPickerState, setReactionPickerState] = useState<{ messageId: string; position: { x: number; y: number } } | null>(null);
+    const [tappedMsgId, setTappedMsgId] = useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+    const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null);
+
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // Tracks whether the current touch gesture completed a long-press.
-    // Used to call e.preventDefault() in onTouchEnd so the browser
-    // doesn't fire a synthetic click that lands on the picker's backdrop.
     const longPressFiredRef = useRef(false);
+    const swipeRef = useRef<{ id: string; startX: number; startY: number; isHorizontal: boolean | null; moved: boolean } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [isSending, setIsSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
     const lastSendRef = useRef<number>(0);
 
-    // CRITICAL: Filter and sort uniquely to prevent double rendering
     const uniqueMessages = useMemo(() => {
         const map = new Map<string, Message>();
         messages.forEach(m => map.set(m.id, m));
@@ -43,12 +45,9 @@ const DirectChat: React.FC<DirectChatProps> = ({
     }, [messages]);
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }, [uniqueMessages]);
 
-    // Mention autocomplete
     useEffect(() => {
         if (mentionQuery !== null) {
             const query = mentionQuery.toLowerCase();
@@ -92,11 +91,19 @@ const DirectChat: React.FC<DirectChatProps> = ({
         onSendMessage(input);
         setInput('');
         setMentionQuery(null);
+        setReplyingTo(null);
         setTimeout(() => setIsSending(false), 500);
+    };
+
+    const handleReply = (msg: Message) => {
+        setReplyingTo(msg);
+        setTappedMsgId(null);
+        setTimeout(() => inputRef.current?.focus(), 0);
     };
 
     const openReactionPicker = (messageId: string, x: number, y: number) => {
         setReactionPickerState({ messageId, position: { x, y } });
+        setTappedMsgId(null);
     };
 
     const isWinamp = theme === 'winamp';
@@ -105,26 +112,29 @@ const DirectChat: React.FC<DirectChatProps> = ({
 
     const headerBg = isWinamp
         ? 'bg-[#191919] border-[#505050]'
-        : isXP
-        ? 'bg-[#ECE9D8] border-[#ACA899]'
-        : isLight
-        ? 'bg-white border-gray-200'
+        : isXP ? 'bg-[#ECE9D8] border-[#ACA899]'
+        : isLight ? 'bg-white border-gray-200'
         : 'border-white/10 bg-white/5';
 
     const inputBg = isWinamp
         ? 'bg-black/40 border border-[#505050] text-[#00ff00] placeholder-gray-600'
-        : isXP
-        ? 'bg-white border border-[#ACA899] text-black'
-        : isLight
-        ? 'bg-gray-50 border border-gray-200 text-gray-900'
+        : isXP ? 'bg-white border border-[#ACA899] text-black'
+        : isLight ? 'bg-gray-50 border border-gray-200 text-gray-900'
         : 'bg-black/40 border border-white/10';
+
+    const footerBg = isWinamp ? 'bg-[#191919] border-[#505050]'
+        : isXP ? 'bg-[#ECE9D8] border-[#ACA899]'
+        : isLight ? 'bg-white border-gray-200'
+        : 'bg-white/5 border-white/10';
 
     return (
         <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             {/* Header */}
             <div className={`flex items-center justify-between p-4 border-b rounded-t-3xl ${headerBg}`}>
                 <div className="flex items-center gap-4 min-w-0">
-                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}><XI icon={ArrowLeft} size={20} /></button>
+                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}>
+                        <XI icon={ArrowLeft} size={20} />
+                    </button>
                     <div className="flex items-center gap-3 min-w-0">
                         <img src={getUserAvatar(partnerUsername)} className="w-10 h-10 rounded-full border border-green-500/30 flex-shrink-0 object-cover" />
                         <div className="min-w-0">
@@ -138,7 +148,11 @@ const DirectChat: React.FC<DirectChatProps> = ({
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide no-scrollbar">
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-1 sm:space-y-2 scrollbar-hide no-scrollbar"
+                onClick={() => setTappedMsgId(null)}
+            >
                 {uniqueMessages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
                         <XI icon={MessageSquare} size={48} />
@@ -147,6 +161,9 @@ const DirectChat: React.FC<DirectChatProps> = ({
                 ) : (
                     uniqueMessages.map(msg => {
                         const isMe = msg.sender === currentUser.username;
+                        const isActionsVisible = tappedMsgId === msg.id;
+                        const currentSwipe = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
+
                         const bubbleBg = isMe
                             ? 'bg-green-500 text-black rounded-tr-none'
                             : isWinamp
@@ -158,38 +175,140 @@ const DirectChat: React.FC<DirectChatProps> = ({
                             : 'bg-white/10 text-white rounded-tl-none';
 
                         return (
-                            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
-                                <div
-                                    className={`max-w-[80%] p-4 rounded-2xl font-mono text-sm leading-relaxed break-all whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
-                                    onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
-                                    onTouchStart={e => {
-                                        const touch = e.touches[0];
-                                        longPressFiredRef.current = false;
-                                        longPressTimerRef.current = setTimeout(() => {
-                                            longPressFiredRef.current = true;
-                                            openReactionPicker(msg.id, touch.clientX, touch.clientY);
-                                        }, 500);
-                                    }}
-                                    onTouchEnd={e => {
-                                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                        if (longPressFiredRef.current) {
-                                            // Prevent the synthetic click that would hit the backdrop
-                                            e.preventDefault();
-                                            longPressFiredRef.current = false;
+                            <div
+                                key={msg.id}
+                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}
+                                onTouchStart={(e) => {
+                                    const touch = e.touches[0];
+                                    // Long-press for reaction picker
+                                    longPressFiredRef.current = false;
+                                    longPressTimerRef.current = setTimeout(() => {
+                                        longPressFiredRef.current = true;
+                                        openReactionPicker(msg.id, touch.clientX, touch.clientY);
+                                    }, 500);
+                                    // Swipe tracking
+                                    swipeRef.current = {
+                                        id: msg.id,
+                                        startX: touch.clientX,
+                                        startY: touch.clientY,
+                                        isHorizontal: null,
+                                        moved: false,
+                                    };
+                                }}
+                                onTouchMove={(e) => {
+                                    // Cancel long press on any move
+                                    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                    const sr = swipeRef.current;
+                                    if (!sr || sr.id !== msg.id) return;
+                                    const dx = e.touches[0].clientX - sr.startX;
+                                    const dy = e.touches[0].clientY - sr.startY;
+                                    if (sr.isHorizontal === null) {
+                                        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                                            sr.isHorizontal = Math.abs(dx) > Math.abs(dy);
                                         }
-                                    }}
-                                    onTouchMove={() => {
-                                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                        return;
+                                    }
+                                    if (sr.isHorizontal && dx > 0) {
+                                        sr.moved = true;
+                                        setSwipeOffset({ id: msg.id, offset: Math.min(68, dx * 0.55) });
+                                    }
+                                }}
+                                onTouchEnd={(e) => {
+                                    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                    const sr = swipeRef.current;
+                                    if (!sr || sr.id !== msg.id) return;
+                                    if (longPressFiredRef.current) {
+                                        e.preventDefault();
                                         longPressFiredRef.current = false;
-                                    }}
-                                >
-                                    {renderTextWithMentions(msg.text, () => {}, users)}
-                                    <div className={`text-[9px] mt-2 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
-                                        {msg.timestamp.split(',')[1] || msg.timestamp}
+                                    } else {
+                                        const offset = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
+                                        if (offset > 48) handleReply(msg);
+                                    }
+                                    setSwipeOffset(null);
+                                    swipeRef.current = null;
+                                }}
+                            >
+                                <div className="flex items-end gap-1">
+                                    {/* Swipe reply indicator */}
+                                    <div
+                                        className="flex items-center justify-center text-green-400 flex-shrink-0 overflow-hidden"
+                                        style={{ width: `${currentSwipe * 0.35}px`, opacity: Math.min(1, currentSwipe / 48) }}
+                                    >
+                                        <XI icon={Reply} size={14} />
                                     </div>
+
+                                    {/* Actions – left (others' messages) */}
+                                    {!isMe && (
+                                        <div className={`flex flex-col gap-0.5 flex-shrink-0 transition-opacity ${isActionsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); }}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                                title="Ответить"
+                                            >
+                                                <XI icon={Reply} size={11} className="opacity-70" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const r = e.currentTarget.getBoundingClientRect();
+                                                    openReactionPicker(msg.id, r.right, r.top);
+                                                }}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors text-xs leading-none"
+                                                title="Реакция"
+                                            >
+                                                😊
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Bubble */}
+                                    <div
+                                        className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
+                                        style={{
+                                            transform: `translateX(${currentSwipe}px)`,
+                                            transition: currentSwipe === 0 ? 'transform 0.2s ease' : 'none',
+                                        }}
+                                        onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!swipeRef.current?.moved) {
+                                                setTappedMsgId(prev => prev === msg.id ? null : msg.id);
+                                            }
+                                        }}
+                                    >
+                                        {renderTextWithMentions(msg.text, () => {}, users)}
+                                        <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
+                                            {msg.timestamp.split(',')[1] || msg.timestamp}
+                                        </div>
+                                    </div>
+
+                                    {/* Actions – right (own messages) */}
+                                    {isMe && (
+                                        <div className={`flex flex-col gap-0.5 flex-shrink-0 transition-opacity ${isActionsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); }}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                                title="Ответить"
+                                            >
+                                                <XI icon={Reply} size={11} className="opacity-70" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const r = e.currentTarget.getBoundingClientRect();
+                                                    openReactionPicker(msg.id, r.left, r.top);
+                                                }}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors text-xs leading-none"
+                                                title="Реакция"
+                                            >
+                                                😊
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
+
                                 {msg.reactions && msg.reactions.length > 0 && (
-                                    <div className="mt-1">
+                                    <div className="mt-0.5 sm:mt-1">
                                         <ReactionBar
                                             reactions={msg.reactions}
                                             currentUsername={currentUser.username}
@@ -215,8 +334,24 @@ const DirectChat: React.FC<DirectChatProps> = ({
                 />
             )}
 
-            {/* Input form */}
-            <form onSubmit={handleSend} className={`p-4 border-t rounded-b-3xl relative ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#ACA899]' : isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
+            {/* Input area */}
+            <div className={`border-t rounded-b-3xl relative ${footerBg}`}>
+                {/* Reply bar */}
+                {replyingTo && (
+                    <div className={`flex items-center justify-between px-4 pt-2.5 pb-1 border-b ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <XI icon={Reply} size={12} className="text-green-500 flex-shrink-0" />
+                            <span className="text-[10px] font-mono opacity-60 truncate">
+                                <span className={`font-bold ${replyingTo.sender === currentUser.username ? '' : 'text-green-400'}`}>
+                                    @{replyingTo.sender}:
+                                </span>{' '}
+                                {replyingTo.text.slice(0, 60)}{replyingTo.text.length > 60 ? '…' : ''}
+                            </span>
+                        </div>
+                        <button onClick={() => setReplyingTo(null)} className="text-[10px] opacity-40 hover:opacity-80 transition-opacity ml-2 flex-shrink-0">✕</button>
+                    </div>
+                )}
+
                 {/* Mention dropdown */}
                 {mentionQuery !== null && filteredUsers.length > 0 && (
                     <div className={`absolute bottom-full mb-2 left-4 w-64 border rounded-xl overflow-hidden shadow-2xl z-50 ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXP ? 'bg-[#ECE9D8] border-[#ACA899]' : 'bg-black border-white/10'}`}>
@@ -233,25 +368,29 @@ const DirectChat: React.FC<DirectChatProps> = ({
                         ))}
                     </div>
                 )}
-                {sendError && (
-                    <p className="text-red-400 text-[10px] font-mono px-1 pb-1">{sendError}</p>
-                )}
-                <div className="flex gap-2">
+
+                {sendError && <p className="text-red-400 text-[10px] font-mono px-4 pt-2">{sendError}</p>}
+
+                <form onSubmit={handleSend} className="flex gap-2 p-2.5 sm:p-4">
                     <input
+                        ref={inputRef}
                         value={input}
                         onChange={handleInputChange}
-                        placeholder="ВВЕСТИ СООБЩЕНИЕ..."
+                        onKeyDown={e => { if (e.key === 'Escape') setReplyingTo(null); }}
+                        placeholder={replyingTo ? `Ответить @${replyingTo.sender}...` : 'ВВЕСТИ СООБЩЕНИЕ...'}
                         className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
+                        maxLength={500}
+                        autoComplete="off"
                     />
                     <button
                         type="submit"
-                        disabled={isSending}
-                        className={`p-4 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={isSending || !input.trim()}
+                        className={`p-3 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${(isSending || !input.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <XI icon={Send} size={20} />
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 };

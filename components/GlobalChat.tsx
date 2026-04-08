@@ -30,6 +30,9 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [mentionAtPos, setMentionAtPos] = useState<number>(0);
     const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+    const [tappedMsgId, setTappedMsgId] = useState<string | null>(null);
+    const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null);
+    const swipeRef = useRef<{ id: string; startX: number; startY: number; isHorizontal: boolean | null; moved: boolean } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const lastSendRef = useRef<number>(0);
@@ -222,7 +225,11 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide no-scrollbar">
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-1 sm:space-y-2 scrollbar-hide no-scrollbar"
+                onClick={() => setTappedMsgId(null)}
+            >
                 {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
                         <XI icon={Globe} size={48} />
@@ -231,6 +238,9 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                 ) : (
                     messages.map(msg => {
                         const isMe = msg.sender === currentUser.username;
+                        const isActionsVisible = hoveredMsgId === msg.id || tappedMsgId === msg.id;
+                        const currentSwipe = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
+
                         const bubbleBg = isMe
                             ? 'bg-green-500 text-black rounded-tr-none'
                             : isWinamp
@@ -244,50 +254,106 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                         return (
                             <div
                                 key={msg.id}
-                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2 group`}
+                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2 group relative`}
                                 onMouseEnter={() => setHoveredMsgId(msg.id)}
                                 onMouseLeave={() => setHoveredMsgId(null)}
+                                onTouchStart={(e) => {
+                                    swipeRef.current = {
+                                        id: msg.id,
+                                        startX: e.touches[0].clientX,
+                                        startY: e.touches[0].clientY,
+                                        isHorizontal: null,
+                                        moved: false,
+                                    };
+                                }}
+                                onTouchMove={(e) => {
+                                    const sr = swipeRef.current;
+                                    if (!sr || sr.id !== msg.id) return;
+                                    const dx = e.touches[0].clientX - sr.startX;
+                                    const dy = e.touches[0].clientY - sr.startY;
+                                    if (sr.isHorizontal === null) {
+                                        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                                            sr.isHorizontal = Math.abs(dx) > Math.abs(dy);
+                                        }
+                                        return;
+                                    }
+                                    if (sr.isHorizontal && dx > 0) {
+                                        sr.moved = true;
+                                        setSwipeOffset({ id: msg.id, offset: Math.min(68, dx * 0.55) });
+                                    }
+                                }}
+                                onTouchEnd={() => {
+                                    const sr = swipeRef.current;
+                                    if (!sr || sr.id !== msg.id) return;
+                                    const offset = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
+                                    if (offset > 48) {
+                                        handleReply(msg);
+                                    }
+                                    setSwipeOffset(null);
+                                    swipeRef.current = null;
+                                }}
                             >
                                 {!isMe && (
                                     <button
-                                        className="flex items-center gap-1.5 mb-1 ml-1 hover:opacity-100 opacity-70 transition-opacity"
+                                        className="flex items-center gap-1.5 mb-0.5 ml-1 hover:opacity-100 opacity-70 transition-opacity"
                                         onClick={() => onUserClick?.(msg.sender)}
                                     >
-                                        <img src={getUserAvatar(msg.sender)} className="w-4 h-4 rounded-full" alt={msg.sender} />
+                                        <img src={getUserAvatar(msg.sender)} className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full" alt={msg.sender} />
                                         <span className="text-[9px] font-pixel hover:underline">@{msg.sender}</span>
                                         {getSenderBadge(msg.sender)}
                                     </button>
                                 )}
 
-                                <div className="flex items-end gap-1.5">
+                                <div className="flex items-end gap-1">
+                                    {/* Swipe reply indicator (left of bubble) */}
+                                    <div
+                                        className="flex items-center justify-center text-green-400 flex-shrink-0 overflow-hidden"
+                                        style={{ width: `${currentSwipe * 0.35}px`, opacity: Math.min(1, currentSwipe / 48) }}
+                                    >
+                                        <XI icon={Reply} size={14} />
+                                    </div>
+
                                     {/* Action buttons (left side for others' messages) */}
                                     {!isMe && (
-                                        <div className={`flex flex-col gap-1 transition-opacity ${hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0'}`}>
+                                        <div className={`flex flex-col gap-0.5 transition-opacity flex-shrink-0 ${isActionsVisible ? 'opacity-100' : 'opacity-0'}`}>
                                             <button
-                                                onClick={() => handleReply(msg)}
+                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); setTappedMsgId(null); }}
                                                 className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                                 title="Ответить"
                                             >
-                                                <XI icon={Reply} size={12} className="opacity-60" />
+                                                <XI icon={Reply} size={11} className="opacity-70" />
                                             </button>
                                             {isAdmin && (
                                                 <button
-                                                    onClick={() => handleDelete(msg.id)}
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(msg.id); setTappedMsgId(null); }}
                                                     className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
                                                     title="Удалить"
                                                 >
-                                                    <XI icon={Trash2} size={12} className="text-red-400 opacity-60" />
+                                                    <XI icon={Trash2} size={11} className="text-red-400 opacity-70" />
                                                 </button>
                                             )}
                                         </div>
                                     )}
 
-                                    <div className={`max-w-[80%] p-3 rounded-2xl font-mono text-sm leading-relaxed break-words whitespace-pre-wrap ${bubbleBg}`}>
-                                        {/* Reply preview */}
+                                    {/* Bubble */}
+                                    <div
+                                        className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer ${bubbleBg}`}
+                                        style={{
+                                            transform: `translateX(${currentSwipe}px)`,
+                                            transition: currentSwipe === 0 ? 'transform 0.2s ease' : 'none',
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!swipeRef.current?.moved) {
+                                                setTappedMsgId(prev => prev === msg.id ? null : msg.id);
+                                            }
+                                        }}
+                                    >
                                         {msg.replyTo && (
                                             <div
-                                                className={`text-[10px] mb-2 border-l-2 pl-2 opacity-70 truncate cursor-pointer hover:opacity-100 transition-opacity ${isMe ? 'border-black/30' : isWinamp ? 'border-[#00ff00]/40' : 'border-white/30'}`}
-                                                onClick={() => {
+                                                className={`text-[9px] sm:text-[10px] mb-1.5 border-l-2 pl-2 opacity-70 truncate cursor-pointer hover:opacity-100 transition-opacity ${isMe ? 'border-black/30' : isWinamp ? 'border-[#00ff00]/40' : 'border-white/30'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     const el = document.getElementById(`msg-${msg.replyTo!.id}`);
                                                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                                 }}
@@ -299,21 +365,28 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
 
                                         <div id={`msg-${msg.id}`}>{renderText(msg.text)}</div>
 
-                                        <div className={`text-[9px] mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
+                                        <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
                                             {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
 
                                     {/* Action buttons (right side for own messages) */}
                                     {isMe && (
-                                        <div className={`flex flex-col gap-1 transition-opacity ${hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0'}`}>
+                                        <div className={`flex flex-col gap-0.5 transition-opacity flex-shrink-0 ${isActionsVisible ? 'opacity-100' : 'opacity-0'}`}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); setTappedMsgId(null); }}
+                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                                title="Ответить"
+                                            >
+                                                <XI icon={Reply} size={11} className="opacity-70" />
+                                            </button>
                                             {isAdmin && (
                                                 <button
-                                                    onClick={() => handleDelete(msg.id)}
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(msg.id); setTappedMsgId(null); }}
                                                     className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
                                                     title="Удалить"
                                                 >
-                                                    <XI icon={Trash2} size={12} className="text-red-400 opacity-60" />
+                                                    <XI icon={Trash2} size={11} className="text-red-400 opacity-70" />
                                                 </button>
                                             )}
                                         </div>
@@ -374,7 +447,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
 
                 {sendError && <p className="text-red-400 text-[10px] font-mono px-4 pt-2">{sendError}</p>}
 
-                <form onSubmit={handleSend} className="flex gap-2 p-4">
+                <form onSubmit={handleSend} className="flex gap-2 p-2.5 sm:p-4">
                     <button
                         type="button"
                         onClick={() => { setShowEmojiPicker(v => !v); setMentionQuery(null); }}
