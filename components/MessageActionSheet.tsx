@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import Kolobok from './Kolobok';
 
 export interface SheetAction {
     icon: React.ReactNode;
@@ -84,10 +85,10 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                         {quickReactions.map(emoji => (
                             <button
                                 key={emoji}
-                                className="text-[22px] sm:text-2xl hover:scale-125 active:scale-90 transition-transform px-1.5 py-0.5 rounded-xl hover:bg-white/10"
+                                className="hover:scale-125 active:scale-90 transition-transform px-1.5 py-0.5 rounded-xl hover:bg-white/10"
                                 onClick={() => { onReact(emoji); onClose(); }}
                             >
-                                {emoji}
+                                <Kolobok emoji={emoji} size={26} />
                             </button>
                         ))}
                     </div>

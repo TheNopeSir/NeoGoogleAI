@@ -4,6 +4,7 @@ import { UserProfile, GlobalChatMessage, MessageReactionEmoji, MessageReaction }
 import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlobalChatMessage, updateGlobalChatMessageReactions } from '../services/storageService';
 import { validateMessageText } from '../utils/textUtils';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
+import Kolobok from './Kolobok';
 import ReactionBar from './ReactionBar';
 import XI from './XI';
 
@@ -409,10 +410,10 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                         {EMOJIS.map(emoji => (
                             <button
                                 key={emoji}
-                                className="w-7 h-7 text-base hover:scale-125 transition-transform flex items-center justify-center rounded"
+                                className="w-7 h-7 hover:scale-125 transition-transform flex items-center justify-center rounded"
                                 onMouseDown={e => { e.preventDefault(); insertEmoji(emoji); }}
                             >
-                                {emoji}
+                                <Kolobok emoji={emoji} size={22} />
                             </button>
                         ))}
                     </div>

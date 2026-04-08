@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Kolobok from './Kolobok';
 
 const EMOJIS = [
     '😀', '😂', '🥰', '😍',
@@ -48,9 +49,9 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onSelect, onClose, theme }) =
                     <button
                         key={emoji}
                         onClick={() => { onSelect(emoji); onClose(); }}
-                        className="w-9 h-9 text-xl flex items-center justify-center rounded-xl hover:bg-white/10 active:scale-90 transition-all"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 active:scale-90 transition-all"
                     >
-                        {emoji}
+                        <Kolobok emoji={emoji} size={26} />
                     </button>
                 ))}
             </div>

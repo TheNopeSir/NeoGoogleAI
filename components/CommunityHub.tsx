@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Kolobok from './Kolobok';
 import { Trophy, TrendingUp, Users, RefreshCw, Search, Star, Package, ShoppingBag, ArrowLeftRight, Gift, UserPlus, UserCheck, Crown, Sparkles, Swords, MessageCircle } from 'lucide-react';
 import { UserProfile, Exhibit } from '../types';
 import DailyBattlesView from './DailyBattlesView';
@@ -414,7 +415,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-shrink-0">
                                                     <span className="text-[9px] opacity-50">👁 {item.views ?? 0}</span>
-                                                    <span className="text-[9px] opacity-50">❤️ {item.likes ?? 0}</span>
+                                                    <span className="text-[9px] opacity-50 flex items-center gap-0.5"><Kolobok emoji="❤️" size={10} /> {item.likes ?? 0}</span>
                                                 </div>
                                             </div>
                                         );

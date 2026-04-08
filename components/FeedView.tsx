@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Kolobok from './Kolobok';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
   Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon,
@@ -84,7 +85,7 @@ const TrendingCard: React.FC<{
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-1 left-1.5 text-[8px] font-pixel font-bold text-orange-300">
-          {label ?? `🔥 ${trendScore}`}
+          {label ?? <span className="flex items-center gap-0.5"><Kolobok emoji="🔥" size={9} />{trendScore}</span>}
         </div>
       </div>
       <div className={`px-2 py-1.5 ${isXpCard ? 'bg-white' : isLight ? 'bg-white' : 'bg-dark-surface'}`}>

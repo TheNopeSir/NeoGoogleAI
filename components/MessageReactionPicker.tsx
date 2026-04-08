@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import Kolobok from './Kolobok';
 import { CornerDownRight } from 'lucide-react';
 import { MessageReactionEmoji } from '../types';
 
@@ -60,9 +61,9 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position,
                         <button
                             key={emoji}
                             onClick={() => { onReact(emoji); onClose(); }}
-                            className="text-2xl w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 hover:scale-125 active:scale-90 transition-all"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 hover:scale-125 active:scale-90 transition-all"
                         >
-                            {emoji}
+                            <Kolobok emoji={emoji} size={28} />
                         </button>
                     ))}
                 </div>

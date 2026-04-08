@@ -1,4 +1,5 @@
 import React from 'react';
+import Kolobok from './Kolobok';
 import { MessageReaction, MessageReactionEmoji } from '../types';
 
 interface ReactionBarProps {
@@ -43,7 +44,7 @@ const ReactionBar: React.FC<ReactionBarProps> = ({ reactions, currentUsername, o
                         className={`${baseClass} ${reacted ? activeClass : inactiveClass}`}
                         title={reaction.users.join(', ')}
                     >
-                        <span>{reaction.emoji}</span>
+                        <Kolobok emoji={reaction.emoji} size={14} />
                         <span>{reaction.users.length}</span>
                     </button>
                 );
