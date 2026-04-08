@@ -295,6 +295,7 @@ export interface GlobalChatMessage {
         sender: string;
         text: string;
     };
+    reactions?: MessageReaction[];
 }
 
 export interface ArtifactBattle {

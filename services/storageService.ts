@@ -940,6 +940,12 @@ export const deleteGlobalChatMessage = async (id: string): Promise<void> => {
     } catch (e) {}
 };
 
+export const updateGlobalChatMessageReactions = async (id: string, reactions: import('../types').MessageReaction[]): Promise<void> => {
+    try {
+        await apiCall(`/global_chat/${id}`, 'PATCH', { reactions });
+    } catch (e) {}
+};
+
 export const getStorageEstimate = async (): Promise<StorageEstimate | undefined> => {
     if (navigator.storage && navigator.storage.estimate) {
         return await navigator.storage.estimate();

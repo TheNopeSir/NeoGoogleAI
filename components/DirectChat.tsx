@@ -134,17 +134,17 @@ const DirectChat: React.FC<DirectChatProps> = ({
     return (
         <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             {/* Header */}
-            <div className={`flex items-center justify-between p-4 border-b rounded-t-3xl ${headerBg}`}>
-                <div className="flex items-center gap-4 min-w-0">
-                    <button onClick={onBack} className={`p-2 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}>
-                        <XI icon={ArrowLeft} size={20} />
+            <div className={`flex items-center justify-between p-3 sm:p-4 border-b rounded-t-3xl ${headerBg}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                    <button onClick={onBack} className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${isWinamp ? 'hover:bg-[#505050]' : 'hover:bg-white/10'}`}>
+                        <XI icon={ArrowLeft} size={18} />
                     </button>
-                    <div className="flex items-center gap-3 min-w-0">
-                        <img src={getUserAvatar(partnerUsername)} className="w-10 h-10 rounded-full border border-green-500/30 flex-shrink-0 object-cover" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={getUserAvatar(partnerUsername)} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-green-500/30 flex-shrink-0 object-cover" />
                         <div className="min-w-0">
-                            <div className={`font-pixel text-xs font-bold truncate ${isWinamp ? 'text-[#00ff00]' : ''}`}>@{partnerUsername}</div>
+                            <div className={`font-pixel text-[11px] font-bold truncate ${isWinamp ? 'text-[#00ff00]' : ''}`}>@{partnerUsername}</div>
                             <div className="flex items-center gap-1 text-[8px] font-mono text-green-500 animate-pulse truncate">
-                                <XI icon={Shield} size={8} /> SECURE_LINK_ESTABLISHED
+                                <XI icon={Shield} size={7} /> SECURE_LINK_ESTABLISHED
                             </div>
                         </div>
                     </div>
@@ -223,9 +223,9 @@ const DirectChat: React.FC<DirectChatProps> = ({
             <div className={`border-t rounded-b-3xl relative ${footerBg}`}>
                 {/* Reply bar */}
                 {replyingTo && (
-                    <div className={`flex items-center justify-between px-4 pt-2.5 pb-1 border-b ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
+                    <div className={`flex items-center justify-between px-3 pt-2 pb-1 border-b ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
                         <div className="flex items-center gap-2 min-w-0">
-                            <XI icon={Reply} size={12} className="text-green-500 flex-shrink-0" />
+                            <XI icon={Reply} size={11} className="text-green-500 flex-shrink-0" />
                             <span className="text-[10px] font-mono opacity-60 truncate">
                                 <span className={`font-bold ${replyingTo.sender === currentUser.username ? '' : 'text-green-400'}`}>
                                     @{replyingTo.sender}:
@@ -254,25 +254,25 @@ const DirectChat: React.FC<DirectChatProps> = ({
                     </div>
                 )}
 
-                {sendError && <p className="text-red-400 text-[10px] font-mono px-4 pt-2">{sendError}</p>}
+                {sendError && <p className="text-red-400 text-[10px] font-mono px-3 pt-1.5">{sendError}</p>}
 
-                <form onSubmit={handleSend} className="flex gap-2 p-2.5 sm:p-4">
+                <form onSubmit={handleSend} className="flex gap-1.5 p-2 sm:p-3">
                     <input
                         ref={inputRef}
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={e => { if (e.key === 'Escape') setReplyingTo(null); }}
                         placeholder={replyingTo ? `Ответить @${replyingTo.sender}...` : 'ВВЕСТИ СООБЩЕНИЕ...'}
-                        className={`flex-1 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
+                        className={`flex-1 rounded-xl px-3 py-2 font-mono text-xs sm:text-sm focus:outline-none focus:border-green-500 transition-all min-w-0 ${inputBg}`}
                         maxLength={500}
                         autoComplete="off"
                     />
                     <button
                         type="submit"
                         disabled={isSending || !input.trim()}
-                        className={`p-3 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${(isSending || !input.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`p-2 bg-green-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all flex-shrink-0 ${(isSending || !input.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        <XI icon={Send} size={20} />
+                        <XI icon={Send} size={17} />
                     </button>
                 </form>
             </div>
