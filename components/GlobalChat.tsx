@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Globe, Shield, Smile, Reply, Trash2, Crown } from 'lucide-react';
+import { ArrowLeft, Send, Globe, Shield, Smile, Reply, Trash2, Crown, Copy } from 'lucide-react';
 import { UserProfile, GlobalChatMessage } from '../types';
 import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlobalChatMessage } from '../services/storageService';
 import { validateMessageText } from '../utils/textUtils';
+import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import XI from './XI';
 
 interface GlobalChatProps {
@@ -29,10 +30,8 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [mentionAtPos, setMentionAtPos] = useState<number>(0);
-    const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
-    const [tappedMsgId, setTappedMsgId] = useState<string | null>(null);
-    const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null);
-    const swipeRef = useRef<{ id: string; startX: number; startY: number; isHorizontal: boolean | null; moved: boolean } | null>(null);
+    const [activeMsg, setActiveMsg] = useState<GlobalChatMessage | null>(null);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const lastSendRef = useRef<number>(0);
@@ -145,7 +144,30 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
         setTimeout(() => inputRef.current?.focus(), 0);
     };
 
-    // Render message text with @mentions highlighted
+    const buildActions = (msg: GlobalChatMessage): SheetAction[] => {
+        const actions: SheetAction[] = [
+            {
+                icon: <XI icon={Reply} size={18} />,
+                label: 'Ответить',
+                onClick: () => handleReply(msg),
+            },
+            {
+                icon: <XI icon={Copy} size={18} />,
+                label: 'Копировать текст',
+                onClick: () => navigator.clipboard.writeText(msg.text).catch(() => {}),
+            },
+        ];
+        if (isAdmin) {
+            actions.push({
+                icon: <XI icon={Trash2} size={18} />,
+                label: 'Удалить',
+                onClick: () => handleDelete(msg.id),
+                destructive: true,
+            });
+        }
+        return actions;
+    };
+
     const renderText = (text: string) => {
         const parts = text.split(/(@\w+)/g);
         return parts.map((part, i) => {
@@ -164,7 +186,6 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
         });
     };
 
-    // Get sender role badge
     const getSenderBadge = (username: string) => {
         const u = allUsers.find(x => x.username === username);
         if (!u) return null;
@@ -172,14 +193,12 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
         return null;
     };
 
-    // Mention autocomplete list
     const mentionSuggestions = mentionQuery !== null
         ? allUsers
             .filter(u => u.username !== currentUser.username && u.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
             .slice(0, 5)
         : [];
 
-    // Styles
     const headerBg = isWinamp
         ? 'bg-[#191919] border-[#505050]'
         : isXP ? 'bg-[#ECE9D8] border-[#ACA899]'
@@ -228,7 +247,6 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-1 sm:space-y-2 scrollbar-hide no-scrollbar"
-                onClick={() => setTappedMsgId(null)}
             >
                 {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
@@ -238,9 +256,6 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                 ) : (
                     messages.map(msg => {
                         const isMe = msg.sender === currentUser.username;
-                        const isActionsVisible = hoveredMsgId === msg.id || tappedMsgId === msg.id;
-                        const currentSwipe = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
-
                         const bubbleBg = isMe
                             ? 'bg-green-500 text-black rounded-tr-none'
                             : isWinamp
@@ -254,44 +269,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                         return (
                             <div
                                 key={msg.id}
-                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2 group relative`}
-                                onMouseEnter={() => setHoveredMsgId(msg.id)}
-                                onMouseLeave={() => setHoveredMsgId(null)}
-                                onTouchStart={(e) => {
-                                    swipeRef.current = {
-                                        id: msg.id,
-                                        startX: e.touches[0].clientX,
-                                        startY: e.touches[0].clientY,
-                                        isHorizontal: null,
-                                        moved: false,
-                                    };
-                                }}
-                                onTouchMove={(e) => {
-                                    const sr = swipeRef.current;
-                                    if (!sr || sr.id !== msg.id) return;
-                                    const dx = e.touches[0].clientX - sr.startX;
-                                    const dy = e.touches[0].clientY - sr.startY;
-                                    if (sr.isHorizontal === null) {
-                                        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-                                            sr.isHorizontal = Math.abs(dx) > Math.abs(dy);
-                                        }
-                                        return;
-                                    }
-                                    if (sr.isHorizontal && dx > 0) {
-                                        sr.moved = true;
-                                        setSwipeOffset({ id: msg.id, offset: Math.min(68, dx * 0.55) });
-                                    }
-                                }}
-                                onTouchEnd={() => {
-                                    const sr = swipeRef.current;
-                                    if (!sr || sr.id !== msg.id) return;
-                                    const offset = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
-                                    if (offset > 48) {
-                                        handleReply(msg);
-                                    }
-                                    setSwipeOffset(null);
-                                    swipeRef.current = null;
-                                }}
+                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}
                             >
                                 {!isMe && (
                                     <button
@@ -304,99 +282,46 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                                     </button>
                                 )}
 
-                                <div className="flex items-end gap-1">
-                                    {/* Swipe reply indicator (left of bubble) */}
-                                    <div
-                                        className="flex items-center justify-center text-green-400 flex-shrink-0 overflow-hidden"
-                                        style={{ width: `${currentSwipe * 0.35}px`, opacity: Math.min(1, currentSwipe / 48) }}
-                                    >
-                                        <XI icon={Reply} size={14} />
-                                    </div>
-
-                                    {/* Action buttons (left side for others' messages) */}
-                                    {!isMe && (
-                                        <div className={`flex flex-col gap-0.5 transition-opacity flex-shrink-0 ${isActionsVisible ? 'opacity-100' : 'opacity-0'}`}>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); setTappedMsgId(null); }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                                                title="Ответить"
-                                            >
-                                                <XI icon={Reply} size={11} className="opacity-70" />
-                                            </button>
-                                            {isAdmin && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(msg.id); setTappedMsgId(null); }}
-                                                    className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
-                                                    title="Удалить"
-                                                >
-                                                    <XI icon={Trash2} size={11} className="text-red-400 opacity-70" />
-                                                </button>
-                                            )}
+                                {/* Bubble */}
+                                <div
+                                    className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none active:opacity-75 transition-opacity ${bubbleBg}`}
+                                    onClick={() => setActiveMsg(msg)}
+                                    onContextMenu={e => { e.preventDefault(); setActiveMsg(msg); }}
+                                >
+                                    {msg.replyTo && (
+                                        <div
+                                            className={`text-[9px] sm:text-[10px] mb-1.5 border-l-2 pl-2 opacity-70 truncate cursor-pointer hover:opacity-100 transition-opacity ${isMe ? 'border-black/30' : isWinamp ? 'border-[#00ff00]/40' : 'border-white/30'}`}
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                const el = document.getElementById(`msg-${msg.replyTo!.id}`);
+                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }}
+                                        >
+                                            <span className="font-bold">@{msg.replyTo.sender}: </span>
+                                            {msg.replyTo.text.slice(0, 80)}{msg.replyTo.text.length > 80 ? '…' : ''}
                                         </div>
                                     )}
 
-                                    {/* Bubble */}
-                                    <div
-                                        className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer ${bubbleBg}`}
-                                        style={{
-                                            transform: `translateX(${currentSwipe}px)`,
-                                            transition: currentSwipe === 0 ? 'transform 0.2s ease' : 'none',
-                                        }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!swipeRef.current?.moved) {
-                                                setTappedMsgId(prev => prev === msg.id ? null : msg.id);
-                                            }
-                                        }}
-                                    >
-                                        {msg.replyTo && (
-                                            <div
-                                                className={`text-[9px] sm:text-[10px] mb-1.5 border-l-2 pl-2 opacity-70 truncate cursor-pointer hover:opacity-100 transition-opacity ${isMe ? 'border-black/30' : isWinamp ? 'border-[#00ff00]/40' : 'border-white/30'}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const el = document.getElementById(`msg-${msg.replyTo!.id}`);
-                                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                }}
-                                            >
-                                                <span className="font-bold">@{msg.replyTo.sender}: </span>
-                                                {msg.replyTo.text.slice(0, 80)}{msg.replyTo.text.length > 80 ? '…' : ''}
-                                            </div>
-                                        )}
+                                    <div id={`msg-${msg.id}`}>{renderText(msg.text)}</div>
 
-                                        <div id={`msg-${msg.id}`}>{renderText(msg.text)}</div>
-
-                                        <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
-                                            {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
+                                    <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
+                                        {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
-
-                                    {/* Action buttons (right side for own messages) */}
-                                    {isMe && (
-                                        <div className={`flex flex-col gap-0.5 transition-opacity flex-shrink-0 ${isActionsVisible ? 'opacity-100' : 'opacity-0'}`}>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); setTappedMsgId(null); }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                                                title="Ответить"
-                                            >
-                                                <XI icon={Reply} size={11} className="opacity-70" />
-                                            </button>
-                                            {isAdmin && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(msg.id); setTappedMsgId(null); }}
-                                                    className="p-1 rounded-full hover:bg-red-500/20 transition-colors"
-                                                    title="Удалить"
-                                                >
-                                                    <XI icon={Trash2} size={11} className="text-red-400 opacity-70" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         );
                     })
                 )}
             </div>
+
+            {/* Action sheet */}
+            {activeMsg && (
+                <MessageActionSheet
+                    theme={theme}
+                    onClose={() => setActiveMsg(null)}
+                    actions={buildActions(activeMsg)}
+                />
+            )}
 
             {/* Input area */}
             <div className={`border-t rounded-b-3xl relative ${footerBg}`}>
@@ -419,7 +344,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                         {mentionSuggestions.map(u => (
                             <button
                                 key={u.username}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-green-500/10 transition-colors`}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-green-500/10 transition-colors"
                                 onMouseDown={e => { e.preventDefault(); insertMention(u.username); }}
                             >
                                 <img src={getUserAvatar(u.username)} className="w-5 h-5 rounded-full" alt={u.username} />

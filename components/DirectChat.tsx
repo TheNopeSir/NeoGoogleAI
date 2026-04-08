@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Send, Shield, MessageSquare, Reply } from 'lucide-react';
+import { ArrowLeft, Send, Shield, MessageSquare, Reply, Copy } from 'lucide-react';
 import { UserProfile, Message, MessageReactionEmoji } from '../types';
 import { getUserAvatar } from '../services/storageService';
-import MessageReactionPicker from './MessageReactionPicker';
 import ReactionBar from './ReactionBar';
+import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import { renderTextWithMentions, validateMessageText } from '../utils/textUtils';
 import XI from './XI';
 
@@ -18,20 +18,17 @@ interface DirectChatProps {
     onReactToMessage: (messageId: string, emoji: MessageReactionEmoji) => void;
 }
 
+const QUICK_REACTIONS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
+
 const DirectChat: React.FC<DirectChatProps> = ({
     theme, currentUser, partnerUsername, messages, users, onBack, onSendMessage, onReactToMessage
 }) => {
     const [input, setInput] = useState('');
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
-    const [reactionPickerState, setReactionPickerState] = useState<{ messageId: string; position: { x: number; y: number } } | null>(null);
-    const [tappedMsgId, setTappedMsgId] = useState<string | null>(null);
+    const [activeMsg, setActiveMsg] = useState<Message | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-    const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null);
 
-    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const longPressFiredRef = useRef(false);
-    const swipeRef = useRef<{ id: string; startX: number; startY: number; isHorizontal: boolean | null; moved: boolean } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [isSending, setIsSending] = useState(false);
@@ -97,14 +94,21 @@ const DirectChat: React.FC<DirectChatProps> = ({
 
     const handleReply = (msg: Message) => {
         setReplyingTo(msg);
-        setTappedMsgId(null);
         setTimeout(() => inputRef.current?.focus(), 0);
     };
 
-    const openReactionPicker = (messageId: string, x: number, y: number) => {
-        setReactionPickerState({ messageId, position: { x, y } });
-        setTappedMsgId(null);
-    };
+    const buildActions = (msg: Message): SheetAction[] => [
+        {
+            icon: <XI icon={Reply} size={18} />,
+            label: 'Ответить',
+            onClick: () => handleReply(msg),
+        },
+        {
+            icon: <XI icon={Copy} size={18} />,
+            label: 'Копировать текст',
+            onClick: () => navigator.clipboard.writeText(msg.text).catch(() => {}),
+        },
+    ];
 
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
@@ -151,7 +155,6 @@ const DirectChat: React.FC<DirectChatProps> = ({
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-1 sm:space-y-2 scrollbar-hide no-scrollbar"
-                onClick={() => setTappedMsgId(null)}
             >
                 {uniqueMessages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
@@ -161,9 +164,6 @@ const DirectChat: React.FC<DirectChatProps> = ({
                 ) : (
                     uniqueMessages.map(msg => {
                         const isMe = msg.sender === currentUser.username;
-                        const isActionsVisible = tappedMsgId === msg.id;
-                        const currentSwipe = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
-
                         const bubbleBg = isMe
                             ? 'bg-green-500 text-black rounded-tr-none'
                             : isWinamp
@@ -178,133 +178,17 @@ const DirectChat: React.FC<DirectChatProps> = ({
                             <div
                                 key={msg.id}
                                 className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}
-                                onTouchStart={(e) => {
-                                    const touch = e.touches[0];
-                                    // Long-press for reaction picker
-                                    longPressFiredRef.current = false;
-                                    longPressTimerRef.current = setTimeout(() => {
-                                        longPressFiredRef.current = true;
-                                        openReactionPicker(msg.id, touch.clientX, touch.clientY);
-                                    }, 500);
-                                    // Swipe tracking
-                                    swipeRef.current = {
-                                        id: msg.id,
-                                        startX: touch.clientX,
-                                        startY: touch.clientY,
-                                        isHorizontal: null,
-                                        moved: false,
-                                    };
-                                }}
-                                onTouchMove={(e) => {
-                                    // Cancel long press on any move
-                                    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                    const sr = swipeRef.current;
-                                    if (!sr || sr.id !== msg.id) return;
-                                    const dx = e.touches[0].clientX - sr.startX;
-                                    const dy = e.touches[0].clientY - sr.startY;
-                                    if (sr.isHorizontal === null) {
-                                        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-                                            sr.isHorizontal = Math.abs(dx) > Math.abs(dy);
-                                        }
-                                        return;
-                                    }
-                                    if (sr.isHorizontal && dx > 0) {
-                                        sr.moved = true;
-                                        setSwipeOffset({ id: msg.id, offset: Math.min(68, dx * 0.55) });
-                                    }
-                                }}
-                                onTouchEnd={(e) => {
-                                    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                    const sr = swipeRef.current;
-                                    if (!sr || sr.id !== msg.id) return;
-                                    if (longPressFiredRef.current) {
-                                        e.preventDefault();
-                                        longPressFiredRef.current = false;
-                                    } else {
-                                        const offset = swipeOffset?.id === msg.id ? swipeOffset.offset : 0;
-                                        if (offset > 48) handleReply(msg);
-                                    }
-                                    setSwipeOffset(null);
-                                    swipeRef.current = null;
-                                }}
                             >
-                                <div className="flex items-end gap-1">
-                                    {/* Swipe reply indicator */}
-                                    <div
-                                        className="flex items-center justify-center text-green-400 flex-shrink-0 overflow-hidden"
-                                        style={{ width: `${currentSwipe * 0.35}px`, opacity: Math.min(1, currentSwipe / 48) }}
-                                    >
-                                        <XI icon={Reply} size={14} />
+                                {/* Bubble */}
+                                <div
+                                    className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none active:opacity-75 transition-opacity ${bubbleBg}`}
+                                    onClick={() => setActiveMsg(msg)}
+                                    onContextMenu={e => { e.preventDefault(); setActiveMsg(msg); }}
+                                >
+                                    {renderTextWithMentions(msg.text, () => {}, users)}
+                                    <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
+                                        {msg.timestamp.split(',')[1] || msg.timestamp}
                                     </div>
-
-                                    {/* Actions – left (others' messages) */}
-                                    {!isMe && (
-                                        <div className={`flex flex-col gap-0.5 flex-shrink-0 transition-opacity ${isActionsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                                                title="Ответить"
-                                            >
-                                                <XI icon={Reply} size={11} className="opacity-70" />
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const r = e.currentTarget.getBoundingClientRect();
-                                                    openReactionPicker(msg.id, r.right, r.top);
-                                                }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors text-xs leading-none"
-                                                title="Реакция"
-                                            >
-                                                😊
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Bubble */}
-                                    <div
-                                        className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none ${bubbleBg}`}
-                                        style={{
-                                            transform: `translateX(${currentSwipe}px)`,
-                                            transition: currentSwipe === 0 ? 'transform 0.2s ease' : 'none',
-                                        }}
-                                        onContextMenu={e => { e.preventDefault(); openReactionPicker(msg.id, e.clientX, e.clientY); }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!swipeRef.current?.moved) {
-                                                setTappedMsgId(prev => prev === msg.id ? null : msg.id);
-                                            }
-                                        }}
-                                    >
-                                        {renderTextWithMentions(msg.text, () => {}, users)}
-                                        <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
-                                            {msg.timestamp.split(',')[1] || msg.timestamp}
-                                        </div>
-                                    </div>
-
-                                    {/* Actions – right (own messages) */}
-                                    {isMe && (
-                                        <div className={`flex flex-col gap-0.5 flex-shrink-0 transition-opacity ${isActionsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleReply(msg); }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                                                title="Ответить"
-                                            >
-                                                <XI icon={Reply} size={11} className="opacity-70" />
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const r = e.currentTarget.getBoundingClientRect();
-                                                    openReactionPicker(msg.id, r.left, r.top);
-                                                }}
-                                                className="p-1 rounded-full hover:bg-white/10 transition-colors text-xs leading-none"
-                                                title="Реакция"
-                                            >
-                                                😊
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {msg.reactions && msg.reactions.length > 0 && (
@@ -324,13 +208,14 @@ const DirectChat: React.FC<DirectChatProps> = ({
                 )}
             </div>
 
-            {/* Reaction picker overlay */}
-            {reactionPickerState && (
-                <MessageReactionPicker
-                    position={reactionPickerState.position}
-                    onReact={emoji => { onReactToMessage(reactionPickerState.messageId, emoji); setReactionPickerState(null); }}
-                    onClose={() => setReactionPickerState(null)}
+            {/* Action sheet */}
+            {activeMsg && (
+                <MessageActionSheet
                     theme={theme}
+                    onClose={() => setActiveMsg(null)}
+                    actions={buildActions(activeMsg)}
+                    quickReactions={QUICK_REACTIONS}
+                    onReact={emoji => onReactToMessage(activeMsg.id, emoji as MessageReactionEmoji)}
                 />
             )}
 
