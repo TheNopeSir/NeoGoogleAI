@@ -1,12 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import Kolobok from './Kolobok';
-
-const EMOJIS = [
-    '😀', '😂', '🥰', '😍',
-    '🤩', '😮', '😢', '😡',
-    '👍', '👎', '❤️', '🔥',
-    '💯', '🎉', '🏆', '💎',
-];
+import { KOLOBOK_LIST } from '../utils/koloboks';
 
 interface EmojiPickerProps {
     onSelect: (emoji: string) => void;
@@ -19,33 +13,27 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onSelect, onClose, theme }) =
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                onClose();
-            }
+            if (ref.current && !ref.current.contains(e.target as Node)) onClose();
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [onClose]);
 
-    const isWinamp = theme === 'winamp';
-    const isXP = theme === 'xp';
-    const isLight = theme === 'light';
-
-    const bgClass = isWinamp
+    const bgClass = theme === 'winamp'
         ? 'bg-[#191919] border-[#505050]'
-        : isXP
+        : theme === 'xp'
         ? 'bg-[#ECE9D8] border-[#0058EE]'
-        : isLight
+        : theme === 'light'
         ? 'bg-white border-gray-200'
-        : 'bg-black border-white/10';
+        : 'bg-[#111] border-white/10';
 
     return (
         <div
             ref={ref}
             className={`absolute bottom-full mb-2 right-0 z-50 border rounded-2xl p-2 shadow-2xl ${bgClass}`}
         >
-            <div className="grid grid-cols-4 gap-1">
-                {EMOJIS.map(emoji => (
+            <div className="grid grid-cols-6 gap-0.5 max-h-52 overflow-y-auto no-scrollbar">
+                {KOLOBOK_LIST.map(emoji => (
                     <button
                         key={emoji}
                         onClick={() => { onSelect(emoji); onClose(); }}

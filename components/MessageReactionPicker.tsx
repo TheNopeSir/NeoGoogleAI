@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
-import Kolobok from './Kolobok';
+import React, { useRef, useState } from 'react';
 import { CornerDownRight } from 'lucide-react';
 import { MessageReactionEmoji } from '../types';
+import Kolobok from './Kolobok';
+import { KOLOBOK_LIST } from '../utils/koloboks';
 
 const REACTION_EMOJIS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
 
@@ -13,10 +14,11 @@ interface MessageReactionPickerProps {
     theme: 'dark' | 'light' | 'xp' | 'winamp';
 }
 
-const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position, onReact, onClose, onReply, theme }) => {
-    // Timestamp when picker mounted — used to ignore the synthetic click
-    // that fires after a long-press gesture ends.
+const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
+    position, onReact, onClose, onReply, theme,
+}) => {
     const mountedAtRef = useRef(Date.now());
+    const [showAll, setShowAll] = useState(false);
 
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
@@ -30,44 +32,73 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({ position,
         ? 'bg-white border-gray-200 shadow-lg'
         : 'bg-[#111] border-white/10';
 
-    // Clamp position so the picker doesn't go off-screen
-    const pickerWidth = 304; // ~8 emojis * 38px
-    const pickerHeight = onReply ? 90 : 52;
-    const left = Math.min(Math.max(position.x - pickerWidth / 2, 8), window.innerWidth - pickerWidth - 8);
-    const top = Math.max(position.y - pickerHeight - 12, 8);
+    const pickerW = showAll ? 288 : 312;
+    const reactionH = showAll ? 160 : 52;
+    const pickerH = reactionH + (onReply ? 44 : 0);
+    const left = Math.min(Math.max(position.x - pickerW / 2, 8), window.innerWidth - pickerW - 8);
+    const top = Math.max(position.y - pickerH - 12, 8);
 
     const handleBackdropClose = () => {
-        // Ignore close requests within 700ms of mount — the synthetic click/touchend
-        // from the long-press gesture that opened the picker would fire immediately otherwise.
         if (Date.now() - mountedAtRef.current < 700) return;
         onClose();
     };
 
+    const btnHover = isLight ? 'hover:bg-gray-100' : 'hover:bg-white/10';
+
     return (
         <>
-            {/* Backdrop — only uses onClick (not onTouchEnd) to avoid race with the opening gesture */}
+            <div className="fixed inset-0 z-[199]" onClick={handleBackdropClose} />
             <div
-                className="fixed inset-0 z-[199]"
-                onClick={handleBackdropClose}
-            />
-            <div
-                className={`fixed z-[200] border rounded-2xl shadow-2xl ${bgClass}`}
-                style={{ left, top, width: pickerWidth }}
+                className={`fixed z-[200] border rounded-2xl shadow-2xl overflow-hidden ${bgClass}`}
+                style={{ left, top, width: pickerW }}
                 onClick={e => e.stopPropagation()}
             >
-                {/* Emoji row */}
-                <div className="flex gap-0.5 px-2 pt-2 pb-1">
-                    {REACTION_EMOJIS.map(emoji => (
+                {showAll ? (
+                    /* Full kolobok grid */
+                    <div className="p-1.5">
+                        <div className="grid grid-cols-8 gap-0.5 max-h-36 overflow-y-auto no-scrollbar">
+                            {KOLOBOK_LIST.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    onClick={() => { onReact(emoji as MessageReactionEmoji); onClose(); }}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg ${btnHover} hover:scale-110 active:scale-90 transition-all`}
+                                >
+                                    <Kolobok emoji={emoji} size={24} />
+                                </button>
+                            ))}
+                        </div>
                         <button
-                            key={emoji}
-                            onClick={() => { onReact(emoji); onClose(); }}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 hover:scale-125 active:scale-90 transition-all"
+                            onClick={() => setShowAll(false)}
+                            className={`mt-1 w-full text-[10px] font-mono opacity-50 hover:opacity-80 py-0.5 ${isLight ? 'text-gray-600' : 'text-white'}`}
                         >
-                            <Kolobok emoji={emoji} size={28} />
+                            ↑ свернуть
                         </button>
-                    ))}
-                </div>
-                {/* Reply action */}
+                    </div>
+                ) : (
+                    /* Quick row + expand button */
+                    <div className="flex items-center px-1.5 py-1.5 gap-0.5">
+                        <div className="flex gap-0.5">
+                            {REACTION_EMOJIS.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    onClick={() => { onReact(emoji); onClose(); }}
+                                    className={`w-9 h-9 flex items-center justify-center rounded-xl ${btnHover} hover:scale-125 active:scale-90 transition-all`}
+                                >
+                                    <Kolobok emoji={emoji} size={28} />
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setShowAll(true)}
+                            className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl text-base font-bold opacity-50 hover:opacity-100 transition-opacity ${btnHover}`}
+                            title="Все реакции"
+                        >
+                            ＋
+                        </button>
+                    </div>
+                )}
+
+                {/* Reply */}
                 {onReply && (
                     <div className={`mx-2 mb-2 border-t ${isLight ? 'border-gray-100' : 'border-white/10'}`}>
                         <button

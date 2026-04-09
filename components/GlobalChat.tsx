@@ -5,7 +5,7 @@ import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlob
 import { validateMessageText } from '../utils/textUtils';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import Kolobok from './Kolobok';
-import { splitTextWithEmoji, getKolobokSrc } from '../utils/koloboks';
+import { splitTextWithEmoji, getKolobokSrc, KOLOBOK_LIST } from '../utils/koloboks';
 import ReactionBar from './ReactionBar';
 import XI from './XI';
 
@@ -17,12 +17,6 @@ interface GlobalChatProps {
     allUsers?: UserProfile[];
 }
 
-const EMOJIS = [
-    '😀','😂','🥰','😎','🤔','😅','😭','🤣','😏','🤩',
-    '👍','👎','❤️','🔥','💯','👀','💀','🎉','🚀','💪',
-    '🎮','🕹️','📺','🎯','🏆','⭐','💎','🤝','✌️','🙌',
-    '😤','🫡','🥹','🫠','😬','🤯','🥴','😇','🤖','👾',
-];
 
 const QUICK_REACTIONS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
 
@@ -421,8 +415,8 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
 
                 {/* Emoji picker */}
                 {showEmojiPicker && (
-                    <div className={`absolute bottom-full left-2 mb-1 p-2 rounded-xl shadow-lg border z-20 grid grid-cols-10 gap-1 ${isLight ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gray-900 border-white/10'}`}>
-                        {EMOJIS.map(emoji => (
+                    <div className={`absolute bottom-full left-2 mb-1 p-2 rounded-xl shadow-lg border z-20 grid grid-cols-8 gap-0.5 max-h-48 overflow-y-auto no-scrollbar ${isLight ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#191919] border-[#505050]' : 'bg-gray-900 border-white/10'}`}>
+                        {KOLOBOK_LIST.map(emoji => (
                             <button
                                 key={emoji}
                                 className="w-7 h-7 hover:scale-125 transition-transform flex items-center justify-center rounded"

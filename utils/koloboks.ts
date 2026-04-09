@@ -1,3 +1,15 @@
+// Canonical ordered list for pickers — one entry per unique kolobok
+export const KOLOBOK_LIST: string[] = [
+    // Лица
+    '😀', '😂', '🤣', '🥰', '😍', '🤩', '😎', '😮',
+    '😢', '😡', '🤔', '😅', '😏', '😇', '😉', '😛',
+    '😬', '🤷', '🥴', '🫠', '🤯', '🤖', '👾', '🫡',
+    // Символы
+    '❤️', '🔥', '👍', '👎', '💯', '🎉', '🏆', '💎',
+    '👀', '💀', '⭐', '💪', '🚀', '🎮', '🕹️', '📺',
+    '🎯', '✌️', '🙌', '🤝',
+];
+
 // Mapping of emoji characters to ICQ kolobok filenames (with extension)
 // GIF = real classic ICQ koloboks from kolobok.us collection
 // SVG = custom icons for non-face symbols
