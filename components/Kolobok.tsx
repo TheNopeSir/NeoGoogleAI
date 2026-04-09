@@ -18,10 +18,15 @@ const Kolobok: React.FC<KolobokProps> = ({ emoji, size = 24, className = '' }) =
                 height={size}
                 className={`inline-block select-none ${className}`}
                 draggable={false}
+                onError={(e) => {
+                    // fallback to emoji if image fails
+                    const span = document.createElement('span');
+                    span.textContent = emoji;
+                    e.currentTarget.replaceWith(span);
+                }}
             />
         );
     }
-    // fallback to raw emoji if no kolobok mapped
     return <span className={className}>{emoji}</span>;
 };
 
