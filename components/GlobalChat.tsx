@@ -5,7 +5,7 @@ import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlob
 import { validateMessageText } from '../utils/textUtils';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import Kolobok from './Kolobok';
-import { splitTextWithEmoji, getKolobokSrc, KOLOBOK_LIST } from '../utils/koloboks';
+import { splitTextWithEmoji, getKolobokSrc, KOLOBOK_LIST, QUICK_REACTIONS } from '../utils/koloboks';
 import ReactionBar from './ReactionBar';
 import XI from './XI';
 
@@ -18,7 +18,7 @@ interface GlobalChatProps {
 }
 
 
-const QUICK_REACTIONS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
+// QUICK_REACTIONS импортируется из utils/koloboks
 
 const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onUserClick, allUsers = [] }) => {
     const [messages, setMessages] = useState<GlobalChatMessage[]>([]);

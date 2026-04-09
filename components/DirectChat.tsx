@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Send, Shield, MessageSquare, Reply, Copy } from 'lucide-react';
 import { UserProfile, Message, MessageReactionEmoji } from '../types';
 import { getUserAvatar } from '../services/storageService';
+import { QUICK_REACTIONS } from '../utils/koloboks';
 import ReactionBar from './ReactionBar';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import { renderTextWithMentions, validateMessageText } from '../utils/textUtils';
@@ -17,8 +18,6 @@ interface DirectChatProps {
     onSendMessage: (text: string) => void;
     onReactToMessage: (messageId: string, emoji: MessageReactionEmoji) => void;
 }
-
-const QUICK_REACTIONS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
 
 const DirectChat: React.FC<DirectChatProps> = ({
     theme, currentUser, partnerUsername, messages, users, onBack, onSendMessage, onReactToMessage

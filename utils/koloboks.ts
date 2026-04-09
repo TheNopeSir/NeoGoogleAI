@@ -1,70 +1,130 @@
-// Canonical ordered list for pickers — one entry per unique kolobok
-export const KOLOBOK_LIST: string[] = [
-    // Лица
-    '😀', '😂', '🤣', '🥰', '😍', '🤩', '😎', '😮',
-    '😢', '😡', '🤔', '😅', '😏', '😇', '😉', '😛',
-    '😬', '🤷', '🥴', '🫠', '🤯', '🤖', '👾', '🫡',
-    // Символы
-    '❤️', '🔥', '👍', '👎', '💯', '🎉', '🏆', '💎',
-    '👀', '💀', '⭐', '💪', '🚀', '🎮', '🕹️', '📺',
-    '🎯', '✌️', '🙌', '🤝',
-];
+// ============================================================
+// Классический пак колобков (standart_dark_skin)
+// emoji → filename в /public/koloboks/
+// ============================================================
 
-// Mapping of emoji characters to ICQ kolobok filenames (with extension)
-// GIF = real classic ICQ koloboks from kolobok.us collection
-// SVG = custom icons for non-face symbols
+// Mapping: emoji → файл
 const KOLOBOK_MAP: Record<string, string> = {
-    // --- Лица: настоящие ICQ-колобки (GIF) ---
-    '😀': 'smile.gif',
-    '😂': 'laugh.gif',
-    '🤣': 'rofl.gif',
-    '🥰': 'love.gif',
-    '😍': 'kiss.gif',
-    '🤩': 'biggrin.gif',
-    '😎': 'cool.gif',
-    '😮': 'wow.gif',
-    '😢': 'sad.gif',
-    '😭': 'sad.gif',
-    '😡': 'angry.gif',
-    '😤': 'angry.gif',
-    '🤔': 'think.gif',
-    '😅': 'sweat.gif',
-    '😏': 'smirk.gif',
-    '😇': 'angel.gif',
-    '😉': 'wink.gif',
-    '😛': 'tongue.gif',
-    '😝': 'tongue.gif',
-    '😬': 'rolleyes.gif',
-    '🤷': 'dunno.gif',
-    '🥴': 'woozy.svg',
-    '🥹': 'sweat.gif',
-    '🫠': 'melting.svg',
-    '🤯': 'mindblown.svg',
-    '🤖': 'robot.svg',
-    '👾': 'alien.svg',
-    '🫡': 'salute.svg',
-    // --- Символы: SVG-иконки ---
+
+    // --- Лица ---
+    '😀': 'smile3.gif',       // улыбка
+    '😊': 'blum2.gif',        // блюм счастливый
+    '🤗': 'blum3.gif',        // блюм радостный
+    '😂': 'laugh2.gif',       // смех до слёз
+    '🤣': 'rofl.gif',         // катается от смеха
+    '😘': 'air_kiss.gif',     // воздушный поцелуй
+    '😇': 'angel.gif',        // ангел
+    '😡': 'aggressive.gif',   // агрессивный
+    '😢': 'sad.gif',          // грустный
+    '😭': 'cray.gif',         // рыдает
+    '😉': 'wink3.gif',        // подмигивает
+    '😎': 'dirol.gif',        // крутой в очках (dirol!)
+    '😳': 'blush2.gif',       // краснеет
+    '😏': 'boast.gif',        // хвастается / смирк
+    '🤪': 'crazy.gif',        // сумасшедший
+    '🤔': 'sclerosis.gif',    // думает / склероз
+    '🤷': 'dntknw.gif',       // не знаю
+    '😐': 'mda.gif',          // мда / нейтральный
+    '😛': 'mosking.gif',      // дразнится
+    '😝': 'taunt.gif',        // дразнит
+    '😜': 'snooks.gif',       // озорной подмиг
+    '🙄': 'sarcasm.gif',      // закатывает глаза
+    '😒': 'sarcastic.gif',    // саркастичный
+    '😑': 'sarcastic_blum.gif', // саркастичный блюм
+    '😱': 'scare2.gif',       // в панике
+    '😤': 'stinker.gif',      // пыхтит
+    '😰': 'acute.gif',        // в ужасе
+    '🙏': 'sorry.gif',        // извини / пожалуйста
+    '😔': 'sorry2.gif',       // расстроен
+    '😴': 'lazy.gif',         // ленивый / спит
+    '🤦': 'facepalm.gif',     // фейспалм
+    '🧐': 'umnik2.gif',       // умник
+    '🧙': 'wizard.gif',       // волшебник
+    '🦸': 'neo.gif',          // нео / герой
+    '💪': 'new_russian.gif',  // качок
+    '😮': 'wow.gif',          // вау / удивлён
+
+    // --- Активности ---
+    '💃': 'dance2.gif',       // танцует
+    '🎵': 'music.gif',        // слушает музыку
+    '🎶': 'music2.gif',       // музыкальные ноты
+    '👏': 'clapping.gif',     // аплодирует
+    '🥂': 'drinks.gif',       // тост / за встречу
+    '🍺': 'alcoholic.gif',    // пьёт пиво
+    '🚬': 'smoke.gif',        // курит
+    '🏃': 'dash1.gif',        // бежит
+    '💅': 'spruce_up.gif',    // прихорашивается
+    '🤩': 'fan_1.gif',        // фанат / звезда
+    '🎮': 'gamer4.gif',       // геймер
+
+    // --- Общение / объекты ---
+    '📧': 'mail1.gif',        // письмо
+    '📞': 'telephone.gif',    // телефон
+    '📱': 'buba_phone.gif',   // мобильный телефон
+    '🫶': 'thank_you.gif',    // спасибо
+    '💝': 'thank_you2.gif',   // спасибо с сердцем
+    '⚽': 'spartak.gif',      // футбол
+    '🇷🇺': 'russian.gif',    // Россия
+    '🌞': 'sun_bespectacled.gif', // солнышко в очках
+    '🤞': 'superstition.gif', // пальцы скрещены
+    '🚫': 'banned.gif',       // заблокирован
+    '✋': 'stop.gif',          // стоп
+
+    // --- Согласие / несогласие ---
+    '👌': 'agree.gif',        // окей / согласен
+    '👍': 'thumbsup.svg',     // лайк
+    '👎': 'bad.gif',          // плохо / не нравится
+    '🙅': 'nea.gif',          // ни за что / неа
+    '🙁': 'negative.gif',     // негативный
+    '🎉': 'yahoo.gif',        // ура!
+    '✅': 'yes2.gif',          // да / чекмарк
+    '☑️': 'yes3.gif',         // да / галочка
+    '💯': 'yes4.gif',          // сто из ста
+    '🫵': 'yu.gif',           // тычет пальцем на тебя
+    '😗': 'whistle2.gif',     // насвистывает
+    '🎊': 'whistle3.gif',     // праздник / конфетти
+
+    // --- Символы (SVG для иконок без колобка) ---
     '❤️': 'heart.svg',
     '🔥': 'fire.svg',
-    '👍': 'thumbsup.svg',
-    '👎': 'thumbsdown.svg',
-    '💯': '100.svg',
-    '🎉': 'party.svg',
     '🏆': 'trophy.svg',
     '💎': 'diamond.svg',
     '👀': 'eyes.svg',
     '💀': 'skull.svg',
     '⭐': 'star.svg',
-    '💪': 'strong.svg',
     '🚀': 'rocket.svg',
-    '🎮': 'game.svg',
-    '🕹️': 'joystick.svg',
-    '📺': 'tv.svg',
     '🎯': 'target.svg',
-    '✌️': 'victory.svg',
-    '🙌': 'clap.svg',
+    '✌️': 'peace.gif',        // победа / мир
+    '🙌': 'clapping.gif',     // обе руки аплодируют
     '🤝': 'handshake.svg',
 };
+
+// Полный упорядоченный список для пикера (по категориям)
+export const KOLOBOK_LIST: string[] = [
+    // Лица
+    '😀', '😊', '🤗', '😂', '🤣', '😘', '😇', '😡',
+    '😢', '😭', '😉', '😎', '😳', '😏', '🤪', '🤔',
+    '🤷', '😐', '😛', '😝', '😜', '🙄', '😒', '😑',
+    '😱', '😤', '😰', '🙏', '😔', '😴', '🤦', '🧐',
+    '🧙', '🦸', '💪', '😮',
+    // Активности
+    '💃', '🎵', '🎶', '👏', '🥂', '🍺', '🚬', '🏃',
+    '💅', '🤩', '🎮',
+    // Общение
+    '📧', '📞', '📱', '🫶', '💝', '⚽', '🇷🇺', '🌞',
+    '🤞', '🚫', '✋',
+    // Согласие / несогласие
+    '👌', '👍', '👎', '🙅', '🙁', '🎉', '✅', '💯',
+    '🫵', '😗', '🎊', '✌️',
+    // Символы
+    '❤️', '🔥', '🏆', '💎', '👀', '💀', '⭐', '🚀',
+    '🎯', '🙌', '🤝',
+];
+
+// Быстрые реакции (8 самых популярных)
+export const QUICK_REACTIONS: string[] = [
+    '❤️', '😀', '😂', '😢', '😡', '👍', '🙄', '🎉',
+];
 
 export function getKolobokSrc(emoji: string): string | null {
     const file = KOLOBOK_MAP[emoji];

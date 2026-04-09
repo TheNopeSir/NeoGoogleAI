@@ -1,5 +1,5 @@
 
-export type MessageReactionEmoji = '❤️' | '😂' | '😮' | '😢' | '👍' | '🔥' | '👀' | '💯';
+export type MessageReactionEmoji = string; // полный пак колобков
 
 export interface MessageReaction {
   emoji: MessageReactionEmoji;
