@@ -132,7 +132,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
         : 'bg-white/5 border-white/10';
 
     return (
-        <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100svh-4rem)] md:h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             {/* Header */}
             <div className={`flex items-center justify-between p-3 sm:p-4 border-b rounded-t-3xl ${headerBg}`}>
                 <div className="flex items-center gap-3 min-w-0">
@@ -217,6 +217,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                     quickReactions={QUICK_REACTIONS}
                     onReact={emoji => onReactToMessage(activeMsg.id, emoji as MessageReactionEmoji)}
                     position={activeMsgPos}
+                    currentUsername={currentUser.username}
                 />
             )}
 

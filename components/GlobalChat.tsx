@@ -5,7 +5,7 @@ import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlob
 import { validateMessageText } from '../utils/textUtils';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import Kolobok from './Kolobok';
-import { splitTextWithEmoji, getKolobokSrc, KOLOBOK_LIST, QUICK_REACTIONS } from '../utils/koloboks';
+import { splitTextWithEmoji, getKolobokSrc, KOLOBOK_LIST, QUICK_REACTIONS, trackKolobokUse } from '../utils/koloboks';
 import ReactionBar from './ReactionBar';
 import XI from './XI';
 
@@ -17,8 +17,6 @@ interface GlobalChatProps {
     allUsers?: UserProfile[];
 }
 
-
-// QUICK_REACTIONS импортируется из utils/koloboks
 
 const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onUserClick, allUsers = [] }) => {
     const [messages, setMessages] = useState<GlobalChatMessage[]>([]);
@@ -84,6 +82,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     };
 
     const insertEmoji = (emoji: string) => {
+        trackKolobokUse(currentUser.username, emoji);
         setInput(prev => prev + emoji);
         setShowEmojiPicker(false);
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -260,7 +259,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
         : 'bg-white/5 border-white/10';
 
     return (
-        <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
+        <div className={`max-w-4xl mx-auto flex flex-col h-[calc(100svh-4rem)] md:h-[calc(100vh-140px)] animate-in fade-in ${isWinamp ? 'font-mono text-gray-300' : ''}`}>
             {/* Header */}
             <div className={`flex items-center justify-between p-3 sm:p-4 border-b rounded-t-3xl ${headerBg}`}>
                 <div className="flex items-center gap-3 min-w-0">
@@ -378,6 +377,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     quickReactions={QUICK_REACTIONS}
                     onReact={emoji => handleReact(activeMsg.id, emoji as MessageReactionEmoji)}
                     position={activeMsgPos}
+                    currentUsername={currentUser.username}
                 />
             )}
 

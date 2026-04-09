@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Kolobok from './Kolobok';
-import { KOLOBOK_LIST } from '../utils/koloboks';
+import { KOLOBOK_LIST, QUICK_REACTIONS, trackKolobokUse, getFrequentKoloboks } from '../utils/koloboks';
 
 export interface SheetAction {
     icon: React.ReactNode;
@@ -16,12 +16,13 @@ interface MessageActionSheetProps {
     quickReactions?: string[];
     onReact?: (emoji: string) => void;
     position?: { x: number; y: number };
+    currentUsername?: string;
 }
 
 const POPUP_W = 288;
 
 const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
-    theme, onClose, actions, quickReactions, onReact, position,
+    theme, onClose, actions, quickReactions, onReact, position, currentUsername,
 }) => {
     const isLight = theme === 'light';
     const isWinamp = theme === 'winamp';
@@ -29,6 +30,19 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
 
     const [showAll, setShowAll] = useState(false);
     const [pos, setPos] = useState({ top: -999, left: -999 });
+
+    // Reactions sorted by personal use-frequency
+    const displayReactions = useMemo(
+        () => getFrequentKoloboks(currentUsername ?? '', quickReactions ?? QUICK_REACTIONS),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [currentUsername, quickReactions],
+    );
+
+    const handleReact = (emoji: string) => {
+        if (currentUsername) trackKolobokUse(currentUsername, emoji);
+        onReact?.(emoji);
+        onClose();
+    };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -96,7 +110,7 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                                     {KOLOBOK_LIST.map(emoji => (
                                         <button
                                             key={emoji}
-                                            onClick={() => { onReact(emoji); onClose(); }}
+                                            onClick={() => handleReact(emoji)}
                                             className={`w-8 h-8 flex items-center justify-center rounded-lg ${btnHover} hover:scale-110 active:scale-90 transition-all`}
                                         >
                                             <Kolobok emoji={emoji} size={24} />
@@ -114,10 +128,10 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                             /* Scrollable quick row + expand button */
                             <div className="flex items-center px-1.5 py-1.5 gap-0.5">
                                 <div className="flex overflow-x-auto gap-0.5 no-scrollbar flex-1">
-                                    {quickReactions.map(emoji => (
+                                    {displayReactions.map(emoji => (
                                         <button
                                             key={emoji}
-                                            onClick={() => { onReact(emoji); onClose(); }}
+                                            onClick={() => handleReact(emoji)}
                                             className={`${btnBase} ${btnHover}`}
                                         >
                                             <Kolobok emoji={emoji} size={26} />

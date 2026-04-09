@@ -131,6 +131,51 @@ export function getKolobokSrc(emoji: string): string | null {
     return file ? `/koloboks/${file}` : null;
 }
 
+// ============================================================
+// Frequency tracking — stored in localStorage per user
+// ============================================================
+
+/** Increment use-count for a kolobok emoji */
+export function trackKolobokUse(username: string, emoji: string): void {
+    if (!username || !emoji) return;
+    try {
+        const key = `kolobok_freq_${username}`;
+        const freq: Record<string, number> = JSON.parse(localStorage.getItem(key) || '{}');
+        freq[emoji] = (freq[emoji] || 0) + 1;
+        localStorage.setItem(key, JSON.stringify(freq));
+    } catch {}
+}
+
+/**
+ * Returns up to `count` emojis sorted by personal use-frequency.
+ * Falls back to `fallback` list to fill remaining slots (no duplicates).
+ */
+export function getFrequentKoloboks(
+    username: string,
+    fallback: string[],
+    count: number = 8,
+): string[] {
+    if (!username) return fallback.slice(0, count);
+    try {
+        const key = `kolobok_freq_${username}`;
+        const freq: Record<string, number> = JSON.parse(localStorage.getItem(key) || '{}');
+        // Only include emojis that are in the known pack
+        const sorted = Object.entries(freq)
+            .filter(([e]) => KOLOBOK_LIST.includes(e))
+            .sort(([, a], [, b]) => b - a)
+            .map(([e]) => e);
+        // Fill remaining slots with fallback (no duplicates)
+        const result = [...sorted];
+        for (const e of fallback) {
+            if (result.length >= count) break;
+            if (!result.includes(e)) result.push(e);
+        }
+        return result.slice(0, count);
+    } catch {
+        return fallback.slice(0, count);
+    }
+}
+
 export function splitTextWithEmoji(text: string): Array<{ type: 'text' | 'emoji'; value: string }> {
     const keys = Object.keys(KOLOBOK_MAP);
     if (!keys.length || !text) return [{ type: 'text', value: text }];

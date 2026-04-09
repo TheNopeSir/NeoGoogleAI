@@ -1,10 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { CornerDownRight } from 'lucide-react';
 import { MessageReactionEmoji } from '../types';
 import Kolobok from './Kolobok';
-import { KOLOBOK_LIST } from '../utils/koloboks';
-
-const REACTION_EMOJIS: MessageReactionEmoji[] = ['❤️', '😂', '😮', '😢', '👍', '🔥', '👀', '💯'];
+import { KOLOBOK_LIST, QUICK_REACTIONS, trackKolobokUse, getFrequentKoloboks } from '../utils/koloboks';
 
 interface MessageReactionPickerProps {
     position: { x: number; y: number };
@@ -12,13 +10,26 @@ interface MessageReactionPickerProps {
     onClose: () => void;
     onReply?: () => void;
     theme: 'dark' | 'light' | 'xp' | 'winamp';
+    currentUsername?: string;
 }
 
 const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
-    position, onReact, onClose, onReply, theme,
+    position, onReact, onClose, onReply, theme, currentUsername,
 }) => {
     const mountedAtRef = useRef(Date.now());
     const [showAll, setShowAll] = useState(false);
+
+    const displayReactions = useMemo(
+        () => getFrequentKoloboks(currentUsername ?? '', QUICK_REACTIONS),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [currentUsername],
+    );
+
+    const handleReact = (emoji: MessageReactionEmoji) => {
+        if (currentUsername) trackKolobokUse(currentUsername, emoji);
+        onReact(emoji);
+        onClose();
+    };
 
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
@@ -60,7 +71,7 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
                             {KOLOBOK_LIST.map(emoji => (
                                 <button
                                     key={emoji}
-                                    onClick={() => { onReact(emoji as MessageReactionEmoji); onClose(); }}
+                                    onClick={() => handleReact(emoji as MessageReactionEmoji)}
                                     className={`w-8 h-8 flex items-center justify-center rounded-lg ${btnHover} hover:scale-110 active:scale-90 transition-all`}
                                 >
                                     <Kolobok emoji={emoji} size={24} />
@@ -78,10 +89,10 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
                     /* Quick row + expand button */
                     <div className="flex items-center px-1.5 py-1.5 gap-0.5">
                         <div className="flex gap-0.5">
-                            {REACTION_EMOJIS.map(emoji => (
+                            {displayReactions.map(emoji => (
                                 <button
                                     key={emoji}
-                                    onClick={() => { onReact(emoji); onClose(); }}
+                                    onClick={() => handleReact(emoji as MessageReactionEmoji)}
                                     className={`w-9 h-9 flex items-center justify-center rounded-xl ${btnHover} hover:scale-125 active:scale-90 transition-all`}
                                 >
                                     <Kolobok emoji={emoji} size={28} />
