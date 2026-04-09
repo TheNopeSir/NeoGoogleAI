@@ -1518,6 +1518,19 @@ const createCrud = (router, table) => {
         }
     });
 
+    router.patch(`/${table}/:id`, async (req, res) => {
+        try {
+            const r = await query(`SELECT * FROM "${table}" WHERE id = $1`, [req.params.id]);
+            if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+            const merged = { ...r.rows[0].data, ...req.body };
+            await query(`UPDATE "${table}" SET data = $2, updated_at = NOW() WHERE id = $1`, [req.params.id, merged]);
+            cache.flushPattern(`${table}:`);
+            res.json({ success: true, data: merged });
+        } catch (e) {
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
     router.delete(`/${table}/:id`, async (req, res) => {
         try {
             const { username } = req.query;

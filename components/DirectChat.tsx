@@ -27,6 +27,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
     const [activeMsg, setActiveMsg] = useState<Message | null>(null);
+    const [activeMsgPos, setActiveMsgPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -182,8 +183,8 @@ const DirectChat: React.FC<DirectChatProps> = ({
                                 {/* Bubble */}
                                 <div
                                     className={`max-w-[82%] sm:max-w-[80%] px-2.5 py-2 sm:p-3 rounded-2xl font-mono text-xs sm:text-sm leading-snug sm:leading-relaxed break-words whitespace-pre-wrap cursor-pointer select-none active:opacity-75 transition-opacity ${bubbleBg}`}
-                                    onClick={() => setActiveMsg(msg)}
-                                    onContextMenu={e => { e.preventDefault(); setActiveMsg(msg); }}
+                                    onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setActiveMsgPos({ x: r.left + r.width / 2, y: r.top }); setActiveMsg(msg); }}
+                                    onContextMenu={e => { e.preventDefault(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setActiveMsgPos({ x: r.left + r.width / 2, y: r.top }); setActiveMsg(msg); }}
                                 >
                                     {renderTextWithMentions(msg.text, () => {}, users)}
                                     <div className={`text-[9px] mt-0.5 sm:mt-1 opacity-50 ${isMe ? 'text-black/60' : isXP ? 'text-gray-600' : 'text-white/40'}`}>
@@ -216,6 +217,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                     actions={buildActions(activeMsg)}
                     quickReactions={QUICK_REACTIONS}
                     onReact={emoji => onReactToMessage(activeMsg.id, emoji as MessageReactionEmoji)}
+                    position={activeMsgPos}
                 />
             )}
 

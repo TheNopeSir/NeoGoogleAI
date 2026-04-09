@@ -5,6 +5,7 @@ import { getUserAvatar, getGlobalChatMessages, sendGlobalChatMessage, deleteGlob
 import { validateMessageText } from '../utils/textUtils';
 import MessageActionSheet, { SheetAction } from './MessageActionSheet';
 import Kolobok from './Kolobok';
+import { splitTextWithEmoji, getKolobokSrc } from '../utils/koloboks';
 import ReactionBar from './ReactionBar';
 import XI from './XI';
 
@@ -35,6 +36,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [mentionAtPos, setMentionAtPos] = useState<number>(0);
     const [activeMsg, setActiveMsg] = useState<GlobalChatMessage | null>(null);
+    const [activeMsgPos, setActiveMsgPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +219,19 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     </span>
                 );
             }
-            return <span key={i}>{part}</span>;
+            // Replace emoji with koloboks inline
+            const segs = splitTextWithEmoji(part);
+            return (
+                <React.Fragment key={i}>
+                    {segs.map((seg, j) => {
+                        if (seg.type === 'emoji') {
+                            const src = getKolobokSrc(seg.value);
+                            if (src) return <img key={j} src={src} alt={seg.value} width={18} height={18} className="inline-block align-middle rounded select-none mx-0.5" draggable={false} />;
+                        }
+                        return <span key={j}>{seg.value}</span>;
+                    })}
+                </React.Fragment>
+            );
         });
     };
 
@@ -319,8 +333,8 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
 
                                 <div
                                     className={`max-w-[82%] sm:max-w-[78%] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl font-mono text-xs leading-snug break-words whitespace-pre-wrap cursor-pointer select-none active:opacity-75 transition-opacity ${bubbleBg}`}
-                                    onClick={() => setActiveMsg(msg)}
-                                    onContextMenu={e => { e.preventDefault(); setActiveMsg(msg); }}
+                                    onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setActiveMsgPos({ x: r.left + r.width / 2, y: r.top }); setActiveMsg(msg); }}
+                                    onContextMenu={e => { e.preventDefault(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setActiveMsgPos({ x: r.left + r.width / 2, y: r.top }); setActiveMsg(msg); }}
                                 >
                                     {msg.replyTo && (
                                         <div
@@ -369,6 +383,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     actions={buildActions(activeMsg)}
                     quickReactions={QUICK_REACTIONS}
                     onReact={emoji => handleReact(activeMsg.id, emoji as MessageReactionEmoji)}
+                    position={activeMsgPos}
                 />
             )}
 

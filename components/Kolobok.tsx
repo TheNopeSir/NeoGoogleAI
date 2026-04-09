@@ -10,13 +10,14 @@ interface KolobokProps {
 const Kolobok: React.FC<KolobokProps> = ({ emoji, size = 24, className = '' }) => {
     const src = getKolobokSrc(emoji);
     if (src) {
+        const isGif = src.endsWith('.gif');
         return (
             <img
                 src={src}
                 alt={emoji}
                 width={size}
                 height={size}
-                className={`inline-block select-none ${className}`}
+                className={`inline-block select-none ${isGif ? 'rounded' : ''} ${className}`}
                 draggable={false}
                 onError={(e) => {
                     // fallback to emoji if image fails

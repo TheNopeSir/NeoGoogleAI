@@ -58,3 +58,22 @@ export function getKolobokSrc(emoji: string): string | null {
     const file = KOLOBOK_MAP[emoji];
     return file ? `/koloboks/${file}` : null;
 }
+
+export function splitTextWithEmoji(text: string): Array<{ type: 'text' | 'emoji'; value: string }> {
+    const keys = Object.keys(KOLOBOK_MAP);
+    if (!keys.length || !text) return [{ type: 'text', value: text }];
+    const escaped = [...keys]
+        .sort((a, b) => b.length - a.length)
+        .map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gu');
+    const result: Array<{ type: 'text' | 'emoji'; value: string }> = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+        if (m.index > last) result.push({ type: 'text', value: text.slice(last, m.index) });
+        result.push({ type: 'emoji', value: m[0] });
+        last = regex.lastIndex;
+    }
+    if (last < text.length) result.push({ type: 'text', value: text.slice(last) });
+    return result;
+}

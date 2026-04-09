@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserProfile } from '../types';
+import { splitTextWithEmoji, getKolobokSrc } from './koloboks';
 
 export const renderTextWithMentions = (
     text: string,
@@ -36,7 +37,29 @@ export const renderTextWithMentions = (
                 )
             );
         }
-        return part;
+        // Plain text segment — replace emoji with koloboks
+        const segments = splitTextWithEmoji(part);
+        return React.createElement(
+            React.Fragment,
+            { key: i },
+            ...segments.map((seg, j) => {
+                if (seg.type === 'emoji') {
+                    const src = getKolobokSrc(seg.value);
+                    if (src) return React.createElement('img', {
+                        key: j, src, alt: seg.value,
+                        width: 18, height: 18,
+                        className: 'inline-block align-middle rounded select-none mx-0.5',
+                        draggable: false,
+                        onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
+                            const span = document.createElement('span');
+                            span.textContent = seg.value;
+                            e.currentTarget.replaceWith(span);
+                        },
+                    });
+                }
+                return seg.value;
+            })
+        );
     });
 };
 
