@@ -72,7 +72,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onSelect, onClose, theme, cur
                                 onClick={() => handleSelect(emoji)}
                                 className={`w-9 h-9 flex items-center justify-center rounded-xl ${btnHover} hover:scale-110 active:scale-90 transition-all`}
                             >
-                                <Kolobok emoji={emoji} size={26} />
+                                <Kolobok emoji={emoji} size={30} />
                             </button>
                         ))}
                     </div>
@@ -87,7 +87,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onSelect, onClose, theme, cur
                         onClick={() => handleSelect(emoji)}
                         className={`w-9 h-9 flex items-center justify-center rounded-xl ${btnHover} active:scale-90 transition-all`}
                     >
-                        <Kolobok emoji={emoji} size={26} />
+                        <Kolobok emoji={emoji} size={30} />
                     </button>
                 ))}
             </div>

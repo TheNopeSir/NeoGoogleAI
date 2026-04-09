@@ -44,7 +44,7 @@ const ReactionBar: React.FC<ReactionBarProps> = ({ reactions, currentUsername, o
                         className={`${baseClass} ${reacted ? activeClass : inactiveClass}`}
                         title={reaction.users.join(', ')}
                     >
-                        <Kolobok emoji={reaction.emoji} size={14} />
+                        <Kolobok emoji={reaction.emoji} size={18} />
                         <span>{reaction.users.length}</span>
                     </button>
                 );

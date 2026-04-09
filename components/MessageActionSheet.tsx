@@ -113,7 +113,7 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                                             onClick={() => handleReact(emoji)}
                                             className={`w-8 h-8 flex items-center justify-center rounded-lg ${btnHover} hover:scale-110 active:scale-90 transition-all`}
                                         >
-                                            <Kolobok emoji={emoji} size={24} />
+                                            <Kolobok emoji={emoji} size={28} />
                                         </button>
                                     ))}
                                 </div>
@@ -134,7 +134,7 @@ const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                                             onClick={() => handleReact(emoji)}
                                             className={`${btnBase} ${btnHover}`}
                                         >
-                                            <Kolobok emoji={emoji} size={26} />
+                                            <Kolobok emoji={emoji} size={30} />
                                         </button>
                                     ))}
                                 </div>

@@ -219,7 +219,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     {segs.map((seg, j) => {
                         if (seg.type === 'emoji') {
                             const src = getKolobokSrc(seg.value);
-                            if (src) return <img key={j} src={src} alt={seg.value} width={18} height={18} className="inline-block align-middle rounded select-none mx-0.5" draggable={false} />;
+                            if (src) return <img key={j} src={src} alt={seg.value} width={22} height={22} className="inline-block align-middle rounded select-none mx-0.5" draggable={false} />;
                         }
                         return <span key={j}>{seg.value}</span>;
                     })}
@@ -422,7 +422,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                                 className="w-7 h-7 hover:scale-125 transition-transform flex items-center justify-center rounded"
                                 onMouseDown={e => { e.preventDefault(); insertEmoji(emoji); }}
                             >
-                                <Kolobok emoji={emoji} size={22} />
+                                <Kolobok emoji={emoji} size={28} />
                             </button>
                         ))}
                     </div>

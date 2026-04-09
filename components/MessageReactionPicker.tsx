@@ -74,7 +74,7 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
                                     onClick={() => handleReact(emoji as MessageReactionEmoji)}
                                     className={`w-8 h-8 flex items-center justify-center rounded-lg ${btnHover} hover:scale-110 active:scale-90 transition-all`}
                                 >
-                                    <Kolobok emoji={emoji} size={24} />
+                                    <Kolobok emoji={emoji} size={28} />
                                 </button>
                             ))}
                         </div>
@@ -93,9 +93,9 @@ const MessageReactionPicker: React.FC<MessageReactionPickerProps> = ({
                                 <button
                                     key={emoji}
                                     onClick={() => handleReact(emoji as MessageReactionEmoji)}
-                                    className={`w-9 h-9 flex items-center justify-center rounded-xl ${btnHover} hover:scale-125 active:scale-90 transition-all`}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl ${btnHover} hover:scale-125 active:scale-90 transition-all`}
                                 >
-                                    <Kolobok emoji={emoji} size={28} />
+                                    <Kolobok emoji={emoji} size={34} />
                                 </button>
                             ))}
                         </div>

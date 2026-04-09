@@ -47,7 +47,7 @@ export const renderTextWithMentions = (
                     const src = getKolobokSrc(seg.value);
                     if (src) return React.createElement('img', {
                         key: j, src, alt: seg.value,
-                        width: 18, height: 18,
+                        width: 22, height: 22,
                         className: 'inline-block align-middle rounded select-none mx-0.5',
                         draggable: false,
                         onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
