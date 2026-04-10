@@ -388,8 +388,8 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     theme={theme}
                     onClose={() => setActiveMsg(null)}
                     actions={buildActions(activeMsg)}
-                    quickReactions={QUICK_REACTIONS}
-                    onReact={emoji => handleReact(activeMsg.id, emoji as MessageReactionEmoji)}
+                    quickReactions={activeMsg.sender !== currentUser.username ? QUICK_REACTIONS : undefined}
+                    onReact={activeMsg.sender !== currentUser.username ? emoji => handleReact(activeMsg.id, emoji as MessageReactionEmoji) : undefined}
                     position={activeMsgPos}
                     currentUsername={currentUser.username}
                 />

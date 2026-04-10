@@ -93,10 +93,10 @@ const ReactionBar: React.FC<ReactionBarProps> = ({ reactions, currentUsername, o
                             </div>
                         )}
 
-                        {/* Reaction pill */}
+                        {/* Reaction pill — click toggles only on others' messages */}
                         <button
-                            className={`flex items-center gap-1 pl-1.5 pr-0.5 py-0.5 rounded-full text-[11px] font-mono border transition-all active:scale-90 cursor-pointer ${reacted ? activeClass : inactiveClass}`}
-                            onClick={() => onReact(reaction.emoji as MessageReactionEmoji)}
+                            className={`flex items-center gap-1 pl-1.5 pr-0.5 py-0.5 rounded-full text-[11px] font-mono border transition-all ${isMe ? 'cursor-default' : 'active:scale-90 cursor-pointer'} ${reacted ? activeClass : inactiveClass}`}
+                            onClick={() => { if (!isMe) onReact(reaction.emoji as MessageReactionEmoji); }}
                         >
                             <Kolobok emoji={reaction.emoji} size={18} />
                             {/* Count — tap to see who reacted */}

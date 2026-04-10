@@ -214,8 +214,8 @@ const DirectChat: React.FC<DirectChatProps> = ({
                     theme={theme}
                     onClose={() => setActiveMsg(null)}
                     actions={buildActions(activeMsg)}
-                    quickReactions={QUICK_REACTIONS}
-                    onReact={emoji => onReactToMessage(activeMsg.id, emoji as MessageReactionEmoji)}
+                    quickReactions={activeMsg.sender !== currentUser.username ? QUICK_REACTIONS : undefined}
+                    onReact={activeMsg.sender !== currentUser.username ? emoji => onReactToMessage(activeMsg.id, emoji as MessageReactionEmoji) : undefined}
                     position={activeMsgPos}
                     currentUsername={currentUser.username}
                 />
