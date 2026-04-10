@@ -823,13 +823,20 @@ export const updateMessage = async (m: Message) => {
 
 /** Update only reactions on a direct message — uses PATCH to bypass the spam/dedup filter */
 export const updateMessageReactions = async (id: string, reactions: import('../types').MessageReaction[]): Promise<void> => {
+    // Update hotCache immediately so any subsequent getFullDatabase() call returns fresh data
     const idx = hotCache.messages.findIndex(x => x.id === id);
     if (idx !== -1) hotCache.messages[idx] = { ...hotCache.messages[idx], reactions };
-    notifyListeners();
-    const dbInstance = await getDB();
-    const stored = await dbInstance.get('messages', id);
-    if (stored) await dbInstance.put('messages', { ...stored, reactions });
-    await apiCall(`/messages/${id}`, 'PATCH', { reactions });
+    // Update IndexedDB
+    try {
+        const dbInstance = await getDB();
+        const stored = await dbInstance.get('messages', id);
+        if (stored) await dbInstance.put('messages', { ...stored, reactions });
+    } catch {}
+    // PATCH the server — no notifyListeners() here to avoid refreshData() race condition
+    // App.tsx already applied the optimistic update via setMessages before calling this
+    try {
+        await apiCall(`/messages/${id}`, 'PATCH', { reactions });
+    } catch {}
 };
 
 export const createGuild = async (g: Guild) => {

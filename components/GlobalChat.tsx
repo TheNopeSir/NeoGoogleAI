@@ -34,6 +34,8 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     const inputRef = useRef<HTMLInputElement>(null);
     const lastSendRef = useRef<number>(0);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Reactions set by the current user that are still being saved — prevents poll overwrite
+    const pendingReactionsRef = useRef<Map<string, MessageReaction[]>>(new Map());
 
     const isWinamp = theme === 'winamp';
     const isXP = theme === 'xp';
@@ -42,7 +44,11 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
 
     const loadMessages = useCallback(async () => {
         const data = await getGlobalChatMessages();
-        setMessages(data);
+        // Merge: keep locally-pending reactions so the poll doesn't overwrite them
+        setMessages(data.map(serverMsg => {
+            const pending = pendingReactionsRef.current.get(serverMsg.id);
+            return pending !== undefined ? { ...serverMsg, reactions: pending } : serverMsg;
+        }));
     }, []);
 
     useEffect(() => {
@@ -144,34 +150,42 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
     };
 
     const handleReact = (msgId: string, emoji: MessageReactionEmoji) => {
-        setMessages(prev => prev.map(m => {
-            if (m.id !== msgId) return m;
+        // Compute new reactions outside the setMessages callback (safe from double-invoke)
+        setMessages(prev => {
+            const m = prev.find(msg => msg.id === msgId);
+            if (!m) return prev;
+
             const existing = m.reactions ?? [];
             const idx = existing.findIndex(r => r.emoji === emoji);
             let updated: MessageReaction[];
 
             if (idx === -1) {
-                // New reaction
                 updated = [...existing, { emoji, users: [currentUser.username] }];
             } else {
                 const reaction = existing[idx];
                 const hasReacted = reaction.users.includes(currentUser.username);
                 if (hasReacted) {
-                    // Remove user
                     const newUsers = reaction.users.filter(u => u !== currentUser.username);
                     updated = newUsers.length === 0
                         ? existing.filter((_, i) => i !== idx)
                         : existing.map((r, i) => i === idx ? { ...r, users: newUsers } : r);
                 } else {
-                    // Add user
                     updated = existing.map((r, i) => i === idx ? { ...r, users: [...r.users, currentUser.username] } : r);
                 }
             }
 
-            const updatedMsg = { ...m, reactions: updated };
-            updateGlobalChatMessageReactions(msgId, updated);
-            return updatedMsg;
-        }));
+            // Register as pending so loadMessages won't overwrite before PATCH completes
+            pendingReactionsRef.current.set(msgId, updated);
+
+            // Fire PATCH — once PATCH completes the server has the right data, clear pending
+            updateGlobalChatMessageReactions(msgId, updated).then(() => {
+                pendingReactionsRef.current.delete(msgId);
+            }).catch(() => {
+                pendingReactionsRef.current.delete(msgId);
+            });
+
+            return prev.map(msg => msg.id === msgId ? { ...msg, reactions: updated } : msg);
+        });
     };
 
     const buildActions = (msg: GlobalChatMessage): SheetAction[] => {
