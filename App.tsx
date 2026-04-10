@@ -679,9 +679,8 @@ export default function App() {
         currentReactions[existingIdx] = { ...bucket, users: [...bucket.users, user.username] };
       }
     }
-    const updatedMsg = { ...msg, reactions: currentReactions };
-    setMessages(prev => prev.map(m => m.id === messageId ? updatedMsg : m));
-    await db.updateMessage(updatedMsg);
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, reactions: currentReactions } : m));
+    await db.updateMessageReactions(messageId, currentReactions);
   };
 
   const handleCommentReact = async (exhibitId: string, commentId: string, emoji: MessageReactionEmoji) => {

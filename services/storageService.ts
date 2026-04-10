@@ -821,6 +821,17 @@ export const updateMessage = async (m: Message) => {
     await apiCall('/messages', 'POST', m);
 };
 
+/** Update only reactions on a direct message — uses PATCH to bypass the spam/dedup filter */
+export const updateMessageReactions = async (id: string, reactions: import('../types').MessageReaction[]): Promise<void> => {
+    const idx = hotCache.messages.findIndex(x => x.id === id);
+    if (idx !== -1) hotCache.messages[idx] = { ...hotCache.messages[idx], reactions };
+    notifyListeners();
+    const dbInstance = await getDB();
+    const stored = await dbInstance.get('messages', id);
+    if (stored) await dbInstance.put('messages', { ...stored, reactions });
+    await apiCall(`/messages/${id}`, 'PATCH', { reactions });
+};
+
 export const createGuild = async (g: Guild) => {
     hotCache.guilds.push(g);
     notifyListeners();
