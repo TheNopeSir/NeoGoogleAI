@@ -202,11 +202,11 @@ const FeedView: React.FC<FeedViewProps> = ({
   // --- CORE FILTERING & SORTING LOGIC ---
   const processedExhibits = useMemo(() => {
       let items = exhibits.filter(e => {
-          if (e.owner === user.username) return false;
+          if (user && e.owner === user.username) return false;
           if (e.isDraft) return false;
           if (selectedCategory !== 'ВСЕ' && e.category !== selectedCategory) return false;
           if (selectedSubcategory && e.subcategory !== selectedSubcategory) return false;
-          if (feedType === 'FOLLOWING' && !user.following.includes(e.owner)) return false;
+          if (feedType === 'FOLLOWING' && (!user || !user.following.includes(e.owner))) return false;
 
           // Price filter — only show FOR_SALE items within range, exclude WANTED max-price
           if (priceFilterEnabled) {
@@ -250,12 +250,12 @@ const FeedView: React.FC<FeedViewProps> = ({
           return 0;
       });
 
-  }, [exhibits, user.username, user.following, selectedCategory, selectedSubcategory, feedType, sortMode, priceFilterEnabled, priceMin, priceMax]);
+  }, [exhibits, user?.username, user?.following, selectedCategory, selectedSubcategory, feedType, sortMode, priceFilterEnabled, priceMin, priceMax]);
 
   // --- MY WISHLIST MATCH (for feed badge) ---
   const mySearchingWishlist = useMemo(() =>
-      wishlist.filter(w => w.owner === user.username && (!w.status || w.status === 'SEARCHING')),
-  [wishlist, user.username]);
+      user ? wishlist.filter(w => w.owner === user.username && (!w.status || w.status === 'SEARCHING')) : [],
+  [wishlist, user?.username]);
 
   // --- TRENDING BLOCK ---
   // Score = shares*5 + likes*4 + comments*3 + views*1
@@ -268,29 +268,29 @@ const FeedView: React.FC<FeedViewProps> = ({
           const ids: string[] = JSON.parse(raw);
           return ids
               .map(id => exhibits.find(e => e.id === id))
-              .filter((e): e is Exhibit => !!e && !e.isDraft && e.owner !== user.username)
+              .filter((e): e is Exhibit => !!e && !e.isDraft && e.owner !== user?.username)
               .slice(0, 15);
       } catch {
           return [];
       }
-  }, [exhibits, user.username]);
+  }, [exhibits, user?.username]);
 
   const processedWishlist = useMemo(() => {
       return wishlist.filter(w => {
-          if (w.owner === user.username) return false;
+          if (user && w.owner === user.username) return false;
           if (selectedCategory !== 'ВСЕ' && w.category !== selectedCategory) return false;
-          if (feedType === 'FOLLOWING' && !user.following.includes(w.owner)) return false;
+          if (feedType === 'FOLLOWING' && (!user || !user.following.includes(w.owner))) return false;
           return true;
       }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [wishlist, user.username, selectedCategory, feedType]);
+  }, [wishlist, user?.username, selectedCategory, feedType]);
 
   const processedCollections = useMemo(() => {
       return collections.filter(c => {
-          if (c.owner === user.username) return false;
-          if (feedType === 'FOLLOWING' && !user.following.includes(c.owner)) return false;
+          if (user && c.owner === user.username) return false;
+          if (feedType === 'FOLLOWING' && (!user || !user.following.includes(c.owner))) return false;
           return true;
       }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [collections, user.username, feedType]);
+  }, [collections, user?.username, feedType]);
 
   // --- INFINITE SCROLL ---
   useEffect(() => {

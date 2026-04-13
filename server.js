@@ -2245,6 +2245,105 @@ app.get('/artifact/:id', async (req, res) => {
     }
 });
 
+// ── OG Meta Injection для коллекций ──────────────────────────────────────────
+app.get('/collection/:id', async (req, res) => {
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    try {
+        const result = await query('SELECT * FROM collections WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) return res.sendFile(indexPath);
+
+        const collection = mapRow(result.rows[0]);
+        const title = _escapeHtml(collection.title || 'Коллекция');
+        const description = _escapeHtml(
+            collection.description
+                ? collection.description.slice(0, 200)
+                : `Коллекция @${collection.owner || ''} на NeoArchive`
+        );
+        const pageUrl = `https://neoarchive.ru/collection/${req.params.id}`;
+        const ogImageUrl = _getOgImageUrl(collection.coverImage) || 'https://neoarchive.ru/icon-512.png';
+        const ogImage = _escapeHtml(ogImageUrl);
+
+        let html = fs.readFileSync(indexPath, 'utf8');
+
+        const inject = `
+    <title>${title} | NeoArchive</title>
+    <meta property="og:title" content="${title} | NeoArchive" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${ogImage}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title} | NeoArchive" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${ogImage}" />`;
+
+        const ogAttr = (key) => `(?:property|name)="${key}"`;
+        const replaceOg = (h, key, val) =>
+            h.replace(new RegExp(`(<meta\\s+${ogAttr(key)}\\s+content=")[^"]*(")`,'g'), `$1${val}$2`)
+             .replace(new RegExp(`(<meta\\s+content="[^"]*"\\s+${ogAttr(key)}[^>]*>)`,'g'),
+                      `<meta property="${key}" content="${val}" />`);
+
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${title} | NeoArchive</title>`);
+        html = replaceOg(html, 'og:title',            `${title} | NeoArchive`);
+        html = replaceOg(html, 'og:description',      description);
+        html = replaceOg(html, 'og:image',            ogImage);
+        html = replaceOg(html, 'og:url',              pageUrl);
+        html = replaceOg(html, 'og:type',             'article');
+        html = replaceOg(html, 'twitter:title',       `${title} | NeoArchive`);
+        html = replaceOg(html, 'twitter:description', description);
+        html = replaceOg(html, 'twitter:image',       ogImage);
+
+        if (!html.includes('og:image:width')) {
+            html = html.replace('</head>', `${inject}\n</head>`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (e) {
+        console.error('[OG] Error injecting meta for collection:', e.message);
+        res.sendFile(indexPath);
+    }
+});
+
+// ── Динамическая карта сайта ──────────────────────────────────────────────────
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const [exhibitsRes, collectionsRes] = await Promise.all([
+            query(`SELECT id, updated_at, created_at FROM exhibits WHERE (data->>'isDraft')::boolean IS NOT TRUE ORDER BY created_at DESC LIMIT 50000`),
+            query(`SELECT id, updated_at, created_at FROM collections ORDER BY created_at DESC LIMIT 10000`),
+        ]);
+
+        const fmt = (row) => {
+            const d = row.updated_at || row.created_at;
+            return d ? new Date(d).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        };
+
+        const exhibitUrls = exhibitsRes.rows.map(r =>
+            `  <url><loc>https://neoarchive.ru/artifact/${r.id}</loc><lastmod>${fmt(r)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+        ).join('\n');
+
+        const collectionUrls = collectionsRes.rows.map(r =>
+            `  <url><loc>https://neoarchive.ru/collection/${r.id}</loc><lastmod>${fmt(r)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+        ).join('\n');
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://neoarchive.ru/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+${exhibitUrls}
+${collectionUrls}
+</urlset>`;
+
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.send(xml);
+    } catch (e) {
+        console.error('[Sitemap] Error generating sitemap:', e.message);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server on ${PORT}`));
