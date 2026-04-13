@@ -499,6 +499,16 @@ const CreateArtifactView: React.FC<CreateArtifactViewProps> = ({ theme, onBack, 
               )}
 
               <div>
+                <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">Название</label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className={`w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 font-mono text-sm focus:border-green-500 outline-none transition-colors ${isWinamp ? 'text-[#00ff00] placeholder-gray-600' : ''}`}
+                  placeholder="Название артефакта..."
+                />
+              </div>
+
+              <div>
                 <label className="text-[10px] font-pixel opacity-50 uppercase tracking-widest mb-2 block">
                   {isWanted ? 'Описание запроса' : 'Описание и история'}
                 </label>
