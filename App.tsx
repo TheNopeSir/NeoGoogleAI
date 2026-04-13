@@ -915,6 +915,37 @@ export default function App() {
             </div>
         )}
 
+        {!user && (
+            <>
+                {/* GUEST HEADER — десктоп */}
+                <nav className="hidden md:flex w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md bg-black/80 border-b border-white/10 text-white">
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
+                        <div className="w-8 h-8 flex items-center justify-center font-bold text-xs rounded border bg-green-500 border-green-500 text-black">NA</div>
+                        <span className="font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity text-white">NEO_ARCHIVE</span>
+                    </div>
+                    <button
+                        onClick={() => setView('AUTH')}
+                        className="flex items-center gap-2 font-pixel text-xs font-bold px-5 py-2 rounded-xl bg-green-500 text-black hover:bg-green-400 transition-all"
+                    >
+                        <XI icon={UserCheck} size={16} /> ВОЙТИ
+                    </button>
+                </nav>
+                {/* GUEST HEADER — мобайл (сверху) */}
+                <nav className="md:hidden fixed top-0 left-0 w-full z-50 flex items-center justify-between px-4 h-14 bg-black/80 backdrop-blur-md border-b border-white/10">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigateTo('FEED')}>
+                        <div className="w-7 h-7 flex items-center justify-center font-bold text-[10px] rounded border bg-green-500 border-green-500 text-black">NA</div>
+                        <span className="font-pixel font-bold text-sm tracking-[0.2em] text-white">NEO_ARCHIVE</span>
+                    </div>
+                    <button
+                        onClick={() => setView('AUTH')}
+                        className="flex items-center gap-2 font-pixel text-[10px] font-bold px-4 py-1.5 rounded-lg bg-green-500 text-black hover:bg-green-400 transition-all"
+                    >
+                        <XI icon={UserCheck} size={14} /> ВОЙТИ
+                    </button>
+                </nav>
+            </>
+        )}
+
         {user && (
             <>
                 {/* DESKTOP NAV */}
@@ -1015,6 +1046,9 @@ export default function App() {
             } : undefined}
             {...(isMainTabView ? tabSwipeHandlers : (['CREATE_ARTIFACT', 'EDIT_ARTIFACT', 'CREATE_COLLECTION', 'EDIT_COLLECTION', 'CREATE_WISHLIST', 'SETTINGS', 'ADMIN'].includes(view) ? {} : backSwipeHandlers))}
         >
+            {/* Отступ под гостевым мобильным хедером */}
+            {!user && <div className="md:hidden h-14" />}
+
             {view === 'FEED' && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
                     if (user && c.owner === user.username) return true;
