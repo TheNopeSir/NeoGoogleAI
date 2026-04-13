@@ -37,29 +37,30 @@ export const renderTextWithMentions = (
                 )
             );
         }
-        // Plain text segment — replace emoji with koloboks
-        const segments = splitTextWithEmoji(part);
-        return React.createElement(
-            React.Fragment,
-            { key: i },
-            ...segments.map((seg, j) => {
-                if (seg.type === 'emoji') {
-                    const src = getKolobokSrc(seg.value);
-                    if (src) return React.createElement('img', {
-                        key: j, src, alt: seg.value,
-                        width: 22, height: 22,
-                        className: 'inline-block align-middle rounded select-none mx-0.5',
-                        draggable: false,
-                        onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
-                            const span = document.createElement('span');
-                            span.textContent = seg.value;
-                            e.currentTarget.replaceWith(span);
-                        },
-                    });
-                }
-                return seg.value;
-            })
-        );
+        // Колобки временно отключены — используем стандартные emoji
+        // const segments = splitTextWithEmoji(part);
+        // return React.createElement(
+        //     React.Fragment,
+        //     { key: i },
+        //     ...segments.map((seg, j) => {
+        //         if (seg.type === 'emoji') {
+        //             const src = getKolobokSrc(seg.value);
+        //             if (src) return React.createElement('img', {
+        //                 key: j, src, alt: seg.value,
+        //                 width: 22, height: 22,
+        //                 className: 'inline-block align-middle rounded select-none mx-0.5',
+        //                 draggable: false,
+        //                 onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
+        //                     const span = document.createElement('span');
+        //                     span.textContent = seg.value;
+        //                     e.currentTarget.replaceWith(span);
+        //                 },
+        //             });
+        //         }
+        //         return seg.value;
+        //     })
+        // );
+        return React.createElement('span', { key: i }, part);
     });
 };
 

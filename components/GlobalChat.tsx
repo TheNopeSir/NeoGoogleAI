@@ -226,19 +226,20 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ theme, currentUser, onBack, onU
                     </span>
                 );
             }
-            // Replace emoji with koloboks inline
-            const segs = splitTextWithEmoji(part);
-            return (
-                <React.Fragment key={i}>
-                    {segs.map((seg, j) => {
-                        if (seg.type === 'emoji') {
-                            const src = getKolobokSrc(seg.value);
-                            if (src) return <img key={j} src={src} alt={seg.value} width={22} height={22} className="inline-block align-middle rounded select-none mx-0.5" draggable={false} />;
-                        }
-                        return <span key={j}>{seg.value}</span>;
-                    })}
-                </React.Fragment>
-            );
+            // Колобки временно отключены — используем стандартные emoji
+            // const segs = splitTextWithEmoji(part);
+            // return (
+            //     <React.Fragment key={i}>
+            //         {segs.map((seg, j) => {
+            //             if (seg.type === 'emoji') {
+            //                 const src = getKolobokSrc(seg.value);
+            //                 if (src) return <img key={j} src={src} alt={seg.value} width={22} height={22} className="inline-block align-middle rounded select-none mx-0.5" draggable={false} />;
+            //             }
+            //             return <span key={j}>{seg.value}</span>;
+            //         })}
+            //     </React.Fragment>
+            // );
+            return <span key={i}>{part}</span>;
         });
     };
 

@@ -121,7 +121,7 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader(
         'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-src https://oauth.telegram.org"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://mc.yandex.ru https://mc.yandex.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-src https://oauth.telegram.org"
     );
     next();
 });
@@ -233,7 +233,10 @@ const spamFilter = (req, res, next) => {
         return res.status(400).json({ error: 'Сообщение содержит недопустимые слова.' });
 
     // Защита от дублей (60 секунд, по IP + содержимому)
-    const dupKey = `spam_dup:${req.ip}:${trimmed.toLowerCase().replace(/\s+/g, ' ')}`;
+    // Включаем id объекта (если есть), чтобы редактирование одного и того же экспоната
+    // с тем же текстом не блокировалось как дубль
+    const entityId = req.body?.id || '';
+    const dupKey = `spam_dup:${req.ip}:${entityId}:${trimmed.toLowerCase().replace(/\s+/g, ' ')}`;
     if (cache.get(dupKey))
         return res.status(429).json({ error: 'Такое сообщение уже было отправлено недавно.' });
     cache.set(dupKey, true, 60);

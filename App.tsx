@@ -98,6 +98,9 @@ export default function App() {
   const [guestbookInput, setGuestbookInput] = useState('');
   const guestbookInputRef = useRef<HTMLInputElement>(null);
 
+  // Auth prompt for unauthenticated users trying to interact
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+
   // --- STORIES ---
   const stories = useMemo(() => {
       if (!user) return [];
@@ -295,6 +298,14 @@ export default function App() {
       if (root === 'privacy') { setView('PRIVACY'); return; }
       if (root === 'terms') { setView('TERMS'); return; }
 
+      // For unauthenticated users, redirect protected routes to FEED
+      const isLoggedIn = !!userRef.current;
+      if (!isLoggedIn && ['community', 'activity', 'search', 'create', 'my-collection', 'u', 'profile'].includes(root)) {
+          setView('FEED');
+          window.history.replaceState({}, document.title, '/');
+          return;
+      }
+
       if (root === 'community') setView('COMMUNITY_HUB');
       else if (root === 'activity') setView('ACTIVITY');
       else if (root === 'search') setView('SEARCH');
@@ -326,14 +337,36 @@ export default function App() {
   useEffect(() => {
       const handlePopState = () => {
           if (userRef.current) syncFromUrl();
-          else setView('AUTH');
+          else if (Capacitor.isNativePlatform()) setView('AUTH');
+          else syncFromUrl(); // unauthenticated web: resolve from URL (FEED, EXHIBIT, COLLECTION_DETAIL)
       };
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
   }, [syncFromUrl]);
 
+  // Views that require authentication — redirect to AUTH if user is not logged in
+  const AUTH_REQUIRED_VIEWS: ViewState[] = [
+    'ACTIVITY', 'MY_COLLECTION', 'WISHLIST_DETAIL', 'DIRECT_CHAT', 'GLOBAL_CHAT',
+    'USER_PROFILE', 'HALL_OF_FAME', 'SEARCH', 'COMMUNITY_HUB', 'CREATE_HUB',
+    'CREATE_ARTIFACT', 'EDIT_ARTIFACT', 'CREATE_COLLECTION', 'EDIT_COLLECTION',
+    'CREATE_WISHLIST', 'USER_WISHLIST', 'SOCIAL_LIST', 'SETTINGS', 'ADMIN',
+  ];
+
+  // Helper: runs action only if authenticated, otherwise shows the auth prompt modal
+  const requireAuth = (action: () => void) => {
+    if (!user) { setShowAuthPrompt(true); return; }
+    action();
+  };
+
   const navigateTo = (newView: ViewState, params?: { username?: string; item?: Exhibit; collection?: Collection; wishlistItem?: WishlistItem; highlightCommentId?: string; initialData?: any; tab?: string }) => {
       if (params?.username) setViewedProfileUsername(params.username);
+
+      // Redirect unauthenticated users away from protected views
+      if (!user && AUTH_REQUIRED_VIEWS.includes(newView)) {
+          setView('AUTH');
+          window.history.pushState({}, '', '/');
+          return;
+      }
 
       // Shipments moved to profile — redirect
       if (newView === 'SHIPMENTS' && user) {
@@ -462,9 +495,11 @@ export default function App() {
                   setView('PRIVACY');
               } else if (window.location.pathname === '/terms') {
                   setView('TERMS');
+              } else if (Capacitor.isNativePlatform()) {
+                  setView('AUTH');
               } else {
-                  setView(Capacitor.isNativePlatform() ? 'AUTH' : 'LANDING');
-                  window.history.replaceState({}, document.title, '/');
+                  // Web: show FEED (or specific public page from URL) even without login
+                  await syncFromUrl();
               }
           }
       } catch (e) { setView('AUTH'); }
@@ -980,17 +1015,18 @@ export default function App() {
             } : undefined}
             {...(isMainTabView ? tabSwipeHandlers : (['CREATE_ARTIFACT', 'EDIT_ARTIFACT', 'CREATE_COLLECTION', 'EDIT_COLLECTION', 'CREATE_WISHLIST', 'SETTINGS', 'ADMIN'].includes(view) ? {} : backSwipeHandlers))}
         >
-            {view === 'FEED' && user && (
+            {view === 'FEED' && (
                 <FeedView theme={theme} user={user} stories={stories} exhibits={exhibits} wishlist={wishlist} collections={collections.filter(c => {
-                    if (c.owner === user.username) return true;
+                    if (user && c.owner === user.username) return true;
                     if (!c.visibility || c.visibility === 'PUBLIC') return true;
                     if (c.visibility === 'PRIVATE') return false;
                     if (c.visibility === 'FOLLOWERS') {
+                        if (!user) return false;
                         const owner = allUsers.find(u => u.username === c.owner);
                         return owner?.followers?.includes(user.username) ?? false;
                     }
                     return true;
-                })} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={handleReaction} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={collections.filter(c => c.owner === user.username)} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={handleAddExhibitToWishlist} onRefresh={refreshData} />
+                })} feedMode={feedMode} setFeedMode={setFeedMode} feedViewMode={feedViewMode} setFeedViewMode={setFeedViewMode} feedType={feedType} setFeedType={setFeedType} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onNavigate={(v, p) => navigateTo(v as ViewState, p)} onExhibitClick={handleExhibitClick} onReact={(id) => requireAuth(() => handleReaction(id))} onUserClick={(u) => navigateTo('USER_PROFILE', { username: u })} onWishlistClick={(w) => { requireAuth(() => { setSelectedWishlistItem(w); setView('WISHLIST_DETAIL'); }); }} onCollectionClick={(c) => navigateTo('COLLECTION_DETAIL', { collection: c })} userCollections={user ? collections.filter(c => c.owner === user.username) : []} onAddToCollection={handleAddExhibitToCollection} onAddToWishlist={(exhibit, priority) => requireAuth(() => handleAddExhibitToWishlist(exhibit, priority))} onRefresh={refreshData} />
             )}
 
             {view === 'ACTIVITY' && user && (
@@ -1004,7 +1040,7 @@ export default function App() {
             )}
 
             {view === 'EXHIBIT' && selectedExhibit && (
-                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={(id) => db.incrementShares(id)} onFavorite={() => {}} onLike={(id) => handleReaction(id)} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) return; const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } if (parentId) { const parentComment = (selectedExhibit.comments || []).find((c: Comment) => c.id === parentId); if (parentComment && parentComment.author !== user.username && parentComment.author !== selectedExhibit.owner) { db.createNotification(parentComment.author, 'COMMENT', user.username, selectedExhibit.id, `↩ ${text.slice(0, 40)}`); } } const mentionedUsers = [...new Set(Array.from(text.matchAll(/@(\w+)/g), m => m[1]))]; for (const mentioned of mentionedUsers) { if (mentioned !== user.username && mentioned !== selectedExhibit.owner) { db.createNotification(mentioned, 'MENTION', user.username, selectedExhibit.id, selectedExhibit.title, comment.id); } } }} onCommentLike={async (commentId) => { if (!user) return; const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onEditComment={handleEditComment} onCommentReact={handleCommentReact} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={async (u) => { if(user) { const wasFollowing = user.following.includes(u); await db.toggleFollow(user.username, u); if (!wasFollowing) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); } }} onMessage={(u) => { navigateTo('DIRECT_CHAT', { username: u }); }} onDelete={async (id) => { try { await db.deleteExhibit(id); handleBack(); } catch (e: any) { alert(e?.message || 'Ошибка удаления'); } }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={allUsers} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
+                <ExhibitDetailPage exhibit={selectedExhibit} theme={theme} onBack={handleBack} onShare={(id) => db.incrementShares(id)} onFavorite={() => {}} onLike={(id) => requireAuth(() => handleReaction(id))} isFavorited={false} isLiked={selectedExhibit.likedBy?.includes(user?.username || '') || false} onPostComment={async (id, text, parentId) => { if (!user) { setShowAuthPrompt(true); return; } const comment: Comment = { id: crypto.randomUUID(), parentId, author: user.username, text, timestamp: new Date().toLocaleString(), likes: 0, likedBy: [] }; const updatedExhibit = { ...selectedExhibit, comments: [...(selectedExhibit.comments || []), comment] }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); if (selectedExhibit.owner !== user.username) { db.createNotification(selectedExhibit.owner, 'COMMENT', user.username, selectedExhibit.id, selectedExhibit.title); } if (parentId) { const parentComment = (selectedExhibit.comments || []).find((c: Comment) => c.id === parentId); if (parentComment && parentComment.author !== user.username && parentComment.author !== selectedExhibit.owner) { db.createNotification(parentComment.author, 'COMMENT', user.username, selectedExhibit.id, `↩ ${text.slice(0, 40)}`); } } const mentionedUsers = [...new Set(Array.from(text.matchAll(/@(\w+)/g), m => m[1]))]; for (const mentioned of mentionedUsers) { if (mentioned !== user.username && mentioned !== selectedExhibit.owner) { db.createNotification(mentioned, 'MENTION', user.username, selectedExhibit.id, selectedExhibit.title, comment.id); } } }} onCommentLike={async (commentId) => { if (!user) { setShowAuthPrompt(true); return; } const updatedComments = selectedExhibit.comments.map(c => { if (c.id === commentId) { const isLiked = c.likedBy?.includes(user.username); if (!isLiked && c.author !== user.username) { db.createNotification(c.author, 'LIKE_COMMENT', user.username, selectedExhibit.id, c.text.slice(0, 30)); } return { ...c, likes: isLiked ? c.likes - 1 : c.likes + 1, likedBy: isLiked ? c.likedBy.filter(u => u !== user.username) : [...(c.likedBy || []), user.username] }; } return c; }); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onDeleteComment={async (exId, cId) => { const updatedComments = selectedExhibit.comments.filter(c => c.id !== cId); const updatedExhibit = { ...selectedExhibit, comments: updatedComments }; setSelectedExhibit(updatedExhibit); await db.updateExhibit(updatedExhibit); }} onEditComment={handleEditComment} onCommentReact={handleCommentReact} onAuthorClick={(author) => navigateTo('USER_PROFILE', { username: author })} onFollow={async (u) => { if (!user) { setShowAuthPrompt(true); return; } const wasFollowing = user.following.includes(u); await db.toggleFollow(user.username, u); if (!wasFollowing) { db.createNotification(u, 'FOLLOW', user.username); } refreshData(); }} onMessage={(u) => { requireAuth(() => navigateTo('DIRECT_CHAT', { username: u })); }} onDelete={async (id) => { try { await db.deleteExhibit(id); handleBack(); } catch (e: any) { alert(e?.message || 'Ошибка удаления'); } }} onEdit={(item) => navigateTo('CREATE_ARTIFACT', { initialData: item })} onAddToCollection={() => setIsAddingToCollection(selectedExhibit.id)} onExhibitClick={handleExhibitClick} isFollowing={user?.following?.includes(selectedExhibit.owner) || false} currentUser={user?.username || ''} currentUserProfile={user} isAdmin={user?.isAdmin || false} users={allUsers} allExhibits={exhibits} highlightCommentId={highlightCommentId} />
             )}
 
             {view === 'COLLECTION_DETAIL' && selectedCollection && (
@@ -1019,8 +1055,8 @@ export default function App() {
                         currentUser={user?.username || ''}
                         onEdit={() => navigateTo('CREATE_COLLECTION', { initialData: selectedCollection })}
                         onDelete={async (id) => { await db.deleteCollection(id); handleBack(); }}
-                        onLike={handleReaction}
-                        onLikeCollection={() => handleLikeCollection(selectedCollection.id)}
+                        onLike={(id) => requireAuth(() => handleReaction(id))}
+                        onLikeCollection={() => requireAuth(() => handleLikeCollection(selectedCollection.id))}
                         isCollectionLiked={selectedCollection.likedBy?.includes(user?.username || '') ?? false}
                         onShareCollection={() => handleShareCollection(selectedCollection)}
                     />
@@ -1213,6 +1249,34 @@ export default function App() {
                  />
             )}
         </div>
+
+        {/* Auth prompt modal for unauthenticated interaction attempts */}
+        {showAuthPrompt && (
+            <div
+                className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
+                onClick={() => setShowAuthPrompt(false)}
+            >
+                <div
+                    className={`w-full max-w-xs rounded-2xl p-6 flex flex-col gap-4 shadow-2xl border ${theme === 'winamp' ? 'bg-[#292929] border-[#505050] text-gray-200' : theme === 'xp' ? 'bg-xp-bg border-xp-navy text-xp-navy' : 'bg-dark-surface border-white/10 text-white'}`}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <h3 className="font-pixel text-sm font-bold tracking-widest text-center">ВХОД ТРЕБУЕТСЯ</h3>
+                    <p className="text-xs opacity-60 text-center leading-relaxed">Чтобы взаимодействовать с контентом, необходимо войти в аккаунт</p>
+                    <button
+                        onClick={() => { setShowAuthPrompt(false); setView('AUTH'); }}
+                        className={`w-full py-3 rounded-xl font-pixel text-xs font-bold tracking-wider transition-all ${theme === 'winamp' ? 'bg-[#00ff00] text-black hover:bg-[#00cc00]' : theme === 'xp' ? 'bg-xp-navy text-white hover:opacity-80' : 'bg-green-500 text-black hover:bg-green-400'}`}
+                    >
+                        ВОЙТИ
+                    </button>
+                    <button
+                        onClick={() => setShowAuthPrompt(false)}
+                        className="w-full py-2 rounded-xl font-pixel text-xs opacity-50 hover:opacity-80 transition-opacity"
+                    >
+                        ОТМЕНА
+                    </button>
+                </div>
+            </div>
+        )}
     </div>
     </ThemeContext.Provider>
   );
