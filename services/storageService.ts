@@ -708,22 +708,33 @@ export const incrementShares = async (id: string) => {
     apiCall(`/exhibits/${id}/shares`, 'POST', { username }).catch(() => {});
 };
 
+const purgeExhibitFromCache = async (id: string) => {
+    hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
+    notifyListeners();
+    const db = await getDB();
+    await db.delete('exhibits', id);
+};
+
 export const deleteExhibit = async (id: string) => {
     const username = await getActiveUsername();
     const qs = username ? `?username=${encodeURIComponent(username)}` : '';
     try {
         const result = await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
         if (result && result.success) {
-            hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
-            notifyListeners();
-            const db = await getDB();
-            await db.delete('exhibits', id);
+            await purgeExhibitFromCache(id);
         } else {
             throw new Error(result?.error || 'Нет прав для удаления');
         }
     } catch (e: any) {
-        // Parse diagnostic info from server error if available
         const msg: string = e?.message || '';
+
+        // 404 — artifact gone from server, just clean up local cache silently
+        if (msg.includes('404')) {
+            await purgeExhibitFromCache(id);
+            return;
+        }
+
+        // Parse diagnostic info from server 403 error
         const jsonMatch = msg.match(/\{.*\}/);
         if (jsonMatch) {
             try {
