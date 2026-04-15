@@ -411,7 +411,7 @@ const deleteGeneric = async (id: string) => {
 
 const loadCriticalFeedData = async () => {
     try {
-        const limit = 50;
+        const limit = 200;
         const data = await apiCall(`/feed?limit=${limit}`);
         if (!Array.isArray(data)) return;
         
@@ -477,7 +477,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     };
 
     Promise.allSettled([
-        fetchAndApply('/feed?limit=50', 'exhibits', undefined, 'exhibits'),
+        fetchAndApply('/feed?limit=200', 'exhibits', undefined, 'exhibits'),
         fetchAndApply('/users', 'users', undefined, 'users'),
         fetchAndApply('/collections', 'collections', undefined, 'collections'),
         fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
@@ -664,14 +664,32 @@ export const incrementShares = async (id: string) => {
 export const deleteExhibit = async (id: string) => {
     const username = await getActiveUsername();
     const qs = username ? `?username=${encodeURIComponent(username)}` : '';
-    const result = await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
-    if (result && result.success) {
-        hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
-        notifyListeners();
-        const db = await getDB();
-        await db.delete('exhibits', id);
-    } else {
-        throw new Error(result?.error || 'Нет прав для удаления');
+    try {
+        const result = await apiCall(`/exhibits/${id}${qs}`, 'DELETE');
+        if (result && result.success) {
+            hotCache.exhibits = hotCache.exhibits.filter(e => e.id !== id);
+            notifyListeners();
+            const db = await getDB();
+            await db.delete('exhibits', id);
+        } else {
+            throw new Error(result?.error || 'Нет прав для удаления');
+        }
+    } catch (e: any) {
+        // Parse diagnostic info from server error if available
+        const msg: string = e?.message || '';
+        const jsonMatch = msg.match(/\{.*\}/);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.storedOwner && parsed.requestedBy && parsed.storedOwner !== parsed.requestedBy) {
+                    throw new Error(`Артефакт принадлежит «${parsed.storedOwner}», вы вошли как «${parsed.requestedBy}»`);
+                }
+                if (parsed.error) throw new Error(parsed.error);
+            } catch (parseErr: any) {
+                if (parseErr.message !== msg) throw parseErr;
+            }
+        }
+        throw e;
     }
 };
 

@@ -1269,9 +1269,12 @@ api.get('/health', async (req, res) => {
 // --- FEED & USERS ---
 api.get('/feed', async (req, res) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+        const limit = Math.min(parseInt(req.query.limit) || 200, 200);
         const offset = parseInt(req.query.offset) || 0;
-        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
+        const result = await query(
+            `SELECT * FROM exhibits WHERE (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY updated_at DESC LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
         res.json(result.rows.map(mapRow));
     } catch (e) {
         res.status(500).json({ error: 'Internal Server Error' });
@@ -1409,8 +1412,14 @@ api.delete('/exhibits/:id', async (req, res) => {
             const check = await query(`SELECT id FROM exhibits WHERE id = $1`, [req.params.id]);
             if (check.rows.length === 0) return res.status(404).json({ error: "Артефакт не найден" });
         } else {
-            const check = await query(`SELECT id FROM exhibits WHERE id = $1 AND data->>'owner' = $2`, [req.params.id, username]);
-            if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
+            // Fetch the exhibit to check ownership
+            const exhibitResult = await query(`SELECT id, data->>'owner' as owner FROM exhibits WHERE id = $1`, [req.params.id]);
+            if (exhibitResult.rows.length === 0) return res.status(404).json({ error: "Артефакт не найден" });
+            const storedOwner = exhibitResult.rows[0].owner;
+            // Allow deletion if owner matches OR if stored owner is empty/null (orphaned exhibit)
+            if (storedOwner && storedOwner !== username) {
+                return res.status(403).json({ error: "Нет прав для удаления", storedOwner, requestedBy: username });
+            }
         }
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
         res.json({ success: true });
