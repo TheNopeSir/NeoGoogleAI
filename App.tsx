@@ -1259,7 +1259,7 @@ export default function App() {
                     editPassword={editPassword} 
                     setEditPassword={setEditPassword} 
                     onSaveProfile={async () => { if (!user) return; const updated = { ...user, tagline: editTagline, bio: editBio, status: editStatus, telegram: editTelegram }; if (editPassword) updated.password = editPassword; await db.updateUserProfile(updated); setIsEditingProfile(false); setEditPassword(''); }} 
-                    onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} 
+                    onProfileImageUpload={async (e) => { if (e.target.files?.[0] && user) { const file = e.target.files[0]; if (!file.type.startsWith('image/')) { alert('Допустимы только изображения'); e.target.value = ''; return; } if (file.size > 5 * 1024 * 1024) { alert('Размер аватарки не должен превышать 5 МБ'); e.target.value = ''; return; } const b64 = await db.fileToBase64(file, 800, 0.85); await db.updateUserProfile({ ...user, avatarUrl: b64 }); } }} 
                     onProfileCoverUpload={async (e) => { if (e.target.files?.[0] && user) { const b64 = await db.fileToBase64(e.target.files[0]); await db.updateUserProfile({ ...user, coverUrl: b64 }); } }} 
                     guestbookInput={guestbookInput} 
                     setGuestbookInput={setGuestbookInput} 

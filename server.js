@@ -488,6 +488,7 @@ api.post('/auth/register', registerLimiter, async (req, res) => {
             following: [],
             followers: [],
             achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
+            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&bold=true`,
             settings: { theme: 'dark' },
             isAdmin: shouldBeAdmin(username, email)
         };
@@ -635,7 +636,7 @@ api.post('/auth/telegram', async (req, res) => {
             following: [],
             followers: [],
             achievements: [{ id: 'HELLO_WORLD', current: 1, target: 1, unlocked: true }],
-            avatarUrl: tgUser.photo_url || null,
+            avatarUrl: tgUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&bold=true`,
             settings: { theme: 'dark' }
         };
 
@@ -691,7 +692,7 @@ const findOrCreateOAuthUser = async (provider, providerId, email, name, avatarUr
         email: email || `${provider}_${providerId}@placeholder.com`,
         tagline: `Вошёл через ${provider}`,
         bio: '',
-        avatarUrl: avatarUrl || '',
+        avatarUrl: avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || username)}&background=random&color=fff&bold=true`,
         joinedDate: new Date().toLocaleDateString('ru-RU'),
         following: [],
         followers: [],
