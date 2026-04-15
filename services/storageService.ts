@@ -414,21 +414,42 @@ const loadCriticalFeedData = async () => {
         const limit = 200;
         const data = await apiCall(`/feed?limit=${limit}`);
         if (!Array.isArray(data)) return;
-        
-        // Use mergeUnique to prevent duplicates
+
+        const serverIds = new Set(data.map((e: any) => e.id));
+        const activeUsername = await getActiveUsername();
+
+        // Purge from cache items that are no longer on the server:
+        // keep local drafts, keep own items (reconciled separately), keep items confirmed by server
+        hotCache.exhibits = hotCache.exhibits.filter(e =>
+            e.isDraft ||
+            (activeUsername && e.owner === activeUsername) ||
+            serverIds.has(e.id)
+        );
+
+        // Merge server data (server version wins for non-drafts)
         const merged = mergeUnique(hotCache.exhibits, data);
-        
-        // Sort by timestamp desc
         merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        
+
         hotCache.exhibits = merged;
         notifyListeners();
-        
-        // Update IDB in background
-        getDB().then(db => {
+
+        // Update IDB — also remove deleted items from IndexedDB
+        getDB().then(async db => {
             const tx = db.transaction('exhibits', 'readwrite');
             data.forEach((item: any) => tx.store.put(item));
-            return tx.done;
+            await tx.done;
+            // Clean up IDB: remove items not in server feed and not owned by active user
+            const allLocal = await db.getAll('exhibits');
+            const toDelete = allLocal.filter((e: any) =>
+                !e.isDraft &&
+                !(activeUsername && e.owner === activeUsername) &&
+                !serverIds.has(e.id)
+            );
+            if (toDelete.length > 0) {
+                const delTx = db.transaction('exhibits', 'readwrite');
+                toDelete.forEach((e: any) => delTx.store.delete(e.id));
+                await delTx.done;
+            }
         });
     } catch (e) { console.warn("Feed load failed", e); }
 };
@@ -485,6 +506,32 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     ]);
 
     if (activeUserUsername) {
+        // Reconcile user's own published exhibits with server — removes locally-cached
+        // items that were deleted from server (e.g. deleted from another device/by admin)
+        apiCall(`/exhibits?owner=${encodeURIComponent(activeUserUsername)}&limit=200`).then(async (serverOwned: any) => {
+            if (!Array.isArray(serverOwned)) return;
+            const serverOwnedIds = new Set(serverOwned.map((e: any) => e.id));
+            hotCache.exhibits = hotCache.exhibits.filter(e =>
+                e.owner !== activeUserUsername ||  // keep other users' items untouched
+                e.isDraft ||                       // always keep own drafts
+                serverOwnedIds.has(e.id)           // keep own items confirmed on server
+            );
+            // Merge fresh server data for own items
+            hotCache.exhibits = mergeUnique(hotCache.exhibits, serverOwned);
+            notifyListeners();
+            // Sync IDB
+            const db = await getDB();
+            const allLocal = await db.getAll('exhibits');
+            const orphaned = allLocal.filter((e: any) =>
+                e.owner === activeUserUsername && !e.isDraft && !serverOwnedIds.has(e.id)
+            );
+            if (orphaned.length > 0) {
+                const tx = db.transaction('exhibits', 'readwrite');
+                orphaned.forEach((e: any) => tx.store.delete(e.id));
+                await tx.done;
+            }
+        }).catch(() => {});
+
         apiCall(`/sync?username=${activeUserUsername}`).then(async (syncData) => {
             if (!syncData) return;
             if (syncData.tradeRequests?.length) {

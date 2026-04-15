@@ -51,16 +51,21 @@ const MyCollection: React.FC<MyCollectionProps> = ({
 
     const isWinamp = theme === 'winamp';
 
-    const renderTabButton = (tab: typeof activeTab, label: string) => (
-        <button 
+    const renderTabButton = (tab: typeof activeTab, label: string, badge?: number) => (
+        <button
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1 text-[10px] font-bold font-pixel uppercase transition-all ${
-                activeTab === tab 
-                ? (isWinamp ? 'text-wa-gold border-b-2 border-wa-gold' : 'text-green-500 border-b-2 border-green-500') 
+            className={`relative px-3 py-1 text-[10px] font-bold font-pixel uppercase transition-all ${
+                activeTab === tab
+                ? (isWinamp ? 'text-wa-gold border-b-2 border-wa-gold' : 'text-green-500 border-b-2 border-green-500')
                 : 'opacity-50 hover:opacity-100 border-b-2 border-transparent'
             }`}
         >
             {isWinamp ? `[ ${label} ]` : label}
+            {badge != null && badge > 0 && (
+                <span className="absolute -top-1 -right-1 bg-yellow-500 text-black text-[8px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    {badge > 9 ? '9+' : badge}
+                </span>
+            )}
         </button>
     );
 
@@ -87,7 +92,7 @@ const MyCollection: React.FC<MyCollectionProps> = ({
                 {renderTabButton('COLLECTIONS', 'АЛЬБОМЫ')}
                 {renderTabButton('WISHLIST', 'ВИШЛИСТ')}
                 {renderTabButton('FAVORITES', 'ИЗБРАННОЕ')}
-                {renderTabButton('DRAFTS', 'ЧЕРНОВИКИ')}
+                {renderTabButton('DRAFTS', 'ЧЕРНОВИКИ', drafts.length)}
             </div>
 
             {/* DRAFTS SECTION */}
@@ -139,6 +144,18 @@ const MyCollection: React.FC<MyCollectionProps> = ({
             {/* ARTIFACTS SECTION */}
             {activeTab === 'MY_ITEMS' && (
                 <div className="animate-in slide-in-from-right-4">
+                    {drafts.length > 0 && (
+                        <button
+                            onClick={() => setActiveTab('DRAFTS')}
+                            className="w-full mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 text-[10px] font-pixel font-bold hover:bg-yellow-500/20 transition-all text-left"
+                        >
+                            <XI icon={Archive} size={14} />
+                            {drafts.length === 1
+                                ? `У вас 1 неопубликованный черновик`
+                                : `У вас ${drafts.length} неопубликованных черновика(-ов)`}
+                            <span className="ml-auto opacity-60">→ ЧЕРНОВИКИ</span>
+                        </button>
+                    )}
                     <h3 className="font-pixel text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
                         <XI icon={Package} size={16} /> Ваши артефакты ({published.length})
                     </h3>

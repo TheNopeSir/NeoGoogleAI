@@ -1422,6 +1422,7 @@ api.delete('/exhibits/:id', async (req, res) => {
             }
         }
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
+        console.log(`[EXHIBIT:DELETE] id=${req.params.id} by=${username} at=${new Date().toISOString()}`);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Internal Server Error' });
@@ -1605,6 +1606,9 @@ api.post('/exhibits', contentCreateLimiter, spamFilter, async (req, res) => {
         }
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
+        const action = isNewExhibit ? 'CREATE' : 'UPDATE';
+        const draftFlag = processedData.isDraft ? ' [DRAFT]' : '';
+        console.log(`[EXHIBIT:${action}]${draftFlag} id=${id} owner=${processedData.owner} title="${(processedData.title || '').slice(0, 60)}" at=${new Date().toISOString()}`);
         res.json({ success: true, imageUrls: processedData.imageUrls });
 
         // Fire-and-forget: achievement checks
