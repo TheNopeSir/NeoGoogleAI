@@ -508,7 +508,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
     if (activeUserUsername) {
         // Reconcile user's own published exhibits with server — removes locally-cached
         // items that were deleted from server (e.g. deleted from another device/by admin)
-        apiCall(`/exhibits?owner=${encodeURIComponent(activeUserUsername)}&limit=200`).then(async (serverOwned: any) => {
+        apiCall(`/exhibits?owner=${encodeURIComponent(activeUserUsername)}&limit=500`).then(async (serverOwned: any) => {
             if (!Array.isArray(serverOwned)) return;
             const serverOwnedIds = new Set(serverOwned.map((e: any) => e.id));
             hotCache.exhibits = hotCache.exhibits.filter(e =>
@@ -949,12 +949,38 @@ export const fetchCollectionById = async (id: string) => {
     } catch { return null; }
 };
 
-export const fileToBase64 = (file: File): Promise<string> => {
+export const fileToBase64 = (file: File, maxWidth = 1600, quality = 0.82): Promise<string> => {
     return new Promise((resolve, reject) => {
+        // Non-image files (e.g. video): fall back to plain base64
+        if (!file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            return;
+        }
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                // Resize if wider than maxWidth, keep aspect ratio
+                const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+                const w = Math.round(img.width * scale);
+                const h = Math.round(img.height * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d')!;
+                ctx.drawImage(img, 0, 0, w, h);
+                // Always output as JPEG for photos; preserve PNG only for small files
+                const outputType = file.type === 'image/png' && file.size < 300_000 ? 'image/png' : 'image/jpeg';
+                resolve(canvas.toDataURL(outputType, quality));
+            };
+            img.src = reader.result as string;
+        };
     });
 };
 

@@ -112,7 +112,7 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // --- SECURITY HEADERS ---
 app.use((req, res, next) => {
@@ -1352,9 +1352,19 @@ api.post('/users', async (req, res) => {
 // Exhibits GET/DELETE (POST is separate)
 api.get('/exhibits', async (req, res) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+        // owner-scoped requests get higher limit since we need the full user's catalog
+        const maxLimit = req.query.owner ? 500 : 200;
+        const limit = Math.min(parseInt(req.query.limit) || 100, maxLimit);
         const offset = parseInt(req.query.offset) || 0;
-        const result = await query('SELECT * FROM exhibits ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
+        let q = 'SELECT * FROM exhibits';
+        const params = [];
+        if (req.query.owner) {
+            q += ` WHERE data->>'owner' = $${params.length + 1}`;
+            params.push(req.query.owner);
+        }
+        q += ` ORDER BY updated_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
+        const result = await query(q, params);
         res.json(result.rows.map(mapRow));
     } catch (e) {
         res.status(500).json({ error: 'Internal Server Error' });
