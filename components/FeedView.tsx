@@ -18,7 +18,7 @@ import XI from './XI';
 
 interface FeedViewProps {
   theme: 'dark' | 'light' | 'xp' | 'winamp';
-  user: UserProfile;
+  user: UserProfile | null;
   stories: { username: string; avatar: string; latestItem?: Exhibit }[];
   exhibits: Exhibit[];
   wishlist: WishlistItem[];
