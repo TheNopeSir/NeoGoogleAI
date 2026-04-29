@@ -325,6 +325,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         {/* Image section */}
         <div
           className="relative aspect-[4/3] overflow-hidden"
+          style={!(isXP || isLight) ? { background: 'repeating-linear-gradient(45deg,#1e1e1e,#1e1e1e 3px,#161616 3px,#161616 12px)' } : { background: '#e5e7eb' }}
           onMouseEnter={() => !isWanted && onAddToCollection && setShowActionOverlay(true)}
           onMouseLeave={() => { if (actionMode === 'NONE') setShowActionOverlay(false); }}
         >
@@ -385,7 +386,15 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
 
           {/* Trade badge — bottom left */}
           {!isWanted && tradeStatus !== 'NONE' && (
-            <div className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg flex items-center gap-1 text-[9px] font-bold tracking-wide shadow-lg uppercase border bg-zinc-900/90 backdrop-blur-md ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`}>
+            <div className={`absolute bottom-2 left-2 px-[6px] py-[2px] rounded flex items-center gap-[3px] text-[9px] font-semibold tracking-wide shadow-lg uppercase ${
+              isXP || isLight
+                ? `border bg-zinc-900/90 ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`
+                : tradeStatus === 'FOR_TRADE'
+                  ? 'bg-[rgba(13,40,13,0.9)] text-[#4cff5a]'
+                  : tradeStatus === 'FOR_SALE'
+                    ? 'bg-[rgba(0,0,0,0.75)] text-emerald-400'
+                    : `border bg-zinc-900/90 ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`
+            }`}>
               {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })}
               {tradeConfig.badge}
             </div>
@@ -393,8 +402,8 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
 
           {/* Photo count — bottom right */}
           {photoCount > 1 && (
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-pixel bg-black/60 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-md z-20">
-              <XI icon={Camera} size={9} /> {photoCount}
+            <div className={`absolute bottom-[6px] right-[6px] flex items-center gap-[3px] text-[10px] font-medium px-[5px] py-[2px] rounded z-20 ${isXP || isLight ? 'bg-black/60 text-white' : 'bg-[rgba(0,0,0,0.65)] text-[#aaaaaa]'}`}>
+              <XI icon={Camera} size={10} /> {photoCount}
             </div>
           )}
 
@@ -491,9 +500,9 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         </div>
 
         {/* Info panel */}
-        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isXP || isLight ? 'bg-white' : 'bg-[#141414]'}`}>
+        <div className={`flex flex-col gap-2 px-2 py-[7px] ${isXP || isLight ? 'bg-white' : 'bg-[#141414]'}`}>
           {/* Title */}
-          <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isXP || isLight ? 'text-gray-900' : 'text-white'}`}>
+          <h3 className={`font-medium font-pixel text-[13px] leading-tight line-clamp-2 ${isXP || isLight ? 'text-gray-900' : 'text-[#e0e0e0]'}`}>
             {item.title}
           </h3>
 
@@ -530,7 +539,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
               className={`w-4 h-4 rounded-full border shrink-0 ${isXP || isLight ? 'border-gray-200' : 'border-white/20'}`}
               alt={item.owner}
             />
-            <span className={`text-[10px] transition-colors font-pixel truncate min-w-0 flex-1 ${isXP ? 'text-gray-500 group-hover/author:!text-xp-navy' : isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-white/60 group-hover/author:text-white'}`}>
+            <span className={`text-[10px] transition-colors font-pixel truncate min-w-0 flex-1 ${isXP ? 'text-gray-500 group-hover/author:!text-xp-navy' : isLight ? 'text-gray-500 group-hover/author:!text-gray-900' : 'text-[#666] group-hover/author:text-[#aaaaaa]'}`}>
               @{item.owner}
             </span>
           </div>
@@ -538,10 +547,10 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
           {/* Stats row */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
+              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-[#666]'}`}>
                 <MatrixIcon icon={Eye} size={11} theme={theme} glow={0} /> <span>{uniqueViews}</span>
               </div>
-              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-white/40'}`}>
+              <div className={`flex items-center gap-1 text-[10px] ${isXP || isLight ? 'text-gray-400' : 'text-[#666]'}`}>
                 <MatrixIcon icon={MessageSquare} size={11} color="#60a5fa" theme={theme} glow={0} /> <span>{commentCount}</span>
               </div>
             </div>

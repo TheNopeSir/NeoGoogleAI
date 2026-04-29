@@ -353,13 +353,13 @@ const FeedView: React.FC<FeedViewProps> = ({
         {/* 1. MOBILE HEADER */}
         <header className="md:hidden flex justify-between items-center px-4 pt-4 bg-transparent">
             <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded flex items-center justify-center font-bold text-black font-pixel text-xs ${isWinamp ? 'bg-[#292929] text-[#00ff00] border border-[#505050]' : 'bg-green-500'}`}>NA</div>
+                <div className={`w-7 h-7 rounded-[7px] flex items-center justify-center font-bold text-black font-pixel text-[13px] ${isWinamp ? 'bg-[#292929] text-[#00ff00] border border-[#505050]' : isXp ? 'bg-xp-blue text-white' : isLight ? 'bg-black text-white' : 'bg-[#4cff5a] text-black'}`}>N</div>
                 <h1 className={`text-lg font-pixel font-bold tracking-tighter ${isWinamp ? 'text-[#00ff00]' : 'text-current'}`}>NeoArchive</h1>
             </div>
         </header>
 
         {/* 3. CONTROLS AREA */}
-        <div className={`z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050]' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8' : 'bg-zinc-950/90 border-white/[0.06]'}`}>
+        <div className={`z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050]' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8' : 'bg-[#0a0a0a] border-[#1e1e1e]'}`}>
             <div className="max-w-6xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
@@ -408,8 +408,8 @@ const FeedView: React.FC<FeedViewProps> = ({
                                     onClick={() => setSortMode(key)}
                                     className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all ${
                                         sortMode === key
-                                            ? (isWinamp ? 'bg-[#00ff00] text-black' : 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40')
-                                            : 'opacity-30 hover:opacity-60'
+                                            ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-[rgba(76,255,90,0.08)] text-[#4cff5a]')
+                                            : (isLight ? 'text-black/30 hover:text-black/60' : isXp ? 'text-xp-navy/30 hover:text-xp-navy/60' : 'text-[#555] hover:text-[#888]')
                                     }`}
                                 >
                                     {label}
@@ -525,7 +525,7 @@ const FeedView: React.FC<FeedViewProps> = ({
 
                     {/* Main feed grid */}
                     {exhibits.length === 0 ? (
-                        <div className={`grid gap-4 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
+                        <div className={`grid gap-0.5 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
                             {[1,2,3,4,5,6].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
                         </div>
                     ) : processedExhibits.length === 0 ? (
@@ -535,7 +535,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                        <div className={`grid gap-0.5 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleExhibits.map((item) => {
                                 const isLiked = item.likedBy?.includes(user?.username || '') || false;
                                 try {
@@ -602,7 +602,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                     {processedCollections.length === 0 ? (
                         <div className="text-center py-20 opacity-30 font-mono text-xs border-2 border-dashed border-white/10 rounded-3xl">КОЛЛЕКЦИЙ НЕТ</div>
                     ) : (
-                        <div className={`grid gap-4 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+                        <div className={`grid gap-0.5 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                             {visibleCollections.map(col => (
                                 <CollectionCard key={col.id} col={col} theme={theme} onClick={onCollectionClick} onShare={() => {}} />
                             ))}

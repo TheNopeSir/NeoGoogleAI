@@ -859,7 +859,7 @@ export default function App() {
           case 'xp': return 'bg-xp-bg border-t-2 border-xp-navy text-black shadow-[0_-2px_5px_rgba(0,0,0,0.1)]';
           case 'winamp': return 'bg-wa-base border-t border-[#505050] text-[#00ff00]';
           case 'light': return 'bg-white/90 backdrop-blur-md border-t border-gray-200 text-gray-900';
-          default: return 'bg-black/90 backdrop-blur-md border-t border-white/10 text-white';
+          default: return 'bg-[#111] border-t border-[#1e1e1e] text-white';
       }
   };
 
@@ -986,12 +986,12 @@ export default function App() {
 
                 {/* MOBILE NAV */}
                 <nav className={`md:hidden fixed bottom-0 left-0 w-full z-50 pb-safe ${getMobileNavClasses()}`}>
-                    <div className="flex justify-around items-center h-16">
-                        <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 ${view === 'FEED' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('FEED')}</button>
-                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'COMMUNITY_HUB' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
-                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex flex-col items-center gap-1 p-2 ${view === 'CREATE_HUB' ? 'opacity-100 scale-110' : 'opacity-50'}`}><XI icon={PlusCircle} size={28}/></button>
-                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'ACTIVITY' ? 'opacity-100' : 'opacity-50'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
-                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 relative ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'opacity-100' : 'opacity-50'}`}><XI icon={UserCheck} size={24}/>{tradeRequests.some(r => r.shipment && r.recipient === user.username && (r.shipment.status === 'IN_TRANSIT' || r.shipment.status === 'DELIVERED') && r.status !== 'COMPLETED') && <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}</button>
+                    <div className="flex justify-around items-center h-[58px]">
+                        <button onClick={() => navigateTo('FEED')} className={`flex flex-col items-center gap-1 p-2 transition-colors ${view === 'FEED' ? 'text-[#4cff5a]' : 'text-[#555] hover:text-[#888]'}`}>{getNavIcon('FEED')}</button>
+                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex flex-col items-center gap-1 p-2 transition-colors ${view === 'COMMUNITY_HUB' ? 'text-[#4cff5a]' : 'text-[#555] hover:text-[#888]'}`}>{getNavIcon('COMMUNITY_HUB')}</button>
+                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center justify-center w-11 h-11 rounded-full -mt-5 border-[3px] border-[#111] transition-colors ${view === 'CREATE_HUB' ? 'bg-white text-black' : 'bg-[#4cff5a] text-black'}`}><XI icon={Plus} size={22}/></button>
+                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex flex-col items-center gap-1 p-2 relative transition-colors ${view === 'ACTIVITY' ? 'text-[#4cff5a]' : 'text-[#555] hover:text-[#888]'}`}>{getNavIcon('ACTIVITY')}{notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}</button>
+                        <button onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className={`flex flex-col items-center gap-1 p-2 relative transition-colors ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? 'text-[#4cff5a]' : 'text-[#555] hover:text-[#888]'}`}><XI icon={UserCheck} size={24}/>{tradeRequests.some(r => r.shipment && r.recipient === user.username && (r.shipment.status === 'IN_TRANSIT' || r.shipment.status === 'DELIVERED') && r.status !== 'COMPLETED') && <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}</button>
                     </div>
                 </nav>
             </>
