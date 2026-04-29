@@ -257,6 +257,11 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       return getSimilarArtifacts(exhibit, othersExhibits);
   }, [exhibit, allExhibits, currentUser]);
 
+  const ownerArtifactCount = useMemo(() => {
+      if (!allExhibits) return 0;
+      return allExhibits.filter(e => e.owner === exhibit.owner).length;
+  }, [allExhibits, exhibit.owner]);
+
   const linkedArtifacts = useMemo(() => {
       if (!exhibit.relatedIds || !allExhibits) return [];
       return allExhibits.filter(e => exhibit.relatedIds?.includes(e.id));
@@ -568,602 +573,625 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
       ? getImageUrl(exhibit.imageUrls[0], 'large')
       : undefined;
 
+  // Reusable comments section
+  const commentsSection = (
+    <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-white border-gray-300 shadow-inner' : 'bg-dark-surface border-white/5'}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-xp-navy' : 'text-white'}`}>
+          <XI icon={MessageSquare} size={14} className={isWinamp ? 'text-[#00ff00]' : isXp ? 'text-xp-navy' : 'text-green-500'} />
+          ОБСУЖДЕНИЕ
+          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-mono text-[10px] font-bold">{comments.length}</span>
+        </h3>
+        {comments.length > 0 && (
+          <div className="flex gap-1">
+            {(['newest', 'oldest', 'popular'] as const).map(sort => {
+              const labels = { newest: 'НОВЫЕ', oldest: 'СТАРЫЕ', popular: 'ТОП' };
+              return (
+                <button key={sort} onClick={() => setCommentSort(sort)} className={`px-2 py-0.5 text-[8px] font-pixel uppercase rounded transition-all ${commentSort === sort ? (isXp ? 'bg-xp-navy/10 text-xp-navy border border-xp-navy/40' : 'bg-green-500/20 text-green-400 border border-green-500/40') : (isXp ? 'text-gray-500 hover:text-gray-700' : 'opacity-30 hover:opacity-60')}`}>
+                  {labels[sort]}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+        {comments.length === 0
+          ? <div className={`text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed rounded-xl ${isXp ? 'border-gray-400 text-gray-600' : 'border-white/10'}`}>ТИШИНА В ЭФИРЕ</div>
+          : commentTree.roots.map(rootComment => renderCommentNode(rootComment))
+        }
+      </div>
+      <div className="flex flex-col gap-2 relative">
+        {mentionQuery !== null && filteredUsers.length > 0 && (
+          <div className="absolute bottom-full mb-2 left-0 w-64 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
+            {filteredUsers.map(u => (
+              <button key={u.username} onClick={() => selectMention(u.username)} className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors">
+                <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
+                <span className="font-bold text-[10px]">@{u.username}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {replyTo && (
+          <div className={`flex items-center justify-between text-[10px] font-mono p-2 rounded-lg border ${isXp ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-white/5 border-white/5'}`}>
+            <span className="opacity-70">Ответ <span className="text-green-500 font-bold">@{replyTo.author}</span></span>
+            <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><XI icon={X} size={12}/></button>
+          </div>
+        )}
+        <div className="flex gap-2 relative">
+          {showEmojiPicker && (
+            <EmojiPicker theme={theme} onSelect={emoji => setCommentText(prev => prev + emoji)} onClose={() => setShowEmojiPicker(false)} />
+          )}
+          <input
+            id="comment-input"
+            type="text"
+            value={commentText}
+            onChange={handleCommentChange}
+            placeholder={replyTo ? "Ваш ответ..." : "Написать комментарий..."}
+            className={`flex-1 border px-3 py-2.5 font-mono text-xs focus:outline-none transition-colors rounded-lg ${isWinamp ? 'bg-black/40 border-white/10 text-[#00ff00] placeholder-gray-600 focus:border-green-500' : isXp ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-xp-navy' : 'bg-black/40 border-white/10 focus:border-green-500'}`}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && commentText.trim()) {
+                const err = validateMessageText(commentText);
+                if (err) { alert(err); return; }
+                onPostComment(exhibit.id, commentText, replyTo?.id);
+                setCommentText(''); setReplyTo(null); setMentionQuery(null);
+              }
+            }}
+          />
+          <button onClick={() => setShowEmojiPicker(v => !v)} className={`p-2.5 rounded-lg border transition-all ${showEmojiPicker ? (isXp ? 'bg-xp-navy/10 border-xp-navy/40 text-xp-navy' : 'bg-green-500/20 border-green-500/40 text-green-400') : (isXp ? 'border-gray-300 text-gray-500 hover:text-gray-700' : 'border-white/10 text-gray-500 hover:text-white')}`} title="Эмодзи">
+            <SmilePlus size={16} />
+          </button>
+          <button
+            onClick={() => {
+              if (commentText.trim()) {
+                const err = validateMessageText(commentText);
+                if (err) { alert(err); return; }
+                onPostComment(exhibit.id, commentText, replyTo?.id);
+                setCommentText(''); setReplyTo(null); setMentionQuery(null);
+              }
+            }}
+            className="bg-green-500 text-black p-2.5 rounded-lg hover:scale-105 active:scale-95 transition-all"
+          >
+            <XI icon={Send} size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Reusable specs grid
+  const specsGrid = (cols: string) => nonEmptySpecs.length > 0 && (
+    <div className={`grid ${cols} gap-2 p-3 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-gray-50 border-gray-200' : 'bg-black/20 border-white/5'}`}>
+      {nonEmptySpecs.map(([key, val]) => {
+        const parenIdx = key.indexOf('(');
+        const mainLabel = parenIdx > -1 ? key.slice(0, parenIdx).trim() : key;
+        const subLabel  = parenIdx > -1 ? key.slice(parenIdx) : null;
+        return (
+          <div key={key} className={`px-3 py-2.5 border rounded-xl flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+            <div className={`text-[8px] uppercase tracking-wider leading-tight ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}>
+              {mainLabel}{subLabel && <span className="opacity-60 normal-case tracking-normal"> {subLabel}</span>}
+            </div>
+            <div className={`font-bold font-mono text-xs break-words leading-tight mt-1 ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{val}</div>
+          </div>
+        );
+      })}
+      {exhibit.condition && (
+        <div className={`px-3 py-2.5 border rounded-xl flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+          <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
+          <div className={`font-bold font-mono text-xs text-green-400 uppercase leading-tight break-words ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Linked artifacts row
+  const linkedSection = linkedArtifacts.length > 0 && (
+    <div className={`pt-4 border-t ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
+      <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-3 flex items-center gap-1"><XI icon={Link2} size={10}/> СВЯЗАННЫЕ ПРЕДМЕТЫ</h3>
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {linkedArtifacts.map(link => (
+          <div key={link.id} onClick={() => onExhibitClick(link)} className="flex-shrink-0 w-20 group cursor-pointer">
+            <div className="aspect-square rounded-lg overflow-hidden border border-white/10 relative bg-black/20">
+              <img src={getImageUrl(link.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+            </div>
+            <div className="mt-1 text-[8px] font-bold truncate opacity-70 group-hover:opacity-100">{link.title}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Similar artifacts grid
+  const similarSection = similarArtifacts.length > 0 && (
+    <div className="mt-10 mb-4">
+      <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><XI icon={Sparkles} size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {similarArtifacts.map(sim => (
+          <ExhibitCard key={sim.id} item={sim} theme={theme} onClick={() => onExhibitClick(sim)} currentUsername={currentUser} onReact={() => {}} onAuthorClick={onAuthorClick} />
+        ))}
+      </div>
+    </div>
+  );
+
+  // Share dropdown (reused in both layouts)
+  const shareDropdown = showShareMenu && (
+    <div className={`absolute right-0 top-8 w-44 border rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2 ${isXp ? 'bg-white border-gray-200' : 'bg-dark-surface border-white/10'}`}>
+      <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Send} size={12} className="text-blue-400"/> TELEGRAM</button>
+      <button onClick={() => handleShare('wa')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={MessageCircle} size={12} className="text-green-500"/> WHATSAPP</button>
+      <button onClick={() => handleShare('copy')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Share2} size={12}/> COPY LINK</button>
+    </div>
+  );
+
+  const canTrade = !isOwner && (tradeStatus === 'FOR_TRADE' || tradeStatus === 'FOR_SALE' || tradeStatus === 'NONE' || !tradeStatus);
+
   return (
-    <div className={`w-full min-h-full pb-20 animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+    <div className={`w-full min-h-full animate-in slide-in-from-right-8 fade-in duration-500 ${isWinamp ? 'font-mono text-gray-300' : theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
       <SEO
-          title={`${exhibit.title} | NeoArchive`}
-          description={exhibit.description || `Артефакт @${exhibit.owner} на NeoArchive`}
-          image={ogImage}
-          type="article"
+        title={`${exhibit.title} | NeoArchive`}
+        description={exhibit.description || `Артефакт @${exhibit.owner} на NeoArchive`}
+        image={ogImage}
+        type="article"
       />
 
       {showTradeModal && currentUserProfile && allExhibits && recipientProfile && (
-          <TradeOfferModal
-            targetItem={exhibit}
-            currentUser={currentUserProfile}
-            userInventory={allExhibits.filter(e => e.owner === currentUser)}
-            recipient={recipientProfile}
-            onClose={() => setShowTradeModal(false)}
-          />
+        <TradeOfferModal
+          targetItem={exhibit}
+          currentUser={currentUserProfile}
+          userInventory={allExhibits.filter(e => e.owner === currentUser)}
+          recipient={recipientProfile}
+          onClose={() => setShowTradeModal(false)}
+        />
       )}
 
       {/* LIKES MODAL */}
       {showLikesModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-              <div className={`w-full max-w-sm max-h-[80vh] flex flex-col rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050] text-[#00ff00]' : 'bg-dark-surface border-white/10 text-white'}`}>
-                  <div className="flex justify-between items-center p-4 border-b border-white/10">
-                      <h3 className="font-pixel text-xs font-bold uppercase">Оценили ({exhibit.likedBy?.length || 0})</h3>
-                      <button onClick={() => setShowLikesModal(false)} className="opacity-50 hover:opacity-100"><XI icon={X} size={18}/></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className={`w-full max-w-sm max-h-[80vh] flex flex-col rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050] text-[#00ff00]' : 'bg-dark-surface border-white/10 text-white'}`}>
+            <div className="flex justify-between items-center p-4 border-b border-white/10">
+              <h3 className="font-pixel text-xs font-bold uppercase">Оценили ({exhibit.likedBy?.length || 0})</h3>
+              <button onClick={() => setShowLikesModal(false)} className="opacity-50 hover:opacity-100"><XI icon={X} size={18}/></button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-2">
+              {exhibit.likedBy && exhibit.likedBy.length > 0 ? exhibit.likedBy.map(username => {
+                const userObj = users.find(u => u.username === username);
+                return (
+                  <div key={username} onClick={() => { setShowLikesModal(false); onAuthorClick(username); }} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer">
+                    <img src={userObj?.avatarUrl || getUserAvatar(username)} className="w-8 h-8 rounded-full border border-white/10" />
+                    <span className="font-mono text-sm font-bold">@{username}</span>
                   </div>
-                  <div className="overflow-y-auto p-4 space-y-2">
-                      {exhibit.likedBy && exhibit.likedBy.length > 0 ? (
-                          exhibit.likedBy.map(username => {
-                              const userObj = users.find(u => u.username === username);
-                              return (
-                                  <div 
-                                    key={username} 
-                                    onClick={() => { setShowLikesModal(false); onAuthorClick(username); }}
-                                    className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer"
-                                  >
-                                      <img src={userObj?.avatarUrl || getUserAvatar(username)} className="w-8 h-8 rounded-full border border-white/10" />
-                                      <span className="font-mono text-sm font-bold">@{username}</span>
-                                  </div>
-                              )
-                          })
-                      ) : (
-                          <div className="text-center opacity-50 font-mono text-xs py-4">Список пуст</div>
-                      )}
-                  </div>
-              </div>
+                );
+              }) : <div className="text-center opacity-50 font-mono text-xs py-4">Список пуст</div>}
+            </div>
           </div>
+        </div>
       )}
 
+      {/* FULLSCREEN OVERLAY */}
       {isFullscreen && (
-          <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
-              <div className="absolute top-4 left-4 z-50 flex gap-4">
-                  <button
-                    onClick={() => onLike(exhibit.id)}
-                    className={`p-3 bg-black/50 rounded-full transition-all ${isLiked ? 'text-red-500 hover:bg-red-500/20' : 'text-white hover:bg-white/20'}`}
-                    title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
-                  >
-                    <XI icon={Heart} size={24} fill={isLiked ? "currentColor" : "none"} />
-                  </button>
-                  <div className="flex items-center gap-2 px-4 py-3 bg-black/50 text-white rounded-full text-sm font-mono">
-                    <XI icon={Heart} size={16} className="text-red-500" />
-                    <span>{exhibit.likes}</span>
-                  </div>
-              </div>
-              <div className="absolute top-4 right-4 z-50 flex gap-4">
-                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomIn size={24}/></button>
-                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"><ZoomOut size={24}/></button>
-                  <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-500 transition-colors" title="Сбросить"><XI icon={Home} size={24}/></button>
-                  <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors"><XI icon={X} size={24}/></button>
-              </div>
-
-              {zoomLevel > 1 && (
-                  <div className="absolute top-4 left-4 z-50 bg-black/50 text-white px-3 py-2 rounded-full text-sm font-mono">
-                      {Math.round(zoomLevel * 100)}%
-                  </div>
-              )}
-
-              <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeStop : {})}>
-                  {zoomLevel === 1 && (
-                      <>
-                          <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><XI icon={ChevronLeft} size={48}/></button>
-                          <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/50 hover:text-white transition-colors"><XI icon={ChevronRight} size={48}/></button>
-                      </>
-                  )}
-
-                  <div
-                      className="relative w-full h-full flex items-center justify-center p-4"
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseUp}
-                      onTouchStart={handleTouchStart}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                      onWheel={handleWheel}
-                      style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
-                  >
-                      {slides[currentSlideIndex].type === 'image' ? (
-                          <img
-                            ref={imgRef}
-                            src={slides[currentSlideIndex].largeUrl || slides[currentSlideIndex].url}
-                            className="max-w-full max-h-full object-contain select-none"
-                            style={{
-                                transform: `scale(${zoomLevel}) translate3d(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px, 0)`,
-                                transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-                                willChange: 'transform',
-                                touchAction: 'none',
-                            }}
-                            draggable={false}
-                          />
-                      ) : (
-                          <iframe src={slides[currentSlideIndex].url} className="w-full h-full max-w-4xl max-h-[80vh]" frameBorder="0" allowFullScreen></iframe>
-                      )}
-                  </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-2 pb-4 pt-2">
-                  <div className="flex items-center gap-2">
-                      {slides.map((_, idx) => (
-                          <button
-                              key={idx}
-                              onClick={() => setCurrentSlideIndex(idx)}
-                              className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`}
-                          />
-                      ))}
-                  </div>
-                  {slides.length > 1 && (
-                      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide px-4">
-                          {slides.map((slide, idx) => (
-                              <button
-                                  key={idx}
-                                  onClick={() => setCurrentSlideIndex(idx)}
-                                  className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}
-                              >
-                                  {slide.type === 'image' ? (
-                                      <img src={slide.url} className="w-full h-full object-cover" />
-                                  ) : (
-                                      <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                          <XI icon={Video} size={16} className="text-white/60" />
-                                      </div>
-                                  )}
-                              </button>
-                          ))}
-                      </div>
-                  )}
-                  <div className="text-white/40 text-[10px] font-mono">
-                      {currentSlideIndex + 1} / {slides.length}
-                  </div>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
+          <div className="absolute top-4 left-4 z-50 flex gap-3">
+            <button onClick={() => onLike(exhibit.id)} className={`p-3 bg-black/50 rounded-full transition-all ${isLiked ? 'text-red-500' : 'text-white hover:bg-white/20'}`} title={isLiked ? 'Убрать лайк' : 'Лайк'}>
+              <XI icon={Heart} size={22} fill={isLiked ? "currentColor" : "none"} />
+            </button>
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-black/50 text-white rounded-full text-sm font-mono">
+              <XI icon={Heart} size={14} className="text-red-500" /> {exhibit.likes}
+            </div>
           </div>
+          <div className="absolute top-4 right-4 z-50 flex gap-2">
+            <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomIn size={22}/></button>
+            <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-3 bg-black/50 text-white rounded-full hover:bg-white/20"><ZoomOut size={22}/></button>
+            <button onClick={() => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-blue-500/20 hover:text-blue-400" title="Сбросить"><XI icon={Home} size={22}/></button>
+            <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); }} className="p-3 bg-black/50 text-white rounded-full hover:bg-red-500/20 hover:text-red-500"><XI icon={X} size={22}/></button>
+          </div>
+          {zoomLevel > 1 && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-mono">{Math.round(zoomLevel * 100)}%</div>
+          )}
+          <div className="flex-1 flex items-center justify-center relative overflow-hidden" {...(zoomLevel === 1 ? gallerySwipeStop : {})}>
+            {zoomLevel === 1 && (
+              <>
+                <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-4 z-40 p-4 text-white/40 hover:text-white transition-colors"><XI icon={ChevronLeft} size={48}/></button>
+                <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-4 z-40 p-4 text-white/40 hover:text-white transition-colors"><XI icon={ChevronRight} size={48}/></button>
+              </>
+            )}
+            <div className="relative w-full h-full flex items-center justify-center p-4" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onWheel={handleWheel} style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}>
+              {slides[currentSlideIndex].type === 'image' ? (
+                <img ref={imgRef} src={slides[currentSlideIndex].largeUrl || slides[currentSlideIndex].url} className="max-w-full max-h-full object-contain select-none" style={{ transform: `scale(${zoomLevel}) translate3d(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px, 0)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out', willChange: 'transform', touchAction: 'none' }} draggable={false} />
+              ) : (
+                <iframe src={slides[currentSlideIndex].url} className="w-full h-full max-w-4xl max-h-[80vh]" frameBorder="0" allowFullScreen></iframe>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-2 pb-4 pt-2">
+            <div className="flex items-center gap-2">
+              {slides.map((_, idx) => <button key={idx} onClick={() => setCurrentSlideIndex(idx)} className={`w-2 h-2 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/20 hover:bg-white/40'}`} />)}
+            </div>
+            {slides.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide px-4">
+                {slides.map((slide, idx) => (
+                  <button key={idx} onClick={() => setCurrentSlideIndex(idx)} className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                    {slide.type === 'image' ? <img src={slide.url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-black/80 flex items-center justify-center"><XI icon={Video} size={14} className="text-white/60"/></div>}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="text-white/40 text-[10px] font-mono">{currentSlideIndex + 1} / {slides.length}</div>
+          </div>
+        </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        
-        {/* COMPACT BREADCRUMBS & ACTIONS */}
-        <div className={`flex items-center justify-between mb-4 border-b pb-2 ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
-            <div className="flex items-center gap-2 text-[10px] font-mono opacity-50 uppercase">
-                <button onClick={onBack} className="hover:text-green-500 flex items-center gap-1"><XI icon={ArrowLeft} size={12}/> НАЗАД</button>
-                <span className="opacity-30">/</span>
-                <span className="hover:text-white cursor-pointer">{exhibit.category}</span>
-            </div>
+      {/* ============================================================
+          MOBILE LAYOUT  (hidden on lg+)
+      ============================================================ */}
+      <div className="lg:hidden pb-28">
 
-            <div className="flex items-center gap-3">
-                {(isOwner || isAdmin) && (
-                    <div className="flex gap-2">
-                        {onEdit && <button onClick={() => onEdit(exhibit)} className="text-purple-400 hover:text-white transition-all"><XI icon={Edit2} size={16}/></button>}
-                        {onDelete && <button onClick={() => onDelete(exhibit.id)} className="text-red-500 hover:text-white transition-all"><XI icon={Trash2} size={16}/></button>}
-                    </div>
-                )}
-                <div className="h-4 w-[1px] bg-white/10"></div>
-                <div className="relative flex items-center gap-1">
-                    <button onClick={() => setShowShareMenu(!showShareMenu)} className={`hover:text-white transition-all ${shareCopied ? 'text-green-500' : 'text-gray-400'}`}><XI icon={Share2} size={16}/></button>
-                    {(exhibit.shares ?? 0) > 0 && <span className="text-[10px] font-mono text-white/40">{exhibit.shares}</span>}
-                    {showShareMenu && (
-                        <div className={`absolute right-0 top-6 w-40 border rounded-xl shadow-2xl z-50 p-1 animate-in slide-in-from-top-2 ${isXp ? 'bg-white border-gray-200' : 'bg-dark-surface border-white/10'}`}>
-                            <button onClick={() => handleShare('tg')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Send} size={12} className="text-blue-400"/> TELEGRAM</button>
-                            <button onClick={() => handleShare('wa')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={MessageCircle} size={12} className="text-green-500"/> WHATSAPP</button>
-                            <button onClick={() => handleShare('copy')} className="w-full text-left p-2 hover:bg-white/5 rounded text-[10px] font-bold flex items-center gap-2"><XI icon={Share2} size={12}/> COPY LINK</button>
-                        </div>
-                    )}
-                </div>
-            </div>
+        {/* Mobile header */}
+        <div className={`flex items-center gap-3 px-4 py-3 border-b ${isXp ? 'border-gray-200 bg-white' : 'border-white/5 bg-black/60 backdrop-blur-sm'}`}>
+          <button onClick={onBack} className="p-1 -ml-1 hover:opacity-70 transition-opacity">
+            <ArrowLeft size={22} />
+          </button>
+          <span className={`flex-1 text-center font-pixel text-[11px] uppercase tracking-widest ${isXp ? 'text-gray-500' : 'opacity-50'}`}>Артефакт</span>
+          <div className="flex items-center gap-3 relative">
+            {(isOwner || isAdmin) && onEdit && (
+              <button onClick={() => onEdit(exhibit)} className="text-purple-400 hover:opacity-70"><Edit2 size={18}/></button>
+            )}
+            {(isOwner || isAdmin) && onDelete && (
+              <button onClick={() => onDelete(exhibit.id)} className="text-red-500 hover:opacity-70"><Trash2 size={18}/></button>
+            )}
+            <button onClick={() => setShowShareMenu(!showShareMenu)} className={`${shareCopied ? 'text-green-500' : ''} hover:opacity-70`}><Share2 size={18}/></button>
+            {shareDropdown}
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-            
-            {/* LEFT COLUMN: MEDIA */}
-            <div className="w-full lg:w-[45%] space-y-4 lg:sticky lg:top-20">
-                {/* Gallery mode toggle */}
-                {slides.length > 1 && (
-                    <div className="flex gap-1">
-                        <button
-                            onClick={() => setGalleryMode('SLIDER')}
-                            className={`flex-1 py-1.5 text-[9px] font-pixel uppercase border rounded-l-xl flex items-center justify-center gap-1 transition-all ${galleryMode === 'SLIDER' ? 'bg-green-500/20 border-green-500 text-green-400' : 'border-white/10 opacity-40 hover:opacity-70'}`}
-                        >
-                            <SlidersHorizontal size={10} /> СЛАЙДЕР
-                        </button>
-                        <button
-                            onClick={() => setGalleryMode('GRID')}
-                            className={`flex-1 py-1.5 text-[9px] font-pixel uppercase border rounded-r-xl flex items-center justify-center gap-1 transition-all ${galleryMode === 'GRID' ? 'bg-green-500/20 border-green-500 text-green-400' : 'border-white/10 opacity-40 hover:opacity-70'}`}
-                        >
-                            <XI icon={LayoutGrid} size={10} /> СЕТКА
-                        </button>
-                    </div>
-                )}
-
-                {galleryMode === 'GRID' && slides.length > 1 ? (
-                    <div className={`grid grid-cols-2 gap-1 w-full overflow-hidden border ${isWinamp ? 'border-[#505050] bg-black' : 'rounded-2xl border-white/10 bg-black'}`}>
-                        {slides.map((slide, idx) => (
-                            <div
-                                key={idx}
-                                className={`overflow-hidden cursor-pointer relative group ${idx === 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
-                                onClick={() => { setGalleryMode('SLIDER'); setCurrentSlideIndex(idx); }}
-                            >
-                                {slide.type === 'image' ? (
-                                    <img src={slide.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                ) : (
-                                    <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                        <XI icon={Video} size={24} className="text-white/60" />
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-full">{idx + 1}</div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                <div
-                    className={`relative aspect-square w-full overflow-hidden border transition-all duration-500 group ${isWinamp ? 'bg-black border-[#505050]' : (theme === 'dark' ? 'rounded-2xl border-white/10 bg-black' : 'rounded-2xl border-black/10 bg-white')} ${isCursed ? 'shadow-[0_0_30px_red]' : ''}`}
-                    {...gallerySwipeStop}
-                >
-                    {/* Slide counter */}
-                    {slides.length > 1 && (
-                        <div className="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-mono px-2 py-0.5 rounded-full backdrop-blur-sm">
-                            {currentSlideIndex + 1}/{slides.length}
-                        </div>
-                    )}
-
-                    {/* Blurred Background Layer */}
-                    <img
-                        key={`bg-${exhibit.id}-${currentSlideIndex}`}
-                        src={slides[currentSlideIndex].type === 'image' ? slides[currentSlideIndex].url : ''}
-                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
-                    />
-
-                    {slides[currentSlideIndex].type === 'image' ? (
-                        <div className="w-full h-full relative cursor-zoom-in z-10" onClick={() => setIsFullscreen(true)}>
-                            <img key={`main-${exhibit.id}-${currentSlideIndex}`} src={slides[currentSlideIndex].url} alt={exhibit.title} className="w-full h-full object-contain" />
-                        </div>
-                    ) : (
-                        <div className="w-full h-full relative z-10">
-                            <iframe src={slides[currentSlideIndex].url} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
-                            {/* Transparent click areas for swipe support over iframes */}
-                            <div className="absolute top-0 left-0 w-[15%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)}></div>
-                            <div className="absolute top-0 right-0 w-[15%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)}></div>
-                        </div>
-                    )}
-
-                    {slides.length > 1 && (
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
-                            {slides.map((_, idx) => (
-                                <div key={idx} className={`w-1.5 h-1.5 rounded-full shadow ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/30'}`} />
-                            ))}
-                        </div>
-                    )}
-
-                    <button onClick={() => setIsFullscreen(true)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"><Maximize2 size={16}/></button>
-                </div>
-                )}
-
-                {/* Thumbnail strip under slider */}
-                {galleryMode === 'SLIDER' && slides.length > 1 && (
-                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                        {slides.map((slide, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => setCurrentSlideIndex(idx)}
-                                className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}
-                            >
-                                {slide.type === 'image' ? (
-                                    <img src={slide.url} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                        <XI icon={Video} size={14} className="text-white/60" />
-                                    </div>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {!isOwner && (tradeStatus === 'FOR_TRADE' || tradeStatus === 'FOR_SALE' || tradeStatus === 'NONE' || !tradeStatus) && (
-                    <button 
-                        onClick={() => setShowTradeModal(true)}
-                        className={`w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-pixel text-[10px] uppercase font-bold hover:bg-blue-500 shadow-lg`}
-                    >
-                        <XI icon={RefreshCw} size={14}/> ПРЕДЛОЖИТЬ ОБМЕН
-                    </button>
-                )}
+        {/* Mobile gallery grid */}
+        <div className="w-full bg-black" style={{ height: '62vw', maxHeight: '340px', minHeight: '220px' }}>
+          {slides.length <= 1 ? (
+            <div className="w-full h-full cursor-zoom-in relative overflow-hidden" onClick={() => setIsFullscreen(true)}>
+              <img src={slides[0]?.url} alt={exhibit.title} className="w-full h-full object-cover" />
+              <div className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-lg text-white/80"><Maximize2 size={14}/></div>
             </div>
-
-            {/* RIGHT COLUMN: INFO & SPECS */}
-            <div className="flex-1 w-full">
-                <div className={`p-5 md:p-6 border mb-4 ${isWinamp ? 'bg-[#191919] border-[#505050]' : (theme === 'dark' ? 'bg-dark-surface border-white/10 rounded-2xl' : 'bg-white border-black/10 shadow-xl rounded-2xl')}`}>
-                    
-                    {/* Header Info */}
-                    <div className="flex flex-col gap-4 mb-6">
-                        <div className="flex flex-wrap gap-2">
-                            <span className={`px-2 py-0.5 text-[9px] font-pixel font-bold uppercase border rounded ${isWinamp ? 'border-[#00ff00] text-[#00ff00]' : 'border-green-500/50 text-green-400 bg-green-500/10'}`}>{exhibit.category}</span>
-                            <span className={`px-2 py-0.5 text-[9px] font-bold font-pixel border rounded flex items-center gap-1 uppercase ${isWinamp ? 'border-[#00ff00] text-[#00ff00]' : `${tier.bgColor} ${tier.color} border-white/5`}`}><TierIcon size={10} /> {tier.name}</span>
-                            {tradeStatus !== 'NONE' && (
-                                <span className={`px-2 py-0.5 text-[9px] font-bold font-pixel border rounded flex items-center gap-1 uppercase ${tradeConfig.color} ${tradeConfig.bg}`}>
-                                    {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10 })} {tradeConfig.badge}
-                                </span>
-                            )}
-                        </div>
-                        
-                        <h1 className={`text-xl md:text-3xl font-bold font-pixel leading-tight ${isCursed ? 'text-red-500 italic' : (isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white')}`}>{exhibit.title}</h1>
-                        
-                        {/* Compact Stats Toolbar */}
-                        <div className={`flex items-center gap-4 text-xs font-mono opacity-70 border-b pb-4 select-none ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => onLike(exhibit.id)}
-                                    className={`transition-colors cursor-pointer ${isLiked ? 'text-red-500' : 'hover:text-white'}`}
-                                    title={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
-                                >
-                                    <XI icon={Heart} size={20} className={isLiked ? "fill-current" : ""} />
-                                </button>
-                                
-                                {/* Likes List & Counter */}
-                                <div 
-                                    className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => setShowLikesModal(true)}
-                                    title="Посмотреть кто оценил"
-                                >
-                                    {exhibit.likedBy && exhibit.likedBy.length > 0 && (
-                                        <div className="flex -space-x-2 mr-1">
-                                            {exhibit.likedBy.slice(0, 3).map((u, i) => (
-                                                <img key={i} src={getUserAvatar(u)} className="w-5 h-5 rounded-full border border-black bg-black" />
-                                            ))}
-                                        </div>
-                                    )}
-                                    <span className="font-bold">{exhibit.likes}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5" title="Просмотры">
-                                <XI icon={Eye} size={16} /> {viewsDisplay}
-                            </div>
-                            <div className="flex-1"></div>
-                            {isOwner && (
-                                <button onClick={() => onAddToCollection?.(exhibit.id)} className="hover:text-blue-400 transition-colors" title="Добавить в коллекцию">
-                                    <XI icon={BookmarkPlus} size={18} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Author Row */}
-                    <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
-                        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onAuthorClick(exhibit.owner)}>
-                            <img src={getUserAvatar(exhibit.owner)} className={`w-10 h-10 rounded-full border ${isXp ? 'border-gray-300' : 'border-white/20'}`} />
-                            <div>
-                                <div className={`font-bold font-pixel text-xs transition-colors ${isWinamp ? 'text-[#00ff00]' : 'group-hover:text-green-500'}`}>@{exhibit.owner}</div>
-                                <div className="text-[9px] opacity-40 font-mono uppercase">{exhibit.timestamp.split(',')[0]}</div>
-                            </div>
-                        </div>
-                        {!isOwner && ( 
-                            <button onClick={() => onFollow(exhibit.owner)} className={`px-3 py-1.5 text-[9px] font-bold font-pixel border rounded transition-all ${isFollowing ? (isXp ? 'border-gray-300 opacity-40 text-gray-600' : 'border-white/10 opacity-40') : (isXp ? 'bg-xp-navy text-white hover:bg-xp-blue border-transparent' : 'bg-white/10 hover:bg-white/20 border-transparent')}`}>
-                                {isFollowing ? 'ПОДПИСАН' : 'ПОДПИСАТЬСЯ'}
-                            </button> 
-                        )}
-                    </div>
-
-                    {/* Description */}
-                    <div className="mb-6">
-                        <div className={`font-mono text-xs leading-relaxed whitespace-pre-wrap opacity-80 ${isWinamp ? 'text-[#00ff00]' : ''}`}>
-                            {displayDescription}
-                        </div>
-                        {isLongDescription && (
-                            <button 
-                                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                className={`mt-2 text-[10px] font-bold uppercase flex items-center gap-1 hover:underline ${isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}`}
-                            >
-                                {isDescriptionExpanded ? (
-                                    <>Свернуть <XI icon={ChevronUp} size={12}/></>
-                                ) : (
-                                    <>Читать далее <XI icon={ChevronDown} size={12}/></>
-                                )}
-                            </button>
-                        )}
-                    </div>
-
-                    {/* DETAILED SPECS GRID */}
-                    {nonEmptySpecs.length > 0 && (
-                        <div className="mb-6">
-                            <h3 className={`font-pixel text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2 ${isWinamp ? 'text-[#00ff00]' : 'opacity-70'}`}>
-                                <XI icon={Info} size={14} className={isWinamp ? 'text-[#00ff00]' : 'text-blue-400'} /> ТЕХНИЧЕСКИЙ_ПАСПОРТ
-                            </h3>
-                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-gray-100 border-gray-300' : 'bg-black/20 border-white/5'}`}>
-                                {nonEmptySpecs.map(([key, val]) => {
-                                    const parenIdx = key.indexOf('(');
-                                    const mainLabel = parenIdx > -1 ? key.slice(0, parenIdx).trim() : key;
-                                    const subLabel  = parenIdx > -1 ? key.slice(parenIdx) : null;
-                                    return (
-                                    <div key={key} className={`px-3 py-2.5 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider leading-tight ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}>
-                                            {mainLabel}
-                                            {subLabel && <span className="opacity-60 normal-case tracking-normal"> {subLabel}</span>}
-                                        </div>
-                                        <div className={`font-bold font-mono text-xs break-words leading-tight mt-1 ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{val}</div>
-                                    </div>
-                                    );
-                                })}
-                                {exhibit.condition && (
-                                    <div className={`px-3 py-2 border rounded flex flex-col justify-center ${isWinamp ? 'bg-black border-[#505050]' : isXp ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
-                                        <div className={`text-[8px] uppercase tracking-wider mb-1 flex items-center gap-1 ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-500' : 'opacity-50'}`}><XI icon={Award} size={10}/> СОСТОЯНИЕ</div>
-                                        <div className={`font-bold font-mono text-[10px] text-green-400 uppercase leading-tight break-words ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.condition}</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+          ) : (
+            <div className="w-full h-full" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(2, 1fr)', gap: '2px' }}>
+              {/* First image: 2 cols wide, 1 row */}
+              <div className="overflow-hidden cursor-pointer relative" style={{ gridColumn: 'span 2' }} onClick={() => { setCurrentSlideIndex(0); setIsFullscreen(true); }}>
+                {slides[0].type === 'image'
+                  ? <img src={slides[0].url} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full bg-black/80 flex items-center justify-center"><Video size={24} className="text-white/60"/></div>
+                }
+              </div>
+              {/* Remaining: up to 4 more cells */}
+              {slides.slice(1, 5).map((slide, idx) => {
+                const realIdx = idx + 1;
+                const isLastCell = idx === 3 && slides.length > 5;
+                return (
+                  <div key={idx} className="overflow-hidden cursor-pointer relative" onClick={() => { setCurrentSlideIndex(realIdx); setIsFullscreen(true); }}>
+                    {slide.type === 'image'
+                      ? <img src={slide.url} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-black/80 flex items-center justify-center"><Video size={16} className="text-white/60"/></div>
+                    }
+                    {isLastCell && (
+                      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm flex items-center justify-center">
+                        <span className="text-white font-bold text-2xl">+{slides.length - 5}</span>
+                      </div>
                     )}
-
-                    {/* Linked Items */}
-                    {linkedArtifacts.length > 0 && (
-                        <div className={`mt-6 pt-4 border-t ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
-                            <h3 className="font-pixel text-[9px] opacity-40 uppercase tracking-widest mb-3 flex items-center gap-1"><XI icon={Link2} size={10}/> СВЯЗАННЫЕ ПРЕДМЕТЫ</h3>
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                {linkedArtifacts.map(link => (
-                                    <div key={link.id} onClick={() => onExhibitClick(link)} className="flex-shrink-0 w-20 group cursor-pointer">
-                                        <div className="aspect-square rounded-lg overflow-hidden border border-white/10 relative bg-black/20">
-                                            <img src={getImageUrl(link.imageUrls[0], 'thumbnail')} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                        </div>
-                                        <div className="mt-1 text-[8px] font-bold truncate opacity-70 group-hover:opacity-100">{link.title}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Comments Section */}
-                <div className={`p-5 rounded-2xl border ${isWinamp ? 'bg-[#191919] border-[#505050]' : isXp ? 'bg-white border-gray-300 shadow-inner' : 'bg-dark-surface border-white/5'}`}>
-                    {/* Comments header with sort controls */}
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className={`font-pixel text-xs flex items-center gap-2 uppercase tracking-widest ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-xp-navy' : 'text-white'}`}>
-                            <XI icon={MessageSquare} size={14} className={isWinamp ? 'text-[#00ff00]' : isXp ? 'text-xp-navy' : 'text-green-500'} />
-                            ОБСУЖДЕНИЕ
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-mono text-[10px] font-bold">
-                                {comments.length}
-                            </span>
-                        </h3>
-                        {comments.length > 0 && (
-                            <div className="flex gap-1">
-                                {(['newest', 'oldest', 'popular'] as const).map(sort => {
-                                    const labels = { newest: 'НОВЫЕ', oldest: 'СТАРЫЕ', popular: 'ТОП' };
-                                    return (
-                                        <button
-                                            key={sort}
-                                            onClick={() => setCommentSort(sort)}
-                                            className={`px-2 py-0.5 text-[8px] font-pixel uppercase rounded transition-all ${commentSort === sort ? (isXp ? 'bg-xp-navy/10 text-xp-navy border border-xp-navy/40' : 'bg-green-500/20 text-green-400 border border-green-500/40') : (isXp ? 'text-gray-500 hover:text-gray-700' : 'opacity-30 hover:opacity-60')}`}
-                                        >
-                                            {labels[sort]}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {comments.length === 0 ? ( <div className={`text-center py-8 opacity-30 text-[10px] font-pixel uppercase tracking-widest border border-dashed rounded-xl ${isXp ? 'border-gray-400 text-gray-600' : 'border-white/10'}`}>ТИШИНА В ЭФИРЕ</div> ) : (
-                            commentTree.roots.map(rootComment => renderCommentNode(rootComment))
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-2 relative">
-                        {mentionQuery !== null && filteredUsers.length > 0 && (
-                            <div className="absolute bottom-full mb-2 left-0 w-64 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
-                                {filteredUsers.map(u => (
-                                    <button
-                                        key={u.username}
-                                        onClick={() => selectMention(u.username)}
-                                        className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors"
-                                    >
-                                        <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-[10px]">@{u.username}</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {replyTo && (
-                            <div className={`flex items-center justify-between text-[10px] font-mono p-2 rounded-lg border ${isXp ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-white/5 border-white/5'}`}>
-                                <span className="opacity-70">Ответ <span className="text-green-500 font-bold">@{replyTo.author}</span></span>
-                                <button onClick={() => { setReplyTo(null); setCommentText(''); }} className="hover:text-red-500"><XI icon={X} size={12}/></button>
-                            </div>
-                        )}
-                        <div className="flex gap-2 relative">
-                            {showEmojiPicker && (
-                                <EmojiPicker
-                                    theme={theme}
-                                    onSelect={emoji => setCommentText(prev => prev + emoji)}
-                                    onClose={() => setShowEmojiPicker(false)}
-                                />
-                            )}
-                            <input
-                                id="comment-input"
-                                type="text"
-                                value={commentText}
-                                onChange={handleCommentChange}
-                                placeholder={replyTo ? "Ваш ответ..." : "Написать комментарий..."}
-                                className={`flex-1 border px-3 py-2.5 font-mono text-xs focus:outline-none transition-colors rounded-lg ${isWinamp ? 'bg-black/40 border-white/10 text-[#00ff00] placeholder-gray-600 focus:border-green-500' : isXp ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-xp-navy' : 'bg-black/40 border-white/10 focus:border-green-500'}`}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && commentText.trim()) {
-                                        const err = validateMessageText(commentText);
-                                        if (err) { alert(err); return; }
-                                        onPostComment(exhibit.id, commentText, replyTo?.id);
-                                        setCommentText('');
-                                        setReplyTo(null);
-                                        setMentionQuery(null);
-                                    }
-                                }}
-                            />
-                            <button
-                                onClick={() => setShowEmojiPicker(v => !v)}
-                                className={`p-2.5 rounded-lg border transition-all ${showEmojiPicker ? (isXp ? 'bg-xp-navy/10 border-xp-navy/40 text-xp-navy' : 'bg-green-500/20 border-green-500/40 text-green-400') : (isXp ? 'border-gray-300 text-gray-500 hover:text-gray-700' : 'border-white/10 text-gray-500 hover:text-white')}`}
-                                title="Эмодзи"
-                            >
-                                <SmilePlus size={16} />
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (commentText.trim()) {
-                                        const err = validateMessageText(commentText);
-                                        if (err) { alert(err); return; }
-                                        onPostComment(exhibit.id, commentText, replyTo?.id);
-                                        setCommentText('');
-                                        setReplyTo(null);
-                                        setMentionQuery(null);
-                                    }
-                                }}
-                                className="bg-green-500 text-black p-2.5 rounded-lg hover:scale-105 active:scale-95 transition-all"
-                            >
-                                <XI icon={Send} size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                  </div>
+                );
+              })}
             </div>
+          )}
         </div>
 
-        {/* Comment reaction picker */}
-        {commentReactionPicker && (() => {
-            const pickerComment = comments.find(c => c.id === commentReactionPicker.commentId);
-            return (
-                <MessageReactionPicker
-                    position={commentReactionPicker.position}
-                    onReact={emoji => {
-                        onCommentReact?.(exhibit.id, commentReactionPicker.commentId, emoji);
-                        setCommentReactionPicker(null);
-                    }}
-                    onClose={() => setCommentReactionPicker(null)}
-                    onReply={pickerComment ? () => {
-                        setCommentReactionPicker(null);
-                        handleReply(pickerComment);
-                    } : undefined}
-                    theme={theme}
-                />
-            );
-        })()}
+        {/* Mobile info */}
+        <div className="px-4 pt-4 space-y-4">
 
-        {similarArtifacts.length > 0 && (
-                <div className="mt-12 mb-8">
-                    <h3 className="font-pixel text-[9px] opacity-40 mb-4 flex items-center gap-2 tracking-[0.2em] uppercase"><XI icon={Sparkles} size={12} className="text-purple-400" /> ПОХОЖИЕ ОБЪЕКТЫ</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {similarArtifacts.map(sim => (
-                            <ExhibitCard
-                                key={sim.id}
-                                item={sim}
-                                theme={theme}
-                                onClick={() => onExhibitClick(sim)}
-                                currentUsername={currentUser}
-                                onReact={() => {}}
-                                onAuthorClick={onAuthorClick}
-                            />
-                        ))}
-                    </div>
-                </div>
-        )}
+          {/* Title + like */}
+          <div className="flex items-start justify-between gap-3">
+            <h1 className={`text-xl font-bold font-pixel leading-tight flex-1 ${isCursed ? 'text-red-500 italic' : isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{exhibit.title}</h1>
+            <button onClick={() => onLike(exhibit.id)} className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1" title={isLiked ? 'Убрать лайк' : 'Лайк'}>
+              <XI icon={Heart} size={22} fill={isLiked ? "currentColor" : "none"} className={isLiked ? 'text-red-500' : 'opacity-60'} />
+              <span className={`text-[10px] font-mono ${isLiked ? 'text-red-500' : 'opacity-40'}`}>{exhibit.likes}</span>
+            </button>
+          </div>
+
+          {/* Badges row */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`text-[10px] font-mono font-bold ${isXp ? 'text-gray-500' : 'opacity-50'}`}>{exhibit.category}</span>
+            {exhibit.subcategory && <>
+              <span className="opacity-30 text-[10px]">›</span>
+              <span className={`text-[10px] font-mono ${isXp ? 'text-gray-500' : 'opacity-50'}`}>{exhibit.subcategory}</span>
+            </>}
+            <span className={`px-2 py-0.5 text-[9px] font-pixel font-bold uppercase rounded flex items-center gap-1 ${isWinamp ? 'border border-[#00ff00] text-[#00ff00]' : `${tier.bgColor} ${tier.color}`}`}><TierIcon size={9}/> {tier.name}</span>
+            {tradeStatus !== 'NONE' && (
+              <span className={`px-2 py-0.5 text-[9px] font-pixel font-bold uppercase rounded flex items-center gap-1 ${tradeConfig.color} ${tradeConfig.bg}`}>
+                {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 9 })} {tradeConfig.badge}
+              </span>
+            )}
+          </div>
+
+          {/* Author row */}
+          <div className={`flex items-center justify-between pt-3 border-t ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => onAuthorClick(exhibit.owner)}>
+              <img src={getUserAvatar(exhibit.owner)} className={`w-10 h-10 rounded-full border ${isXp ? 'border-gray-200' : 'border-white/10'}`} />
+              <div>
+                <div className={`font-bold text-sm font-pixel ${isWinamp ? 'text-[#00ff00]' : ''}`}>{exhibit.owner}</div>
+                <div className={`text-[10px] font-mono ${isXp ? 'text-gray-400' : 'opacity-40'}`}>@{exhibit.owner}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono opacity-40">
+              <Eye size={13}/> {viewsDisplay}
+            </div>
+          </div>
+
+          <div className={`border-t ${isXp ? 'border-gray-200' : 'border-white/5'}`} />
+
+          {/* Description */}
+          {exhibit.description && (
+            <div>
+              <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap ${isWinamp ? 'text-[#00ff00]' : 'opacity-75'}`}>{displayDescription}</p>
+              {isLongDescription && (
+                <button onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)} className={`mt-1.5 text-[10px] font-bold uppercase flex items-center gap-1 hover:underline ${isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}`}>
+                  {isDescriptionExpanded ? <>Свернуть <XI icon={ChevronUp} size={10}/></> : <>Читать далее <XI icon={ChevronDown} size={10}/></>}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ПАРАМЕТРЫ */}
+          {(nonEmptySpecs.length > 0 || exhibit.condition) && (
+            <div>
+              <h3 className={`font-pixel text-[9px] uppercase tracking-widest mb-3 ${isWinamp ? 'text-[#00ff00]' : isXp ? 'text-gray-500' : 'opacity-40'}`}>Параметры</h3>
+              {specsGrid('grid-cols-2')}
+            </div>
+          )}
+
+          {/* Linked */}
+          {linkedSection}
+
+          {/* Comments */}
+          {commentsSection}
+
+          {/* Similar */}
+          {similarSection}
+        </div>
       </div>
+
+      {/* ============================================================
+          DESKTOP LAYOUT  (hidden below lg)
+      ============================================================ */}
+      <div className="hidden lg:flex min-h-screen">
+
+        {/* Left: sticky gallery */}
+        <div className="w-1/2 sticky top-0 h-screen bg-black flex flex-col overflow-hidden">
+
+          {/* Main image area */}
+          <div className="flex-1 relative flex items-center justify-center overflow-hidden" {...gallerySwipeStop}>
+            {/* Blurred bg */}
+            {slides[currentSlideIndex].type === 'image' && (
+              <img key={`bg-${exhibit.id}-${currentSlideIndex}`} src={slides[currentSlideIndex].url} className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-25 scale-110 pointer-events-none" />
+            )}
+
+            {/* Slide counter */}
+            {slides.length > 1 && (
+              <div className="absolute top-4 left-4 z-20 bg-black/60 text-white text-[10px] font-mono px-2.5 py-1 rounded-full backdrop-blur-sm">
+                {currentSlideIndex + 1} / {slides.length}
+              </div>
+            )}
+
+            {/* Nav arrows */}
+            {slides.length > 1 && (
+              <>
+                <button onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} className="absolute left-3 z-20 p-2.5 bg-black/50 text-white/60 hover:text-white rounded-full transition-colors"><XI icon={ChevronLeft} size={28}/></button>
+                <button onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} className="absolute right-3 z-20 p-2.5 bg-black/50 text-white/60 hover:text-white rounded-full transition-colors"><XI icon={ChevronRight} size={28}/></button>
+              </>
+            )}
+
+            {/* Fullscreen button */}
+            <button onClick={() => setIsFullscreen(true)} className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white/60 hover:text-white rounded-lg transition-colors"><Maximize2 size={18}/></button>
+
+            {/* Main media */}
+            {slides[currentSlideIndex].type === 'image' ? (
+              <img key={`main-${exhibit.id}-${currentSlideIndex}`} src={slides[currentSlideIndex].url} alt={exhibit.title} className="relative z-10 max-w-full max-h-full object-contain cursor-zoom-in select-none" onClick={() => setIsFullscreen(true)} />
+            ) : (
+              <div className="relative z-10 w-full h-full flex items-center justify-center">
+                <iframe src={slides[currentSlideIndex].url} className="w-full h-full" frameBorder="0" allowFullScreen />
+                <div className="absolute top-0 left-0 w-[12%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev - 1 + slides.length) % slides.length)} />
+                <div className="absolute top-0 right-0 w-[12%] h-full z-20 cursor-pointer" onClick={() => setCurrentSlideIndex(prev => (prev + 1) % slides.length)} />
+              </div>
+            )}
+
+            {/* Dot indicators */}
+            {slides.length > 1 && (
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
+                {slides.map((_, idx) => (
+                  <button key={idx} onClick={() => setCurrentSlideIndex(idx)} className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-white scale-125' : 'bg-white/25 hover:bg-white/50'}`} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Thumbnail strip */}
+          {slides.length > 1 && (
+            <div className={`flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide border-t ${isWinamp ? 'border-[#505050] bg-[#191919]' : 'border-white/5 bg-black/80'}`}>
+              {slides.map((slide, idx) => (
+                <button key={idx} onClick={() => setCurrentSlideIndex(idx)} className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${idx === currentSlideIndex ? 'border-green-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                  {slide.type === 'image' ? <img src={slide.url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-black/80 flex items-center justify-center"><XI icon={Video} size={14} className="text-white/60"/></div>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right: scrollable info */}
+        <div className={`w-1/2 max-h-screen overflow-y-auto pb-28 ${isXp ? 'bg-gray-50' : isWinamp ? 'bg-[#111]' : 'bg-dark-bg'}`}>
+          <div className="px-8 pt-8 pb-4 space-y-6">
+
+            {/* Breadcrumb + back */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-pixel uppercase tracking-wider">
+                <button onClick={onBack} className={`flex items-center gap-1 ${isXp ? 'text-gray-400 hover:text-gray-700' : 'opacity-40 hover:opacity-80'} transition-opacity`}><XI icon={ArrowLeft} size={11}/> НАЗАД</button>
+                <span className={isXp ? 'text-gray-300' : 'opacity-20'}>·</span>
+                <span className={`font-bold ${isXp ? 'text-gray-600' : 'opacity-60'}`}>{exhibit.category}</span>
+                {exhibit.subcategory && <>
+                  <span className={isXp ? 'text-gray-300' : 'opacity-20'}>·</span>
+                  <span className={isXp ? 'text-gray-600' : 'opacity-50'}>{exhibit.subcategory}</span>
+                </>}
+                <span className={isXp ? 'text-gray-300' : 'opacity-20'}>·</span>
+                <span className={`font-bold flex items-center gap-0.5 ${isWinamp ? 'text-[#00ff00]' : tier.color}`}><TierIcon size={9}/> {tier.name}</span>
+                {tradeStatus !== 'NONE' && <>
+                  <span className={isXp ? 'text-gray-300' : 'opacity-20'}>·</span>
+                  <span className={`flex items-center gap-1 ${tradeConfig.color}`}>
+                    {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 9 })} {tradeConfig.badge}
+                  </span>
+                </>}
+              </div>
+              <div className="flex items-center gap-2 relative">
+                {(isOwner || isAdmin) && onEdit && <button onClick={() => onEdit(exhibit)} className="p-1.5 text-purple-400 hover:opacity-70 transition-opacity"><Edit2 size={15}/></button>}
+                {(isOwner || isAdmin) && onDelete && <button onClick={() => onDelete(exhibit.id)} className="p-1.5 text-red-500 hover:opacity-70 transition-opacity"><Trash2 size={15}/></button>}
+                <button onClick={() => setShowShareMenu(!showShareMenu)} className={`p-1.5 hover:opacity-70 transition-opacity ${shareCopied ? 'text-green-500' : ''}`}><Share2 size={15}/></button>
+                {shareDropdown}
+              </div>
+            </div>
+
+            {/* Title */}
+            <h1 className={`text-3xl lg:text-4xl font-bold font-pixel leading-tight ${isCursed ? 'text-red-500 italic' : isWinamp ? 'text-[#00ff00]' : isXp ? 'text-[#1a1a1a]' : 'text-white'}`}>{exhibit.title}</h1>
+
+            {/* Author row */}
+            <div className={`flex items-center justify-between pb-6 border-b ${isXp ? 'border-gray-200' : 'border-white/5'}`}>
+              <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onAuthorClick(exhibit.owner)}>
+                <img src={getUserAvatar(exhibit.owner)} className={`w-12 h-12 rounded-full border ${isXp ? 'border-gray-200' : 'border-white/10'}`} />
+                <div>
+                  <div className={`font-bold transition-colors ${isWinamp ? 'text-[#00ff00]' : 'group-hover:text-green-500'}`}>{exhibit.owner}</div>
+                  <div className={`text-xs font-mono mt-0.5 ${isXp ? 'text-gray-400' : 'opacity-40'}`}>@{exhibit.owner} · {ownerArtifactCount} артефактов</div>
+                </div>
+              </div>
+              <button onClick={() => onAuthorClick(exhibit.owner)} className={`px-4 py-1.5 border rounded-lg text-xs font-pixel font-bold transition-colors hover:bg-white/5 ${isXp ? 'border-gray-300 text-gray-700 hover:bg-gray-100' : isWinamp ? 'border-[#00ff00] text-[#00ff00]' : 'border-white/20 text-white'}`}>
+                Профиль
+              </button>
+            </div>
+
+            {/* Stats bar */}
+            <div className="flex items-center gap-4 text-xs font-mono opacity-60">
+              <div className="flex items-center gap-2">
+                <button onClick={() => onLike(exhibit.id)} className={`transition-colors ${isLiked ? 'text-red-500 opacity-100' : 'hover:opacity-100'}`} title={isLiked ? 'Убрать лайк' : 'Лайк'}>
+                  <XI icon={Heart} size={18} className={isLiked ? 'fill-current' : ''} />
+                </button>
+                <div className="flex items-center gap-1 cursor-pointer hover:opacity-100 transition-opacity" onClick={() => setShowLikesModal(true)}>
+                  {exhibit.likedBy && exhibit.likedBy.length > 0 && (
+                    <div className="flex -space-x-2 mr-1">
+                      {exhibit.likedBy.slice(0, 3).map((u, i) => <img key={i} src={getUserAvatar(u)} className="w-5 h-5 rounded-full border border-black bg-black" />)}
+                    </div>
+                  )}
+                  <span className="font-bold">{exhibit.likes}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5"><XI icon={Eye} size={15}/> {viewsDisplay}</div>
+              <div className="flex-1"/>
+              {isOwner && <button onClick={() => onAddToCollection?.(exhibit.id)} className="hover:text-blue-400 hover:opacity-100 transition-all" title="В коллекцию"><XI icon={BookmarkPlus} size={18}/></button>}
+              {!isOwner && <button onClick={() => onFollow(exhibit.owner)} className={`px-3 py-1 text-[9px] font-bold font-pixel border rounded transition-all ${isFollowing ? (isXp ? 'border-gray-300 opacity-40' : 'border-white/10 opacity-40') : (isXp ? 'bg-xp-navy text-white border-transparent' : 'bg-white/10 hover:bg-white/20 border-transparent opacity-100')}`}>{isFollowing ? 'ПОДПИСАН' : 'ПОДПИСАТЬСЯ'}</button>}
+            </div>
+
+            {/* Description */}
+            {exhibit.description && (
+              <div>
+                <h4 className={`text-[9px] uppercase tracking-widest mb-2 font-pixel ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-400' : 'opacity-40'}`}>Описание</h4>
+                <p className={`font-mono text-sm leading-relaxed whitespace-pre-wrap ${isWinamp ? 'text-[#00ff00]' : 'opacity-80'}`}>{displayDescription}</p>
+                {isLongDescription && (
+                  <button onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)} className={`mt-2 text-[10px] font-bold uppercase flex items-center gap-1 hover:underline ${isWinamp ? 'text-[#00ff00]' : 'text-blue-400'}`}>
+                    {isDescriptionExpanded ? <>Свернуть <XI icon={ChevronUp} size={10}/></> : <>Читать далее <XI icon={ChevronDown} size={10}/></>}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Specs */}
+            {(nonEmptySpecs.length > 0 || exhibit.condition) && (
+              <div>
+                <h4 className={`text-[9px] uppercase tracking-widest mb-3 font-pixel ${isWinamp ? 'text-[#00ff00] opacity-60' : isXp ? 'text-gray-400' : 'opacity-40'}`}>Параметры</h4>
+                {specsGrid('grid-cols-2')}
+              </div>
+            )}
+
+            {/* Linked */}
+            {linkedSection}
+
+            {/* Comments */}
+            {commentsSection}
+
+            {/* Similar */}
+            {similarSection}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================
+          FIXED BOTTOM ACTION BAR
+      ============================================================ */}
+      <div className={`fixed bottom-0 left-0 right-0 z-40 border-t ${isXp ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#111] border-[#505050]' : 'bg-black/90 border-white/5 backdrop-blur-md'}`}>
+        {/* Mobile bar */}
+        <div className="lg:hidden flex gap-3 px-4 py-3">
+          <button
+            onClick={() => onMessage(exhibit.owner)}
+            className={`flex-1 py-3 border rounded-2xl font-pixel text-xs uppercase font-bold transition-colors ${isXp ? 'border-gray-300 text-gray-700 hover:bg-gray-100' : isWinamp ? 'border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00]/10' : 'border-white/20 text-white hover:bg-white/5'}`}
+          >
+            Написать
+          </button>
+          {canTrade && (
+            <button
+              onClick={() => setShowTradeModal(true)}
+              className="flex-[2] flex items-center justify-center gap-2 py-3 bg-green-500 text-black rounded-2xl font-pixel text-xs uppercase font-bold hover:bg-green-400 active:scale-95 transition-all"
+            >
+              <XI icon={RefreshCw} size={14}/> Предложить обмен
+            </button>
+          )}
+        </div>
+
+        {/* Desktop bar */}
+        <div className="hidden lg:flex items-center gap-4 px-8 py-4">
+          <button
+            onClick={() => onLike(exhibit.id)}
+            className={`flex items-center gap-2 font-mono text-sm transition-all ${isLiked ? 'text-red-500' : isXp ? 'text-gray-500 hover:text-gray-800' : 'opacity-60 hover:opacity-100'}`}
+            title={isLiked ? 'Убрать лайк' : 'Лайк'}
+          >
+            <XI icon={Heart} size={20} fill={isLiked ? "currentColor" : "none"} />
+            <span className="font-bold">{exhibit.likes}</span>
+          </button>
+          <button
+            onClick={() => onMessage(exhibit.owner)}
+            className={`p-3 border rounded-xl transition-colors ${isXp ? 'border-gray-300 text-gray-600 hover:bg-gray-100' : isWinamp ? 'border-[#505050] text-[#00ff00] hover:bg-[#00ff00]/10' : 'border-white/15 text-white/70 hover:bg-white/5 hover:text-white'}`}
+            title="Написать"
+          >
+            <MessageSquare size={18}/>
+          </button>
+          {canTrade ? (
+            <button
+              onClick={() => setShowTradeModal(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500 text-black rounded-xl font-pixel text-sm uppercase font-bold hover:bg-green-400 active:scale-[0.99] transition-all"
+            >
+              <XI icon={RefreshCw} size={15}/> Предложить обмен
+            </button>
+          ) : isOwner && onEdit ? (
+            <button
+              onClick={() => onEdit(exhibit)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 border border-purple-500/30 text-purple-400 rounded-xl font-pixel text-sm uppercase font-bold hover:bg-purple-500/10 transition-colors"
+            >
+              <Edit2 size={14}/> Редактировать
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Comment reaction picker */}
+      {commentReactionPicker && (() => {
+        const pickerComment = comments.find(c => c.id === commentReactionPicker.commentId);
+        return (
+          <MessageReactionPicker
+            position={commentReactionPicker.position}
+            onReact={emoji => { onCommentReact?.(exhibit.id, commentReactionPicker.commentId, emoji); setCommentReactionPicker(null); }}
+            onClose={() => setCommentReactionPicker(null)}
+            onReply={pickerComment ? () => { setCommentReactionPicker(null); handleReply(pickerComment); } : undefined}
+            theme={theme}
+          />
+        );
+      })()}
     </div>
   );
 }
