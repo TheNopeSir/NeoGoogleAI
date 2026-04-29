@@ -316,7 +316,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             ? 'bg-white shadow-md hover:shadow-xl hover:shadow-xp-navy/10 ring-1 ring-xp-navy/10 hover:ring-xp-navy/30'
             : isLight
             ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
-            : `bg-dark-surface ring-1 ring-white/8 hover:ring-green-500/40 hover:shadow-lg hover:shadow-green-500/10 ${isHighTier && !isWanted ? config.borderDark : ''}`
+            : `bg-[#141414] ring-1 ring-white/[0.06] hover:ring-[#4cff5a]/40 hover:shadow-lg hover:shadow-[#4cff5a]/10 ${isHighTier && !isWanted ? config.borderDark : ''}`
           }
           ${isWanted ? (isLight || isXP ? 'ring-amber-400/50 hover:ring-amber-400' : 'ring-amber-500/30 hover:ring-amber-500/60') : ''}
           ${isCursed || config.animated ? 'animate-pulse' : ''}
@@ -491,7 +491,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         </div>
 
         {/* Info panel */}
-        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isXP || isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+        <div className={`flex flex-col gap-2 px-3 py-2.5 ${isXP || isLight ? 'bg-white' : 'bg-[#141414]'}`}>
           {/* Title */}
           <h3 className={`font-bold font-pixel text-sm leading-tight line-clamp-2 ${isXP || isLight ? 'text-gray-900' : 'text-white'}`}>
             {item.title}

@@ -74,7 +74,7 @@ const TrendingCard: React.FC<{
           ? 'border-xp-navy/20 bg-white hover:border-xp-navy/50 shadow-sm hover:shadow-md'
           : isLight
           ? 'border-black/10 bg-white hover:border-black/25 shadow-sm hover:shadow-md'
-          : 'border-white/10 bg-dark-surface hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10'
+          : 'border-white/[0.06] bg-[#141414] hover:border-[#4cff5a]/40 hover:shadow-lg hover:shadow-[#4cff5a]/10'
       }`}
     >
       <div className="relative h-24 overflow-hidden">
@@ -88,7 +88,7 @@ const TrendingCard: React.FC<{
           {label ?? <span className="flex items-center gap-0.5"><Kolobok emoji="🔥" size={9} />{trendScore}</span>}
         </div>
       </div>
-      <div className={`px-2 py-1.5 ${isXpCard ? 'bg-white' : isLight ? 'bg-white' : 'bg-dark-surface'}`}>
+      <div className={`px-2 py-1.5 ${isXpCard ? 'bg-white' : isLight ? 'bg-white' : 'bg-[#141414]'}`}>
         <div className={`text-[9px] font-pixel font-bold line-clamp-1 ${isXpCard ? 'text-gray-900' : isLight ? 'text-gray-900' : 'text-white'}`}>{item.title}</div>
         <div className={`text-[8px] font-mono mt-0.5 ${isXpCard ? 'text-gray-400' : isLight ? 'text-gray-400' : 'text-white/40'}`}>@{item.owner}</div>
       </div>
@@ -427,24 +427,31 @@ const FeedView: React.FC<FeedViewProps> = ({
                         onTouchMove={e => e.stopPropagation()}
                         onTouchEnd={e => e.stopPropagation()}
                     >
-                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (isXp ? 'bg-xp-navy text-white shadow-md' : isLight ? 'bg-black text-white shadow-md' : 'bg-white text-black shadow-md') : (isXp ? 'bg-xp-navy/[0.07] text-xp-navy/60 hover:text-xp-navy/90 hover:bg-xp-navy/[0.12]' : isLight ? 'bg-black/[0.05] text-black/50 hover:text-black/80' : 'bg-white/[0.06] text-white/50 hover:text-white/80')}`}>ВСЕ</button>
+                        <button onClick={() => setSelectedCategory('ВСЕ')} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === 'ВСЕ' ? (isXp ? 'bg-xp-navy text-white shadow-md' : isLight ? 'bg-black text-white shadow-md' : 'bg-[#4cff5a] text-black shadow-md') : (isXp ? 'bg-xp-navy/[0.07] text-xp-navy/60 hover:text-xp-navy/90 hover:bg-xp-navy/[0.12]' : isLight ? 'bg-black/[0.05] text-black/50 hover:text-black/80' : 'text-[#aaaaaa] border border-[#252525] hover:text-white hover:border-[#3a3a3a]')}`}>ВСЕ</button>
                         {Object.values(DefaultCategory).map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white ring-1 ring-xp-navy/30' : isLight ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40') : (isXp ? 'bg-xp-navy/[0.05] text-xp-navy/50 hover:text-xp-navy/80 hover:bg-xp-navy/[0.1]' : isLight ? 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]' : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.07]')}`}>{cat}</button>
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${selectedCategory === cat ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white ring-1 ring-xp-navy/30' : isLight ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-[#4cff5a] text-black') : (isXp ? 'bg-xp-navy/[0.05] text-xp-navy/50 hover:text-xp-navy/80 hover:bg-xp-navy/[0.1]' : isLight ? 'bg-black/[0.04] text-black/40 hover:text-black/70 hover:bg-black/[0.07]' : 'text-[#aaaaaa] border border-[#252525] hover:text-white hover:border-[#3a3a3a]')}`}>{cat}</button>
                         ))}
                     </div>
-                    {selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] && (
+                    <div
+                        style={{
+                            maxHeight: selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] ? '60px' : '0px',
+                            opacity: selectedCategory !== 'ВСЕ' && CATEGORY_SUBCATEGORIES[selectedCategory] ? 1 : 0,
+                            overflow: 'hidden',
+                            transition: 'max-height 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease',
+                        }}
+                    >
                         <div
-                            className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide animate-in slide-in-from-top-2 duration-150"
+                            className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide"
                             onTouchStart={e => e.stopPropagation()}
                             onTouchMove={e => e.stopPropagation()}
                             onTouchEnd={e => e.stopPropagation()}
                         >
-                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ВСЕ</button>
-                            {CATEGORY_SUBCATEGORIES[selectedCategory].map(sub => (
-                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-white/10 text-white') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>{sub}</button>
+                            <button onClick={() => setSelectedSubcategory(null)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${!selectedSubcategory ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-[rgba(76,255,90,0.15)] text-[#4cff5a] border border-[rgba(76,255,90,0.35)]') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-[#666666] border border-[#1e1e1e] hover:text-[#aaaaaa]')}`}>ВСЕ</button>
+                            {CATEGORY_SUBCATEGORIES[selectedCategory]?.map(sub => (
+                                <button key={sub} onClick={() => setSelectedSubcategory(sub)} className={`px-3 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all ${selectedSubcategory === sub ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-[rgba(76,255,90,0.15)] text-[#4cff5a] border border-[rgba(76,255,90,0.35)]') : (isXp ? 'text-xp-navy/40 hover:text-xp-navy/70' : isLight ? 'text-black/40 hover:text-black/70' : 'text-[#666666] border border-[#1e1e1e] hover:text-[#aaaaaa]')}`}>{sub}</button>
                             ))}
                         </div>
-                    )}
+                    </div>
 
                     {/* Price filter row — only in ARTIFACTS mode */}
                     {feedMode === 'ARTIFACTS' && (

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 html {
-  background-color: #09090b;
+  background-color: #0a0a0a;
 }
 
 body {
@@ -21,9 +21,9 @@ h1, h2, h3, h4, h5, h6, .font-pixel {
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-.dark ::-webkit-scrollbar-track { background: #09090b; }
+.dark ::-webkit-scrollbar-track { background: #0a0a0a; }
 .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #4ade80; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #4cff5a; }
 .light ::-webkit-scrollbar-track { background: #e5e7eb; }
 .light ::-webkit-scrollbar-thumb { background: #9ca3af; }
 .light ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
@@ -54,7 +54,7 @@ h1, h2, h3, h4, h5, h6, .font-pixel {
 }
 .animate-card-flip {
   animation: card-flip 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  box-shadow: 0 0 30px rgba(74, 222, 128, 0.5) !important;
+  box-shadow: 0 0 30px rgba(76, 255, 90, 0.5) !important;
   z-index: 10000;
   position: relative;
 }

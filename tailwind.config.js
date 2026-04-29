@@ -13,9 +13,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        'dark-bg': '#09090b',
-        'dark-surface': '#18181b',
-        'dark-primary': '#4ade80',
+        'dark-bg': '#0a0a0a',
+        'dark-surface': '#141414',
+        'dark-surface2': '#1a1a1a',
+        'dark-divider': '#1e1e1e',
+        'dark-primary': '#4cff5a',
         'dark-secondary': '#22c55e',
         'dark-dim': '#3f3f46',
         'light-bg': '#e5e7eb',
@@ -44,7 +46,7 @@ export default {
         'winamp': ['"VT323"', 'monospace'],
       },
       dropShadow: {
-        'neon-green':  ['0 0 3px #4ade80', '0 0 8px #4ade8055'],
+        'neon-green':  ['0 0 3px #4cff5a', '0 0 8px #4cff5a55'],
         'neon-lime':   ['0 0 3px #00ff00', '0 0 10px #00ff0066'],
         'neon-yellow': ['0 0 3px #fbbf24', '0 0 8px #fbbf2455'],
         'neon-red':    ['0 0 3px #f87171', '0 0 8px #f8717155'],
