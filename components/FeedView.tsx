@@ -359,7 +359,7 @@ const FeedView: React.FC<FeedViewProps> = ({
         </header>
 
         {/* 3. CONTROLS AREA */}
-        <div className={`z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050]' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8' : 'bg-[#0a0a0a] border-[#1e1e1e]'}`}>
+        <div className={`sticky top-0 z-30 pt-2 pb-3 px-4 transition-all border-b ${isWinamp ? 'bg-[#191919]/95 border-[#505050]' : isXp ? 'bg-xp-bg border-xp-navy/30 shadow-sm' : isLight ? 'bg-white/90 border-black/8' : 'bg-[#0a0a0a] border-[#1e1e1e]'}`}>
             <div className="max-w-6xl mx-auto w-full space-y-3">
 
                 {/* Mode Toggle & Search */}
@@ -387,21 +387,42 @@ const FeedView: React.FC<FeedViewProps> = ({
                     </button>
                 </div>
 
-                {/* Filters Row: feedType + viewMode + sort pills */}
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`flex p-0.5 rounded-xl shrink-0 ${isWinamp ? 'border border-[#505050]' : isXp ? 'bg-xp-navy/10 border border-xp-navy/20' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
-                        <button onClick={() => setFeedType('FOR_YOU')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOR_YOU' ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white shadow-sm' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isXp ? 'text-gray-500 hover:text-gray-700' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ГЛАВНАЯ</button>
-                        <button onClick={() => setFeedType('FOLLOWING')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-150 ${feedType === 'FOLLOWING' ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white shadow-sm' : isLight ? 'bg-black/10 text-black shadow-sm' : 'bg-white/15 text-white shadow-sm') : (isXp ? 'text-gray-500 hover:text-gray-700' : isLight ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70')}`}>ПОДПИСКИ</button>
+                {/* Filters Row: feedType tabs + viewMode + sort */}
+                <div className="flex items-center gap-2">
+                    {/* feedType — на десктопе: таб с underline; на мобиле: пилюли */}
+                    <div className={`flex shrink-0 md:gap-0 gap-0 md:border-0 md:bg-transparent md:p-0 p-0.5 rounded-xl ${isWinamp ? 'border border-[#505050]' : isXp ? 'bg-xp-navy/10 border border-xp-navy/20' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
+                        {([{ key: 'FOR_YOU', label: 'Главная' }, { key: 'FOLLOWING', label: 'Подписки' }] as const).map(({ key, label }) => (
+                            <button
+                                key={key}
+                                onClick={() => setFeedType(key)}
+                                className={`
+                                    px-3 transition-all duration-150 font-bold
+                                    md:py-0 md:pb-0 md:text-[13px] md:font-medium md:border-b-2 md:rounded-none md:bg-transparent md:mr-1
+                                    py-1.5 text-[10px] rounded-lg
+                                    ${feedType === key
+                                        ? isWinamp ? 'md:border-[#00ff00] md:text-[#e0e0e0] bg-[#00ff00] text-black md:bg-transparent'
+                                          : isXp ? 'md:border-xp-blue md:text-xp-navy bg-xp-blue text-white md:bg-transparent'
+                                          : isLight ? 'md:border-black md:text-black bg-black/10 text-black md:bg-transparent'
+                                          : 'md:border-[#4cff5a] md:text-[#e0e0e0] bg-white/15 text-white md:bg-transparent'
+                                        : isWinamp ? 'md:border-transparent md:text-[#555] text-gray-400 md:bg-transparent'
+                                          : isXp ? 'md:border-transparent md:text-xp-navy/40 text-gray-500 md:bg-transparent'
+                                          : isLight ? 'md:border-transparent md:text-black/40 text-black/40 md:bg-transparent'
+                                          : 'md:border-transparent md:text-[#555] text-white/40 md:bg-transparent'
+                                    }
+                                `}
+                            >{label}</button>
+                        ))}
                     </div>
 
-                    <div className="flex gap-1 shrink-0">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><XI icon={LayoutGrid} size={15}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-green-600' : 'bg-white/10 text-green-400') : 'opacity-25 hover:opacity-50'}`}><ListIcon size={15}/></button>
+                    {/* Grid/List toggle */}
+                    <div className="flex gap-1 shrink-0 ml-auto md:ml-0">
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-[#555] hover:text-[#888]')}`}><XI icon={LayoutGrid} size={15}/></button>
+                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-[#555] hover:text-[#888]')}`}><ListIcon size={15}/></button>
                     </div>
 
-                    {/* Sort pills — only in ARTIFACTS mode */}
+                    {/* Sort — только в режиме ARTIFACTS */}
                     {feedMode === 'ARTIFACTS' && (
-                        <div className="flex gap-1 shrink-0 ml-auto">
+                        <div className="flex gap-1 shrink-0 md:ml-auto">
                             {sortOptions.map(({ key, label }) => (
                                 <button
                                     key={key}

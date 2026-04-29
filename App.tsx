@@ -850,7 +850,7 @@ export default function App() {
           case 'xp': return 'bg-xp-blue border-b-2 border-xp-navy text-white shadow-[0_2px_6px_rgba(0,0,0,0.3)]';
           case 'winamp': return 'bg-wa-base border-b border-[#505050] text-[#00ff00] font-winamp';
           case 'light': return 'bg-white/90 backdrop-blur-md border-b border-gray-200 text-gray-900';
-          default: return 'bg-black/80 backdrop-blur-md border-b border-white/10 text-white';
+          default: return 'bg-[#0a0a0a] border-b border-[#1e1e1e] text-white';
       }
   };
 
@@ -902,7 +902,7 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-    <div className={`min-h-screen transition-colors duration-300 pb-safe ${getThemeClasses()}`} style={{ overflowX: 'clip', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+    <div className={`min-h-screen transition-colors duration-300 pb-safe md:pl-[60px] ${getThemeClasses()}`} style={{ overflowX: 'clip', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         <SEO title="NeoArchive" />
         <MatrixRain theme={theme === 'dark' ? 'dark' : 'light'} />
         {theme === 'dark' && <CRTOverlay />}
@@ -948,38 +948,69 @@ export default function App() {
 
         {user && (
             <>
-                {/* DESKTOP NAV */}
-                <nav className={`hidden md:flex w-full z-50 px-6 h-16 items-center justify-between backdrop-blur-md transition-all duration-300 ${getDesktopNavClasses()}`}>
-                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigateTo('FEED')}>
-                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs rounded border transition-colors ${theme === 'winamp' ? 'border-[#505050] bg-[#191919] text-[#00ff00]' : theme === 'xp' ? 'border-xp-bg bg-xp-bg text-xp-navy' : 'bg-green-500 border-green-500 text-black'}`}>NA</div>
-                        <span className={`font-pixel font-bold text-lg tracking-[0.2em] group-hover:opacity-80 transition-opacity ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>NEO_ARCHIVE</span>
+                {/* DESKTOP SIDEBAR NAV */}
+                <nav className={`hidden md:flex flex-col items-center fixed left-0 top-0 bottom-0 z-50 w-[60px] transition-all duration-300 ${
+                    theme === 'winamp' ? 'bg-wa-base border-r border-[#505050]'
+                    : theme === 'xp' ? 'bg-xp-bg border-r-2 border-xp-navy/30'
+                    : theme === 'light' ? 'bg-white border-r border-black/8'
+                    : 'bg-[#0a0a0a] border-r border-[#1e1e1e]'
+                }`}>
+                    {/* Logo */}
+                    <div className="pt-[18px] pb-3 flex items-center justify-center w-full cursor-pointer" onClick={() => navigateTo('FEED')}>
+                        <div className={`w-7 h-7 rounded-[7px] flex items-center justify-center font-bold text-[13px] font-pixel transition-colors ${
+                            theme === 'winamp' ? 'bg-[#191919] text-[#00ff00] border border-[#505050]'
+                            : theme === 'xp' ? 'bg-xp-blue text-white'
+                            : theme === 'light' ? 'bg-black text-white'
+                            : 'bg-[#4cff5a] text-black'
+                        }`}>N</div>
                     </div>
 
-                    <div className="flex items-center gap-8">
-                        <button onClick={() => navigateTo('FEED')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'FEED' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
-                            <XI icon={LayoutGrid} size={18} /> ЛЕНТА
-                        </button>
-                        <button onClick={() => navigateTo('COMMUNITY_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'COMMUNITY_HUB' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
-                            <XI icon={Globe} size={18} /> СЕТЬ
-                        </button>
-                        <button onClick={() => navigateTo('CREATE_HUB')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 ${view === 'CREATE_HUB' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
-                            <XI icon={PlusCircle} size={18} /> СОЗДАТЬ
-                        </button>
-                        <button onClick={() => navigateTo('ACTIVITY')} className={`flex items-center gap-2 font-pixel text-xs font-bold transition-all hover:scale-105 relative ${view === 'ACTIVITY' ? (theme === 'xp' ? 'text-yellow-200' : 'text-green-500') : 'opacity-60 hover:opacity-100'}`}>
-                            <XI icon={Bell} size={18} /> АКТИВНОСТЬ
-                            {notifications.some(n => n.recipient === user.username && !n.isRead) && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]" />}
-                        </button>
+                    {/* Nav items */}
+                    <div className="flex flex-col items-center gap-1 flex-1 w-full px-2">
+                        {([
+                            { v: 'FEED', icon: LayoutGrid },
+                            { v: 'COMMUNITY_HUB', icon: Globe },
+                            { v: 'SEARCH', icon: Search },
+                            { v: 'CREATE_HUB', icon: Plus },
+                            { v: 'ACTIVITY', icon: Bell },
+                        ] as { v: string; icon: any }[]).map(({ v, icon }) => {
+                            const isActive = view === v;
+                            return (
+                                <button
+                                    key={v}
+                                    onClick={() => navigateTo(v as ViewState)}
+                                    className={`relative w-11 h-11 rounded-[11px] flex items-center justify-center transition-all ${
+                                        isActive
+                                            ? theme === 'winamp' ? 'bg-[#00ff00]/10 text-[#00ff00]'
+                                              : theme === 'xp' ? 'bg-xp-navy/10 text-xp-navy'
+                                              : theme === 'light' ? 'bg-black/10 text-black'
+                                              : 'bg-[rgba(76,255,90,0.1)] text-[#4cff5a]'
+                                            : theme === 'winamp' ? 'text-[#505050] hover:text-[#00ff00]'
+                                              : theme === 'xp' ? 'text-xp-navy/40 hover:text-xp-navy/80'
+                                              : theme === 'light' ? 'text-black/30 hover:text-black/70'
+                                              : 'text-[#555] hover:text-[#888]'
+                                    }`}
+                                >
+                                    <XI icon={icon} size={18} />
+                                    {v === 'ACTIVITY' && notifications.some(n => n.recipient === user.username && !n.isRead) && (
+                                        <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <button onClick={() => navigateTo('SEARCH')} className="opacity-60 hover:opacity-100 transition-opacity"><XI icon={Search} size={20}/></button>
-                        <div className="h-6 w-[1px] bg-white/10"></div>
-                        <div onClick={() => navigateTo('USER_PROFILE', { username: user.username })} className="flex items-center gap-3 cursor-pointer group">
-                            <div className="text-right hidden lg:block">
-                                <div className={`font-pixel text-xs font-bold ${theme === 'winamp' ? 'text-[#00ff00]' : 'text-white'}`}>@{user.username}</div>
-                                <div className="text-[9px] font-mono opacity-50 uppercase">{user.tagline || 'USER'}</div>
-                            </div>
-                            <img src={user.avatarUrl} className={`w-9 h-9 rounded-full border-2 transition-all ${theme === 'winamp' ? 'border-[#505050]' : 'border-white/20 group-hover:border-green-500'}`} />
+                    {/* Avatar at bottom */}
+                    <div className="pb-[18px]">
+                        <div
+                            onClick={() => navigateTo('USER_PROFILE', { username: user.username })}
+                            className={`w-8 h-8 rounded-full cursor-pointer overflow-hidden border transition-all ${
+                                theme === 'winamp' ? 'border-[#505050]'
+                                : theme === 'dark' ? 'border-[#2a2a2a] hover:border-[#4cff5a]'
+                                : 'border-black/10 hover:border-black/30'
+                            } ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? (theme === 'dark' ? 'border-[#4cff5a]' : '') : ''}`}
+                        >
+                            <img src={user.avatarUrl} className="w-full h-full object-cover" alt={user.username} />
                         </div>
                     </div>
                 </nav>
