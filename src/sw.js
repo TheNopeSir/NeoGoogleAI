@@ -14,8 +14,8 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: 'https://ui-avatars.com/api/?name=NA&background=4ade80&color=000&size=192&font-size=0.5', // Default icon
-      badge: 'https://ui-avatars.com/api/?name=NA&background=000&color=fff&size=96&font-size=0.5', // Small monochrome icon
+      icon: data.icon || '/icon-192.png',
+      badge: '/favicon-32.png',
       vibrate: [100, 50, 100],
       data: {
         url: data.url || '/',

@@ -1010,7 +1010,7 @@ export default function App() {
                                 : 'border-black/10 hover:border-black/30'
                             } ${view === 'USER_PROFILE' && viewedProfileUsername === user.username ? (theme === 'dark' ? 'border-[#4cff5a]' : '') : ''}`}
                         >
-                            <img src={user.avatarUrl} className="w-full h-full object-cover" alt={user.username} />
+                            <img src={db.getUserAvatar(user.username)} className="w-full h-full object-cover" alt={user.username} />
                         </div>
                     </div>
                 </nav>

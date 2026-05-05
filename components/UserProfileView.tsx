@@ -235,7 +235,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <WinampWindow title={`USER: ${profileUser.username}`}>
                         <div className="flex gap-4 items-start">
                             <div className="w-20 h-20 border-2 border-inset border-[#505050] p-1 bg-black">
-                                <img src={profileUser.avatarUrl} className="w-full h-full object-cover grayscale opacity-80 hover:opacity-100" />
+                                <img src={getUserAvatar(profileUser.username)} className="w-full h-full object-cover grayscale opacity-80 hover:opacity-100" />
                             </div>
                             <div className="flex-1 space-y-1">
                                 <div className="text-[14px] text-wa-gold flex justify-between">
@@ -265,7 +265,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
                             <div className="flex flex-col items-start -mt-10 md:-mt-12 gap-4 mb-2">
                                 <div className="relative group">
                                     <div className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 bg-black shadow-lg ${theme === 'dark' ? 'border-dark-surface' : 'border-white'}`}>
-                                        <img src={profileUser.avatarUrl} className="w-full h-full object-cover"/>
+                                        <img src={getUserAvatar(profileUser.username)} className="w-full h-full object-cover"/>
                                     </div>
                                     {isEditingProfile && isCurrentUser && (
                                         <label className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"><XI icon={Camera} size={24} className="text-white" /><input type="file" accept="image/*" className="hidden" onChange={onProfileImageUpload} /></label>

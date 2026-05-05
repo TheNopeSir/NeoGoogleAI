@@ -249,7 +249,7 @@ const DirectChat: React.FC<DirectChatProps> = ({
                                 onClick={() => selectMention(u.username)}
                                 className={`w-full flex items-center gap-2 p-2 text-left transition-colors ${isXP ? 'hover:bg-[#D4D0C8] text-gray-900' : 'hover:bg-white/10'}`}
                             >
-                                <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
+                                <img src={getUserAvatar(u.username)} className="w-6 h-6 rounded-full" />
                                 <span className="font-bold text-[10px]">@{u.username}</span>
                             </button>
                         ))}

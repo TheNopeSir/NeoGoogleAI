@@ -5,7 +5,8 @@
       "Bash(npm ls:*)",
       "Bash(npm view:*)",
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(dir \"K:\\\\neo\\\\NeoGoogleAI\\\\public\" /b)"
     ]
   }
 }

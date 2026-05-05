@@ -606,7 +606,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
           <div className="absolute bottom-full mb-2 left-0 w-64 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
             {filteredUsers.map(u => (
               <button key={u.username} onClick={() => selectMention(u.username)} className="w-full flex items-center gap-2 p-2 hover:bg-white/10 text-left transition-colors">
-                <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
+                <img src={getUserAvatar(u.username)} className="w-6 h-6 rounded-full" />
                 <span className="font-bold text-[10px]">@{u.username}</span>
               </button>
             ))}

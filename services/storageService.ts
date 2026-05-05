@@ -961,11 +961,31 @@ export const deleteGuild = async (id: string) => {
     await deleteGeneric(id);
 };
 
+// Generates a deterministic SVG avatar locally — no external requests needed
+const generateLocalAvatar = (name: string): string => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    const bg = `hsl(${hue},60%,38%)`;
+    const initials = (name || 'NA').slice(0, 2).toUpperCase();
+    const svg = [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">',
+        `<rect width="80" height="80" fill="${bg}"/>`,
+        `<text x="40" y="40" dominant-baseline="central" text-anchor="middle" fill="#fff" `,
+        `font-family="system-ui,sans-serif" font-size="30" font-weight="700">${initials}</text>`,
+        '</svg>',
+    ].join('');
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
+
 export const getUserAvatar = (username: string): string => {
-    if (!username) return 'https://ui-avatars.com/api/?name=NA&background=000&color=fff';
+    if (!username) return generateLocalAvatar('NA');
     const u = hotCache.users.find(u => u.username === username);
-    if (u?.avatarUrl) return u.avatarUrl;
-    return 'https://ui-avatars.com/api/?name=' + username + '&background=random&color=fff&bold=true';
+    // Skip old placeholder URLs from external services
+    if (u?.avatarUrl && !u.avatarUrl.includes('ui-avatars.com')) return u.avatarUrl;
+    return generateLocalAvatar(username);
 };
 
 export const fetchExhibitById = async (id: string) => {
