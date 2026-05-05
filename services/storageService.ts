@@ -389,6 +389,8 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
             await db.clear('notifications');
             await db.clear('messages');
             await db.clear('generic');
+            // Also wipe the delta-sync marker so next load does a full fresh fetch
+            try { await db.delete('system', 'lastFeedSyncAt'); } catch(_) {}
             localStorage.setItem('neo_force_reset_key', FORCE_RESET_TOKEN);
         } catch (e) { console.error("Cache reset failed:", e); }
     }
@@ -409,6 +411,8 @@ export const initializeDatabase = async (): Promise<UserProfile | null> => {
         return hotCache.users.find(u => u.username === activeUserUsername) || null;
     }
 
+    // Anonymous users also get a fresh feed so the page isn't empty after cache clear
+    loadCriticalFeedData();
     return null;
 };
 

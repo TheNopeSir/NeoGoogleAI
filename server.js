@@ -412,6 +412,7 @@ const ensureSchema = async () => {
         `CREATE INDEX IF NOT EXISTS idx_users_email         ON users    ((data->>'email'))`,
         `CREATE INDEX IF NOT EXISTS idx_exhibits_owner      ON exhibits ((data->>'owner'))`,
         `CREATE INDEX IF NOT EXISTS idx_exhibits_ts         ON exhibits ((data->>'timestamp'))`,
+        `CREATE INDEX IF NOT EXISTS idx_exhibits_updated    ON exhibits (updated_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_collections_owner   ON collections ((data->>'owner'))`,
         `CREATE INDEX IF NOT EXISTS idx_notifs_recipient    ON notifications ((data->>'recipient'))`,
         `CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages ((data->>'sender'))`,
