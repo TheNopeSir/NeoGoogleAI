@@ -173,6 +173,17 @@ const notifyListeners = () => {
     try { listeners.forEach(l => l()); } finally { _notifying = false; }
 };
 
+// Batches multiple rapid updates into a single repaint frame to avoid UI thrashing
+let _rafPending = false;
+const scheduleNotify = () => {
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(() => {
+        _rafPending = false;
+        notifyListeners();
+    });
+};
+
 // IDs уведомлений, уже известных при загрузке — не показывать как тосты
 let _knownNotificationIds: Set<string> | null = null;
 const emitNewToasts = (notifs: Notification[]) => {
@@ -214,9 +225,11 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any, ext
             // Construct full URL using API_BASE which can be absolute for mobile
             const fullPath = endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : `${API_BASE}/${endpoint}`;
             
-            // Add timestamp for GET requests to prevent caching
+            // Cache-bust only real-time endpoints; stable data (users, collections) can use HTTP cache
+            const REALTIME_PREFIXES = ['/feed', '/notifications', '/messages', '/sync'];
+            const needsCacheBust = REALTIME_PREFIXES.some(p => endpoint.startsWith(p));
             let finalUrl = fullPath;
-            if (method === 'GET') {
+            if (method === 'GET' && needsCacheBust) {
                 const separator = fullPath.includes('?') ? '&' : '?';
                 finalUrl += `${separator}_t=${Date.now()}`;
             }
@@ -411,46 +424,63 @@ const deleteGeneric = async (id: string) => {
 
 const loadCriticalFeedData = async () => {
     try {
+        const db = await getDB();
+        const lastSync: string | undefined = await db.get('system', 'lastFeedSyncAt');
+
         const limit = 200;
-        const data = await apiCall(`/feed?limit=${limit}`);
+        const url = lastSync
+            ? `/feed?limit=${limit}&since=${encodeURIComponent(lastSync)}`
+            : `/feed?limit=${limit}`;
+
+        const data = await apiCall(url);
         if (!Array.isArray(data)) return;
 
-        const serverIds = new Set(data.map((e: any) => e.id));
-        const activeUsername = await getActiveUsername();
+        const syncTime = new Date().toISOString();
 
-        // Purge from cache items that are no longer on the server:
-        // keep local drafts, keep own items (reconciled separately), keep items confirmed by server
-        hotCache.exhibits = hotCache.exhibits.filter(e =>
-            e.isDraft ||
-            (activeUsername && e.owner === activeUsername) ||
-            serverIds.has(e.id)
-        );
+        if (!lastSync) {
+            // Full fetch: purge deleted items from cache and IDB
+            const serverIds = new Set(data.map((e: any) => e.id));
+            const activeUsername = await getActiveUsername();
 
-        // Merge server data (server version wins for non-drafts)
-        const merged = mergeUnique(hotCache.exhibits, data);
-        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        hotCache.exhibits = merged;
-        notifyListeners();
-
-        // Update IDB — also remove deleted items from IndexedDB
-        getDB().then(async db => {
-            const tx = db.transaction('exhibits', 'readwrite');
-            data.forEach((item: any) => tx.store.put(item));
-            await tx.done;
-            // Clean up IDB: remove items not in server feed and not owned by active user
-            const allLocal = await db.getAll('exhibits');
-            const toDelete = allLocal.filter((e: any) =>
-                !e.isDraft &&
-                !(activeUsername && e.owner === activeUsername) &&
-                !serverIds.has(e.id)
+            hotCache.exhibits = hotCache.exhibits.filter(e =>
+                e.isDraft ||
+                (activeUsername && e.owner === activeUsername) ||
+                serverIds.has(e.id)
             );
-            if (toDelete.length > 0) {
-                const delTx = db.transaction('exhibits', 'readwrite');
-                toDelete.forEach((e: any) => delTx.store.delete(e.id));
-                await delTx.done;
-            }
-        });
+
+            getDB().then(async db => {
+                const tx = db.transaction('exhibits', 'readwrite');
+                data.forEach((item: any) => tx.store.put(item));
+                await tx.done;
+                const allLocal = await db.getAll('exhibits');
+                const toDelete = allLocal.filter((e: any) =>
+                    !e.isDraft &&
+                    !(activeUsername && e.owner === activeUsername) &&
+                    !serverIds.has(e.id)
+                );
+                if (toDelete.length > 0) {
+                    const delTx = db.transaction('exhibits', 'readwrite');
+                    toDelete.forEach((e: any) => delTx.store.delete(e.id));
+                    await delTx.done;
+                }
+            });
+        } else if (data.length > 0) {
+            // Delta fetch: only write new/updated items — no purge needed
+            getDB().then(async db => {
+                const tx = db.transaction('exhibits', 'readwrite');
+                data.forEach((item: any) => tx.store.put(item));
+                await tx.done;
+            });
+        }
+
+        if (data.length > 0) {
+            const merged = mergeUnique(hotCache.exhibits, data);
+            merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            hotCache.exhibits = merged;
+            scheduleNotify();
+        }
+
+        db.put('system', syncTime, 'lastFeedSyncAt');
     } catch (e) { console.warn("Feed load failed", e); }
 };
 
@@ -484,8 +514,8 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                  if (genericTable === 'guestbook') hotCache.guestbook = data;
             }
             
-            notifyListeners();
-            
+            scheduleNotify();
+
             const tx = db.transaction(table as any, 'readwrite');
             const store = tx.objectStore(table as any);
             if (table === 'generic' && genericTable) {
@@ -497,8 +527,8 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
         } catch (e) {}
     };
 
+    // /feed is already handled by loadCriticalFeedData (called before this function)
     Promise.allSettled([
-        fetchAndApply('/feed?limit=200', 'exhibits', undefined, 'exhibits'),
         fetchAndApply('/users', 'users', undefined, 'users'),
         fetchAndApply('/collections', 'collections', undefined, 'collections'),
         fetchAndApply('/wishlist', 'generic', 'wishlist', 'wishlist'),
@@ -518,7 +548,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             );
             // Merge fresh server data for own items
             hotCache.exhibits = mergeUnique(hotCache.exhibits, serverOwned);
-            notifyListeners();
+            scheduleNotify();
             // Sync IDB
             const db = await getDB();
             const allLocal = await db.getAll('exhibits');
@@ -537,8 +567,8 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
             if (syncData.tradeRequests?.length) {
                 hotCache.tradeRequests = syncData.tradeRequests;
                 syncData.tradeRequests.forEach(async (tr: TradeRequest) => await saveGeneric('trade_requests', tr));
+                scheduleNotify();
             }
-            notifyListeners();
         });
         Promise.all([
             apiCall(`/notifications?username=${activeUserUsername}`),
@@ -555,7 +585,7 @@ const performBackgroundSync = async (activeUserUsername?: string) => {
                 hotCache.messages = msgs;
             }
             await tx.done;
-            notifyListeners();
+            scheduleNotify();
         });
     }
 };

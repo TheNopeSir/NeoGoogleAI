@@ -407,6 +407,22 @@ const ensureSchema = async () => {
         );
     `);
 
+    // JSONB indexes for common filter fields — turns O(n) seq scans into O(log n) index scans
+    const jsonbIndexes = [
+        `CREATE INDEX IF NOT EXISTS idx_users_email         ON users    ((data->>'email'))`,
+        `CREATE INDEX IF NOT EXISTS idx_exhibits_owner      ON exhibits ((data->>'owner'))`,
+        `CREATE INDEX IF NOT EXISTS idx_exhibits_ts         ON exhibits ((data->>'timestamp'))`,
+        `CREATE INDEX IF NOT EXISTS idx_collections_owner   ON collections ((data->>'owner'))`,
+        `CREATE INDEX IF NOT EXISTS idx_notifs_recipient    ON notifications ((data->>'recipient'))`,
+        `CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages ((data->>'sender'))`,
+        `CREATE INDEX IF NOT EXISTS idx_messages_recipient  ON messages ((data->>'recipient'))`,
+    ];
+    for (const sql of jsonbIndexes) {
+        try { await query(sql); } catch (e) {
+            console.warn(`[Schema] Index creation skipped: ${e.message}`);
+        }
+    }
+
     try {
         await query(`DELETE FROM verification_codes WHERE created_at < NOW() - INTERVAL '24 HOURS'`);
     } catch (e) {
@@ -1272,11 +1288,27 @@ api.get('/feed', async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit) || 200, 200);
         const offset = parseInt(req.query.offset) || 0;
-        const result = await query(
-            `SELECT * FROM exhibits WHERE (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY updated_at DESC LIMIT $1 OFFSET $2`,
-            [limit, offset]
-        );
-        res.json(result.rows.map(mapRow));
+        const since = req.query.since || null;
+
+        const cacheKey = `feed:${limit}:${offset}:${since || ''}`;
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
+
+        let sql, params;
+        if (since) {
+            const sinceDate = new Date(since);
+            if (isNaN(sinceDate.getTime())) return res.status(400).json({ error: 'Invalid since parameter' });
+            sql = `SELECT * FROM exhibits WHERE (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') AND updated_at > $3 ORDER BY updated_at DESC LIMIT $1 OFFSET $2`;
+            params = [limit, offset, sinceDate.toISOString()];
+        } else {
+            sql = `SELECT * FROM exhibits WHERE (data->>'isDraft' IS NULL OR data->>'isDraft' = 'false') ORDER BY updated_at DESC LIMIT $1 OFFSET $2`;
+            params = [limit, offset];
+        }
+
+        const result = await query(sql, params);
+        const rows = result.rows.map(mapRow);
+        cache.set(cacheKey, rows, 15);
+        res.json(rows);
     } catch (e) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
