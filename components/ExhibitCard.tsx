@@ -303,8 +303,8 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
             className={`w-full h-full transition-transform duration-500 group-hover:scale-105 ${isViewed ? 'brightness-75 opacity-85' : ''}`}
           />
 
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+          {/* Gradient overlay — лёгкое затемнение только для читабельности бейджей */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
 
           {/* WANTED: magnifying glass overlay */}
           {isWanted && (

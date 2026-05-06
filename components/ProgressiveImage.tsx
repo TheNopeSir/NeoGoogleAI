@@ -13,7 +13,7 @@ const ProgressiveImage: React.FC<ProgressiveImageProps> = ({ imageData, alt, cla
     const [hasError, setHasError] = useState(false);
 
     return (
-        <div className={`relative overflow-hidden ${className} bg-gray-900/20`}>
+        <div className={`relative overflow-hidden ${className}`}>
             {/* Placeholder Skeleton */}
             {!isLoaded && !hasError && (
                 <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">

@@ -454,9 +454,10 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     )}
                 </div>
+                </div>
 
-                {/* Category Pills */}
-                <div className="space-y-2 mt-3">
+                {/* Category Pills — всегда видны */}
+                <div className="space-y-2">
                     <div
                         className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide"
                         onTouchStart={e => e.stopPropagation()}
@@ -489,9 +490,9 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     </div>
 
-                    {/* Price filter row — only in ARTIFACTS mode */}
-                    {feedMode === 'ARTIFACTS' && (
-                        <div className="flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-150">
+                    {/* Price filter row — only in ARTIFACTS mode, under gear */}
+                    {feedMode === 'ARTIFACTS' && showFilterPanel && (
+                        <div className="hidden md:flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-150">
                             <button
                                 onClick={() => setPriceFilterEnabled(v => !v)}
                                 className={`flex items-center gap-1.5 text-[9px] font-bold px-3 py-1.5 rounded-lg transition-all ${
@@ -525,7 +526,29 @@ const FeedView: React.FC<FeedViewProps> = ({
                             )}
                         </div>
                     )}
-                </div>
+                    {/* Price filter on mobile — always available */}
+                    {feedMode === 'ARTIFACTS' && (
+                        <div className="md:hidden flex items-center gap-3 flex-wrap">
+                            <button
+                                onClick={() => setPriceFilterEnabled(v => !v)}
+                                className={`flex items-center gap-1.5 text-[9px] font-bold px-3 py-1.5 rounded-lg transition-all ${
+                                    priceFilterEnabled
+                                        ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                                        : isLight ? 'bg-black/[0.05] text-black/40 hover:text-black/70' : 'bg-white/[0.05] text-white/40 hover:text-white/70'
+                                }`}
+                            >
+                                <XI icon={DollarSign} size={10} /> С ЦЕНОЙ
+                            </button>
+                            {priceFilterEnabled && (
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)} placeholder="от" className={`w-20 border rounded-lg px-2 py-1 text-[10px] font-mono focus:border-emerald-500 outline-none ${isLight ? 'bg-black/5 border-black/15' : 'bg-black/30 border-white/10'}`} />
+                                    <span className="text-[9px] opacity-40">—</span>
+                                    <input type="number" value={priceMax} onChange={e => setPriceMax(e.target.value)} placeholder="до" className={`w-20 border rounded-lg px-2 py-1 text-[10px] font-mono focus:border-emerald-500 outline-none ${isLight ? 'bg-black/5 border-black/15' : 'bg-black/30 border-white/10'}`} />
+                                    <span className="text-[9px] opacity-40 font-mono">₽</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
