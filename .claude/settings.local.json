@@ -6,7 +6,10 @@
       "Bash(npm view:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(dir \"K:\\\\neo\\\\NeoGoogleAI\\\\public\" /b)"
+      "Bash(dir \"K:\\\\neo\\\\NeoGoogleAI\\\\public\" /b)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

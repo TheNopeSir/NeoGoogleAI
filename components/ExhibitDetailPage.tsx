@@ -1068,6 +1068,35 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
               </button>
             </div>
 
+            {/* Desktop action buttons */}
+            {!isOwner ? (
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => onMessage(exhibit.owner)}
+                  className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-pixel font-bold transition-colors ${isXp ? 'border-gray-300 text-gray-700 hover:bg-gray-100' : isWinamp ? 'border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00]/10' : 'border-white/20 text-white hover:bg-white/5'}`}
+                >
+                  <MessageSquare size={15}/> Написать
+                </button>
+                {canTrade && (
+                  <button
+                    onClick={() => setShowTradeModal(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-500 text-black rounded-xl text-sm font-pixel font-bold hover:bg-green-400 active:scale-[0.99] transition-all"
+                  >
+                    <XI icon={RefreshCw} size={14}/> Предложить обмен
+                  </button>
+                )}
+              </div>
+            ) : onEdit ? (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => onEdit(exhibit)}
+                  className={`flex items-center gap-2 px-4 py-2.5 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-pixel font-bold hover:bg-purple-500/10 transition-colors`}
+                >
+                  <Edit2 size={14}/> Редактировать
+                </button>
+              </div>
+            ) : null}
+
             {/* Stats bar */}
             <div className="flex items-center gap-4 text-xs font-mono opacity-60">
               <div className="flex items-center gap-2">
@@ -1126,7 +1155,7 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
           FIXED BOTTOM ACTION BAR
       ============================================================ */}
       <div className={`fixed bottom-0 left-0 right-0 z-40 border-t ${isXp ? 'bg-white border-gray-200' : isWinamp ? 'bg-[#111] border-[#505050]' : 'bg-black/90 border-white/5 backdrop-blur-md'}`}>
-        {/* Mobile bar */}
+        {/* Mobile bar only */}
         <div className="lg:hidden flex gap-3 px-4 py-3">
           <button
             onClick={() => onMessage(exhibit.owner)}
@@ -1142,40 +1171,6 @@ const ExhibitDetailPage: React.FC<ExhibitDetailPageProps> = ({
               <XI icon={RefreshCw} size={14}/> Предложить обмен
             </button>
           )}
-        </div>
-
-        {/* Desktop bar */}
-        <div className="hidden lg:flex items-center gap-4 px-8 py-4">
-          <button
-            onClick={() => onLike(exhibit.id)}
-            className={`flex items-center gap-2 font-mono text-sm transition-all ${isLiked ? 'text-red-500' : isXp ? 'text-gray-500 hover:text-gray-800' : 'opacity-60 hover:opacity-100'}`}
-            title={isLiked ? 'Убрать лайк' : 'Лайк'}
-          >
-            <XI icon={Heart} size={20} fill={isLiked ? "currentColor" : "none"} />
-            <span className="font-bold">{exhibit.likes}</span>
-          </button>
-          <button
-            onClick={() => onMessage(exhibit.owner)}
-            className={`p-3 border rounded-xl transition-colors ${isXp ? 'border-gray-300 text-gray-600 hover:bg-gray-100' : isWinamp ? 'border-[#505050] text-[#00ff00] hover:bg-[#00ff00]/10' : 'border-white/15 text-white/70 hover:bg-white/5 hover:text-white'}`}
-            title="Написать"
-          >
-            <MessageSquare size={18}/>
-          </button>
-          {canTrade ? (
-            <button
-              onClick={() => setShowTradeModal(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500 text-black rounded-xl font-pixel text-sm uppercase font-bold hover:bg-green-400 active:scale-[0.99] transition-all"
-            >
-              <XI icon={RefreshCw} size={15}/> Предложить обмен
-            </button>
-          ) : isOwner && onEdit ? (
-            <button
-              onClick={() => onEdit(exhibit)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 border border-purple-500/30 text-purple-400 rounded-xl font-pixel text-sm uppercase font-bold hover:bg-purple-500/10 transition-colors"
-            >
-              <Edit2 size={14}/> Редактировать
-            </button>
-          ) : null}
         </div>
       </div>
 

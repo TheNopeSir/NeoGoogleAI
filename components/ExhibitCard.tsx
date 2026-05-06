@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useState, useRef } from 'react';
 import { Heart, Eye, MessageSquare, Camera, Tag, Search, FolderPlus, BookmarkPlus, X, Radar, MoreHorizontal, ExternalLink } from 'lucide-react';
 import { Exhibit, WishlistPriority, Collection, WishlistItem } from '../types';
 import { getArtifactTier, TIER_CONFIG, TRADE_STATUS_CONFIG } from '../constants';
@@ -76,40 +75,9 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
   const [actionMode, setActionMode] = useState<'NONE' | 'COLLECTION_PICKER' | 'WISHLIST_PICKER'>('NONE');
   const [showDotMenu, setShowDotMenu] = useState(false);
 
-  // --- Hover preview portal state ---
   const cardRef = useRef<HTMLDivElement>(null);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    };
-  }, []);
-
-  const handleCardMouseEnter = () => {
-    // Skip hover preview on touch devices
-    if (window.matchMedia('(hover: none)').matches) return;
-    hoverTimerRef.current = setTimeout(() => {
-      if (!cardRef.current) return;
-      const rect = cardRef.current.getBoundingClientRect();
-      const previewWidth = 288;
-      const x = rect.right + previewWidth + 16 > window.innerWidth
-        ? rect.left - previewWidth - 8
-        : rect.right + 8;
-      const y = Math.min(rect.top, window.innerHeight - 420);
-      setPreviewPos({ x, y });
-      setPreviewVisible(true);
-    }, 700);
-  };
 
   const handleCardMouseLeave = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    setPreviewVisible(false);
     if (actionMode === 'NONE') setShowActionOverlay(false);
     setShowDotMenu(false);
   };
@@ -309,14 +277,13 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
       <div
         ref={cardRef}
         onClick={handleCardClick}
-        onMouseEnter={handleCardMouseEnter}
         onMouseLeave={handleCardMouseLeave}
         className={`group cursor-pointer flex flex-col rounded-2xl overflow-hidden transition-all duration-300
           ${isXP
             ? 'bg-white shadow-md hover:shadow-xl hover:shadow-xp-navy/10 ring-1 ring-xp-navy/10 hover:ring-xp-navy/30'
             : isLight
             ? 'bg-white shadow-md hover:shadow-xl hover:shadow-black/10 ring-1 ring-black/5 hover:ring-black/15'
-            : `bg-[#141414] ring-1 ring-white/[0.06] hover:ring-[#4cff5a]/40 hover:shadow-lg hover:shadow-[#4cff5a]/10 ${isHighTier && !isWanted ? config.borderDark : ''}`
+            : `bg-[#141414] ring-1 ring-white/[0.06] hover:ring-[#4cff5a]/40 ${isHighTier && !isWanted ? config.borderDark : ''}`
           }
           ${isWanted ? (isLight || isXP ? 'ring-amber-400/50 hover:ring-amber-400' : 'ring-amber-500/30 hover:ring-amber-500/60') : ''}
           ${isCursed || config.animated ? 'animate-pulse' : ''}
@@ -325,7 +292,7 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         {/* Image section */}
         <div
           className="relative aspect-[4/3] overflow-hidden"
-          style={!(isXP || isLight) ? { background: 'repeating-linear-gradient(45deg,#1e1e1e,#1e1e1e 3px,#161616 3px,#161616 12px)' } : { background: '#e5e7eb' }}
+          style={{ background: !(isXP || isLight) ? '#141414' : '#e5e7eb' }}
           onMouseEnter={() => !isWanted && onAddToCollection && setShowActionOverlay(true)}
           onMouseLeave={() => { if (actionMode === 'NONE') setShowActionOverlay(false); }}
         >
@@ -390,9 +357,9 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
               isXP || isLight
                 ? `border bg-zinc-900/90 ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`
                 : tradeStatus === 'FOR_TRADE'
-                  ? 'bg-[rgba(13,40,13,0.9)] text-[#4cff5a]'
+                  ? 'bg-[rgba(76,255,90,0.15)] text-[#4cff5a] ring-1 ring-[#4cff5a]/40'
                   : tradeStatus === 'FOR_SALE'
-                    ? 'bg-[rgba(0,0,0,0.75)] text-emerald-400'
+                    ? 'bg-[rgba(16,185,129,0.15)] text-emerald-400 ring-1 ring-emerald-500/40'
                     : `border bg-zinc-900/90 ${tradeConfig.color.replace(/bg-[\w/-]+/, '')}`
             }`}>
               {tradeConfig.icon && React.createElement(tradeConfig.icon, { size: 10, strokeWidth: 2.5 })}
@@ -610,55 +577,6 @@ export const ExhibitCard: React.FC<ExhibitCardProps> = ({
         </div>
       </div>
 
-      {/* Hover Preview Portal */}
-      {previewVisible && !isWanted && ReactDOM.createPortal(
-        <div
-          className="fixed z-[9999] w-72 rounded-2xl overflow-hidden shadow-2xl pointer-events-none border border-white/15"
-          style={{
-            left: previewPos.x,
-            top: previewPos.y,
-            background: 'rgba(15,15,20,0.97)',
-            backdropFilter: 'blur(16px)',
-          }}
-        >
-          <div className="relative h-40 overflow-hidden">
-            <img src={firstImage} className="w-full h-full object-cover" alt={item.title} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-            <div className="absolute bottom-2 left-2 flex gap-3 text-[9px] font-mono text-white/70">
-              <span className="flex items-center gap-1"><MatrixIcon icon={Eye} size={10} theme="dark" glow={0} /> {uniqueViews}</span>
-              <span className="flex items-center gap-1"><MatrixIcon icon={Heart} size={10} color="#f87171" theme="dark" glow={1} /> {likeCount}</span>
-              <span className="flex items-center gap-1"><MatrixIcon icon={MessageSquare} size={10} color="#60a5fa" theme="dark" glow={1} /> {commentCount}</span>
-            </div>
-            <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md flex items-center gap-1 text-[7px] font-pixel font-bold border border-white/10 ${config.badge}`}>
-              <Icon size={8} /> {config.name}
-            </div>
-          </div>
-          <div className="p-3 space-y-2">
-            <h3 className="font-pixel text-sm font-bold text-white line-clamp-2">{item.title}</h3>
-            {item.description && (
-              <p className="text-[10px] text-white/50 line-clamp-2">{item.description}</p>
-            )}
-            {Object.entries(item.specs || {}).slice(0, 3).map(([key, val]) => (
-              <div key={key} className="flex justify-between text-[9px] font-mono">
-                <span className="text-white/40 uppercase truncate mr-2">{key}</span>
-                <span className="text-white/70 shrink-0">{val}</span>
-              </div>
-            ))}
-            {condition && (
-              <div className="flex justify-between text-[9px] font-mono">
-                <span className="text-white/40 uppercase">Состояние</span>
-                <span className="text-white/70">{condition}</span>
-              </div>
-            )}
-            {tradeStatus === 'FOR_SALE' && item.price && (
-              <div className="text-emerald-400 font-bold text-sm font-mono pt-1">
-                {formatPrice(item.price, item.currency)}
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
     </>
   );
 };

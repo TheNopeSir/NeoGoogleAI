@@ -3,7 +3,7 @@ import Kolobok from './Kolobok';
 import {
   LayoutGrid, List as ListIcon, Search, Heart,
   Zap, Radar, ArrowUpCircle, Folder, ChevronDown, ChevronUp, User as UserIcon,
-  ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare
+  ArrowUp, Loader2, Inbox, DollarSign, Eye, MessageSquare, Settings
 } from 'lucide-react';
 import { UserProfile, Exhibit, WishlistItem, Collection, WishlistPriority } from '../types';
 import { DefaultCategory, CATEGORY_SUBCATEGORIES, calculateWishlistMatchScore, WISHLIST_MATCH_THRESHOLD } from '../constants';
@@ -131,6 +131,9 @@ const FeedView: React.FC<FeedViewProps> = ({
 
   // Sorting
   const [sortMode, setSortMode] = useState<SortMode>('NEW');
+
+  // Filter panel toggle (desktop)
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   // Price filter
   const [priceFilterEnabled, setPriceFilterEnabled] = useState(false);
@@ -376,7 +379,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             <XI icon={LayoutGrid} size={12} /> ЛЕНТА
                         </button>
                         <button onClick={() => setFeedMode('COLLECTIONS')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'COLLECTIONS' ? (isWinamp ? 'text-black' : isXp ? 'text-white' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : isXp ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70')}`}>
-                            <XI icon={Folder} size={12} /> АЛЬБОМЫ
+                            <XI icon={Folder} size={12} /> КОЛЛЕКЦИИ
                         </button>
                         <button onClick={() => setFeedMode('WISHLIST')} className={`flex-1 relative flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold transition-colors duration-150 z-10 ${feedMode === 'WISHLIST' ? (isWinamp ? 'text-black' : isXp ? 'text-white' : 'text-white') : (isLight ? 'text-black/40 hover:text-black/70' : isXp ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70')}`}>
                             <XI icon={Radar} size={12} /> ВИШЛИСТ
@@ -385,9 +388,21 @@ const FeedView: React.FC<FeedViewProps> = ({
                     <button onClick={() => onNavigate('SEARCH')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isXp ? 'bg-xp-navy/10 hover:bg-xp-navy/20 text-xp-navy border border-xp-navy/20' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white'}`}>
                         <XI icon={Search} size={18} />
                     </button>
+                    <button
+                        onClick={() => setShowFilterPanel(v => !v)}
+                        className={`hidden md:flex w-11 h-11 rounded-2xl items-center justify-center transition-all ${
+                            showFilterPanel
+                                ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-blue text-white' : isLight ? 'bg-black text-white' : 'bg-white/15 text-white')
+                                : (isWinamp ? 'bg-black border border-[#00ff00] text-[#00ff00]' : isXp ? 'bg-xp-navy/10 hover:bg-xp-navy/20 text-xp-navy border border-xp-navy/20' : isLight ? 'bg-black/[0.05] hover:bg-black/10 text-black/60 hover:text-black' : 'bg-white/[0.06] hover:bg-white/10 text-white/60 hover:text-white')
+                        }`}
+                        title="Фильтры и сортировка"
+                    >
+                        <XI icon={Settings} size={18} />
+                    </button>
                 </div>
 
-                {/* Filters Row: feedType tabs + viewMode + sort */}
+                {/* Filters Row: feedType tabs + viewMode + sort — на десктопе только при showFilterPanel */}
+                <div className={!showFilterPanel ? 'md:hidden' : ''}>
                 <div className="flex items-center gap-2">
                     {/* feedType — на десктопе: таб с underline; на мобиле: пилюли */}
                     <div className={`flex shrink-0 md:gap-0 gap-0 md:border-0 md:bg-transparent md:p-0 p-0.5 rounded-xl ${isWinamp ? 'border border-[#505050]' : isXp ? 'bg-xp-navy/10 border border-xp-navy/20' : isLight ? 'bg-black/[0.05]' : 'bg-white/[0.06]'}`}>
@@ -403,11 +418,11 @@ const FeedView: React.FC<FeedViewProps> = ({
                                         ? isWinamp ? 'md:border-[#00ff00] md:text-[#e0e0e0] bg-[#00ff00] text-black md:bg-transparent'
                                           : isXp ? 'md:border-xp-blue md:text-xp-navy bg-xp-blue text-white md:bg-transparent'
                                           : isLight ? 'md:border-black md:text-black bg-black/10 text-black md:bg-transparent'
-                                          : 'md:border-[#4cff5a] md:text-[#e0e0e0] bg-white/15 text-white md:bg-transparent'
-                                        : isWinamp ? 'md:border-transparent md:text-[#555] text-gray-400 md:bg-transparent'
+                                          : 'md:border-[#4cff5a] md:text-white bg-white/15 text-white md:bg-transparent'
+                                        : isWinamp ? 'md:border-transparent md:text-white/50 text-gray-400 md:bg-transparent'
                                           : isXp ? 'md:border-transparent md:text-xp-navy/40 text-gray-500 md:bg-transparent'
                                           : isLight ? 'md:border-transparent md:text-black/40 text-black/40 md:bg-transparent'
-                                          : 'md:border-transparent md:text-[#555] text-white/40 md:bg-transparent'
+                                          : 'md:border-transparent md:text-white/50 text-white/40 md:bg-transparent'
                                     }
                                 `}
                             >{label}</button>
@@ -416,8 +431,8 @@ const FeedView: React.FC<FeedViewProps> = ({
 
                     {/* Grid/List toggle */}
                     <div className="flex gap-1 shrink-0 ml-auto md:ml-0">
-                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-[#555] hover:text-[#888]')}`}><XI icon={LayoutGrid} size={15}/></button>
-                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-[#555] hover:text-[#888]')}`}><ListIcon size={15}/></button>
+                        <button onClick={() => setFeedViewMode('GRID')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'GRID' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-white/50 hover:text-white/80')}`}><XI icon={LayoutGrid} size={15}/></button>
+                        <button onClick={() => setFeedViewMode('LIST')} className={`p-2 rounded-lg transition-all ${feedViewMode === 'LIST' ? (isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : isWinamp ? 'bg-[#292929] text-[#00ff00]' : 'bg-[#1e1e1e] text-[#e0e0e0]') : (isLight || isXp ? 'text-black/30 hover:text-black/60' : 'text-white/50 hover:text-white/80')}`}><ListIcon size={15}/></button>
                     </div>
 
                     {/* Sort — только в режиме ARTIFACTS */}
@@ -430,7 +445,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                                     className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all ${
                                         sortMode === key
                                             ? (isWinamp ? 'bg-[#00ff00] text-black' : isXp ? 'bg-xp-navy/10 text-xp-navy' : isLight ? 'bg-black/10 text-black' : 'bg-[rgba(76,255,90,0.08)] text-[#4cff5a]')
-                                            : (isLight ? 'text-black/30 hover:text-black/60' : isXp ? 'text-xp-navy/30 hover:text-xp-navy/60' : 'text-[#555] hover:text-[#888]')
+                                            : (isLight ? 'text-black/30 hover:text-black/60' : isXp ? 'text-xp-navy/30 hover:text-xp-navy/60' : 'text-white/50 hover:text-white/80')
                                     }`}
                                 >
                                     {label}
@@ -441,7 +456,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                 </div>
 
                 {/* Category Pills */}
-                <div className="space-y-2">
+                <div className="space-y-2 mt-3">
                     <div
                         className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide"
                         onTouchStart={e => e.stopPropagation()}
@@ -511,6 +526,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                         </div>
                     )}
                 </div>
+                </div>
             </div>
         </div>
 
@@ -518,35 +534,9 @@ const FeedView: React.FC<FeedViewProps> = ({
         <div className="px-4 max-w-6xl mx-auto w-full">
             {feedMode === 'ARTIFACTS' ? (
                 <>
-                    {/* 👁 НЕДАВНО ПРОСМОТРЕННЫЕ block */}
-                    {recentlyViewedExhibits.length > 0 && (
-                        <div className="mb-5">
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className={sectionHeaderClass}>👁 НЕДАВНО ПРОСМОТРЕННЫЕ</span>
-                                <div className={dividerClass} />
-                            </div>
-                            <div
-                                className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
-                                onTouchStart={e => e.stopPropagation()}
-                                onTouchMove={e => e.stopPropagation()}
-                                onTouchEnd={e => e.stopPropagation()}
-                            >
-                                {recentlyViewedExhibits.map(item => (
-                                    <TrendingCard
-                                        key={item.id}
-                                        item={item}
-                                        theme={theme}
-                                        onClick={onExhibitClick}
-                                        label={`👁 ${item.viewedBy?.length || item.views}`}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Main feed grid */}
                     {exhibits.length === 0 ? (
-                        <div className={`grid gap-0.5 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
+                        <div className={`grid gap-3 ${feedViewMode === 'LIST' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
                             {[1,2,3,4,5,6].map(i => <FeedSkeleton key={i} viewMode={feedViewMode} />)}
                         </div>
                     ) : processedExhibits.length === 0 ? (
@@ -556,7 +546,7 @@ const FeedView: React.FC<FeedViewProps> = ({
                             {feedType === 'FOLLOWING' ? "Подпишитесь на активных авторов" : "Попробуйте сбросить фильтры"}
                         </div>
                     ) : (
-                        <div className={`grid gap-0.5 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                        <div className={`grid gap-3 ${feedViewMode === 'GRID' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleExhibits.map((item) => {
                                 const isLiked = item.likedBy?.includes(user?.username || '') || false;
                                 try {
