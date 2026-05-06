@@ -322,13 +322,14 @@ export default function App() {
           const id = segments[1];
           let item = db.getFullDatabase().exhibits.find(e => e.id === id);
           if (!item) try { item = await db.fetchExhibitById(id); } catch(e){}
-          if (item) { setSelectedExhibit(item); setView('EXHIBIT'); } 
-          else setView('FEED'); 
+          if (item) { setSelectedExhibit(item); setView('EXHIBIT'); }
+          else { document.title = 'Страница не найдена — NeoArchive'; setView('NOT_FOUND'); }
       } else if (root === 'collection') {
           const id = segments[1];
           let col = db.getFullDatabase().collections.find(c => c.id === id);
           if (!col) try { col = await db.fetchCollectionById(id); } catch(e){}
           if (col) { setSelectedCollection(col); setView('COLLECTION_DETAIL'); }
+          else { document.title = 'Страница не найдена — NeoArchive'; setView('NOT_FOUND'); }
       } else { setView('FEED'); }
   }, []);
 
@@ -415,6 +416,8 @@ export default function App() {
       else if (newView === 'TERMS') path = '/terms';
 
       window.history.pushState({ view: newView, params }, '', path);
+      const canonical = document.querySelector('link[rel="canonical"]');
+      if (canonical) canonical.setAttribute('href', `https://neoarchive.ru${path}`);
       window.scrollTo(0, 0);
   };
 
@@ -818,6 +821,24 @@ export default function App() {
           setView('LANDING');
         }}
       />
+    );
+  }
+
+  if (view === 'NOT_FOUND') {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6 p-8">
+        <div className="text-center">
+          <div className="text-8xl font-bold text-[#4cff5a] font-mono mb-2">404</div>
+          <div className="text-xl text-gray-400 mb-1">Страница не найдена</div>
+          <div className="text-sm text-gray-600">Экспонат или коллекция были удалены или не существуют</div>
+        </div>
+        <button
+          onClick={() => { window.history.replaceState({}, '', '/'); setView('FEED'); document.title = 'NeoArchive: Ваша цифровая полка и виртуальные коллекции'; }}
+          className="px-6 py-3 bg-[#4cff5a] text-black font-bold rounded-lg hover:bg-[#3de049] transition-colors"
+        >
+          На главную
+        </button>
+      </div>
     );
   }
 

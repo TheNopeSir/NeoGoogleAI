@@ -169,6 +169,20 @@ const notificationLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+const publicReadLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 120,
+    message: { error: 'Слишком много запросов. Попробуйте позже.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const searchLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 20,
+    message: { error: 'Слишком много поисковых запросов. Подождите минуту.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // --- STOP WORDS (серверная проверка) ---
 const _normalizeForFilter = t =>
@@ -413,7 +427,9 @@ const ensureSchema = async () => {
         `CREATE INDEX IF NOT EXISTS idx_exhibits_owner      ON exhibits ((data->>'owner'))`,
         `CREATE INDEX IF NOT EXISTS idx_exhibits_ts         ON exhibits ((data->>'timestamp'))`,
         `CREATE INDEX IF NOT EXISTS idx_exhibits_updated    ON exhibits (updated_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_exhibits_draft      ON exhibits ((data->>'isDraft'))`,
         `CREATE INDEX IF NOT EXISTS idx_collections_owner   ON collections ((data->>'owner'))`,
+        `CREATE INDEX IF NOT EXISTS idx_collections_updated ON collections (updated_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_notifs_recipient    ON notifications ((data->>'recipient'))`,
         `CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages ((data->>'sender'))`,
         `CREATE INDEX IF NOT EXISTS idx_messages_recipient  ON messages ((data->>'recipient'))`,
@@ -1384,7 +1400,7 @@ api.post('/users', async (req, res) => {
 });
 
 // Exhibits GET/DELETE (POST is separate)
-api.get('/exhibits', async (req, res) => {
+api.get('/exhibits', publicReadLimiter, async (req, res) => {
     try {
         // owner-scoped requests get higher limit since we need the full user's catalog
         const maxLimit = req.query.owner ? 500 : 200;
@@ -1405,11 +1421,16 @@ api.get('/exhibits', async (req, res) => {
     }
 });
 
-api.get('/exhibits/:id', async (req, res) => {
+api.get('/exhibits/:id', publicReadLimiter, async (req, res) => {
     try {
+        const cacheKey = `exhibit:${req.params.id}`;
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
         const result = await query('SELECT * FROM exhibits WHERE id = $1', [req.params.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
-        res.json(mapRow(result.rows[0]));
+        const data = mapRow(result.rows[0]);
+        cache.set(cacheKey, data, 300);
+        res.json(data);
     } catch (e) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -1466,6 +1487,9 @@ api.delete('/exhibits/:id', async (req, res) => {
             }
         }
         await query('DELETE FROM exhibits WHERE id = $1', [req.params.id]);
+        cache.del(`exhibit:${req.params.id}`);
+        cache.flushPattern('feed:');
+        cache.del('sitemap');
         console.log(`[EXHIBIT:DELETE] id=${req.params.id} by=${username} at=${new Date().toISOString()}`);
         res.json({ success: true });
     } catch (e) {
@@ -1533,6 +1557,7 @@ const createCrud = (router, table) => {
 
             await query(`INSERT INTO "${table}" (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, req.body]);
             cache.flushPattern(`${table}:`);
+            if (table === 'collections') cache.del('sitemap');
 
             if (table === 'notifications') {
                 const notif = req.body;
@@ -1597,6 +1622,7 @@ const createCrud = (router, table) => {
                 if (check.rows.length === 0) return res.status(403).json({ error: "Нет прав для удаления" });
             }
             await query(`DELETE FROM "${table}" WHERE id = $1`, [req.params.id]);
+            if (table === 'collections') cache.del('sitemap');
             res.json({ success: true });
         } catch (e) {
             res.status(500).json({ error: 'Internal Server Error' });
@@ -1606,6 +1632,8 @@ const createCrud = (router, table) => {
 
 // --- ANTI-SPAM ROUTE BINDINGS ---
 // Должны быть зарегистрированы ДО createCrud, чтобы middleware выполнялся первым (порядок регистрации в Express).
+api.get('/collections',     publicReadLimiter);
+api.get('/collections/:id', publicReadLimiter);
 api.post('/messages',       messageLimiter,       spamFilter);
 api.post('/global_chat',    messageLimiter,       spamFilter);
 api.post('/guestbook',      guestbookLimiter,     spamFilter);
@@ -1650,6 +1678,8 @@ api.post('/exhibits', contentCreateLimiter, spamFilter, async (req, res) => {
         }
         await query(`INSERT INTO exhibits (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, processedData]);
         cache.flushPattern('feed:');
+        cache.del(`exhibit:${id}`);
+        if (!processedData.isDraft) cache.del('sitemap');
         const action = isNewExhibit ? 'CREATE' : 'UPDATE';
         const draftFlag = processedData.isDraft ? ' [DRAFT]' : '';
         console.log(`[EXHIBIT:${action}]${draftFlag} id=${id} owner=${processedData.owner} title="${(processedData.title || '').slice(0, 60)}" at=${new Date().toISOString()}`);
@@ -2238,27 +2268,47 @@ app.get('/artifact/:id', async (req, res) => {
     const indexPath = path.join(__dirname, 'dist', 'index.html');
     try {
         const result = await query('SELECT * FROM exhibits WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) return res.sendFile(indexPath);
+        if (result.rows.length === 0) {
+            return res.status(404).send(`<!DOCTYPE html>
+<html lang="ru"><head>
+  <meta charset="UTF-8">
+  <title>Экспонат не найден — NeoArchive</title>
+  <meta name="robots" content="noindex">
+</head><body>
+  <p>Экспонат не найден.</p>
+  <a href="https://neoarchive.ru/">На главную</a>
+</body></html>`);
+        }
 
         const exhibit = mapRow(result.rows[0]);
         const title = _escapeHtml(exhibit.title || 'Артефакт');
         const description = _escapeHtml(
             exhibit.description
-                ? exhibit.description.slice(0, 200)
+                ? exhibit.description.slice(0, 160)
                 : `Артефакт @${exhibit.owner || ''} на NeoArchive`
         );
         const pageUrl = `https://neoarchive.ru/artifact/${req.params.id}`;
 
-        // Достаём URL фото (предпочитаем large)
         const imgs = Array.isArray(exhibit.imageUrls) ? exhibit.imageUrls : [];
         const ogImageUrl = _getOgImageUrl(imgs[0]) || 'https://neoarchive.ru/icon-512.png';
         const ogImage = _escapeHtml(ogImageUrl);
 
+        const jsonLd = JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: exhibit.title || 'Артефакт',
+            description: exhibit.description ? exhibit.description.slice(0, 500) : '',
+            image: ogImageUrl,
+            url: pageUrl,
+            offers: { '@type': 'Offer', availability: 'https://schema.org/InStock' },
+        });
+
         let html = fs.readFileSync(indexPath, 'utf8');
 
-        // Заменяем/вставляем OG-теги в <head>
         const inject = `
     <title>${title} | NeoArchive</title>
+    <meta name="description" content="${description}" />
+    <link rel="canonical" href="${pageUrl}" />
     <meta property="og:title" content="${title} | NeoArchive" />
     <meta property="og:description" content="${description}" />
     <meta property="og:image" content="${ogImage}" />
@@ -2269,17 +2319,16 @@ app.get('/artifact/:id', async (req, res) => {
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${title} | NeoArchive" />
     <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${ogImage}" />`;
+    <meta name="twitter:image" content="${ogImage}" />
+    <script type="application/ld+json">${jsonLd}</script>`;
 
-        // Заменяем существующие теги через регексы (поддерживаем и property= и name=)
         const ogAttr = (key) => `(?:property|name)="${key}"`;
         const replaceOg = (h, key, val) =>
             h.replace(new RegExp(`(<meta\\s+${ogAttr(key)}\\s+content=")[^"]*(")`,'g'), `$1${val}$2`)
              .replace(new RegExp(`(<meta\\s+content="[^"]*"\\s+${ogAttr(key)}[^>]*>)`,'g'),
                       `<meta property="${key}" content="${val}" />`);
 
-        html = html
-            .replace(/<title>[^<]*<\/title>/, `<title>${title} | NeoArchive</title>`);
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${title} | NeoArchive</title>`);
         html = replaceOg(html, 'og:title',       `${title} | NeoArchive`);
         html = replaceOg(html, 'og:description', description);
         html = replaceOg(html, 'og:image',       ogImage);
@@ -2288,13 +2337,16 @@ app.get('/artifact/:id', async (req, res) => {
         html = replaceOg(html, 'twitter:title',       `${title} | NeoArchive`);
         html = replaceOg(html, 'twitter:description', description);
         html = replaceOg(html, 'twitter:image',       ogImage);
+        html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/g, `$1${description}$2`);
 
-        // На случай если каких-то тегов не было — добавляем в <head>
         if (!html.includes('og:image:width')) {
             html = html.replace('</head>', `${inject}\n</head>`);
+        } else if (!html.includes('application/ld+json')) {
+            html = html.replace('</head>', `  <link rel="canonical" href="${pageUrl}" />\n  <script type="application/ld+json">${jsonLd}</script>\n</head>`);
         }
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
         res.send(html);
     } catch (e) {
         console.error('[OG] Error injecting meta for artifact:', e.message);
@@ -2307,23 +2359,45 @@ app.get('/collection/:id', async (req, res) => {
     const indexPath = path.join(__dirname, 'dist', 'index.html');
     try {
         const result = await query('SELECT * FROM collections WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) return res.sendFile(indexPath);
+        if (result.rows.length === 0) {
+            return res.status(404).send(`<!DOCTYPE html>
+<html lang="ru"><head>
+  <meta charset="UTF-8">
+  <title>Коллекция не найдена — NeoArchive</title>
+  <meta name="robots" content="noindex">
+</head><body>
+  <p>Коллекция не найдена.</p>
+  <a href="https://neoarchive.ru/">На главную</a>
+</body></html>`);
+        }
 
         const collection = mapRow(result.rows[0]);
         const title = _escapeHtml(collection.title || 'Коллекция');
         const description = _escapeHtml(
             collection.description
-                ? collection.description.slice(0, 200)
+                ? collection.description.slice(0, 160)
                 : `Коллекция @${collection.owner || ''} на NeoArchive`
         );
         const pageUrl = `https://neoarchive.ru/collection/${req.params.id}`;
         const ogImageUrl = _getOgImageUrl(collection.coverImage) || 'https://neoarchive.ru/icon-512.png';
         const ogImage = _escapeHtml(ogImageUrl);
 
+        const jsonLd = JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: collection.title || 'Коллекция',
+            description: collection.description ? collection.description.slice(0, 500) : '',
+            image: ogImageUrl,
+            url: pageUrl,
+            author: collection.owner ? { '@type': 'Person', name: collection.owner } : undefined,
+        });
+
         let html = fs.readFileSync(indexPath, 'utf8');
 
         const inject = `
     <title>${title} | NeoArchive</title>
+    <meta name="description" content="${description}" />
+    <link rel="canonical" href="${pageUrl}" />
     <meta property="og:title" content="${title} | NeoArchive" />
     <meta property="og:description" content="${description}" />
     <meta property="og:image" content="${ogImage}" />
@@ -2334,7 +2408,8 @@ app.get('/collection/:id', async (req, res) => {
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${title} | NeoArchive" />
     <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${ogImage}" />`;
+    <meta name="twitter:image" content="${ogImage}" />
+    <script type="application/ld+json">${jsonLd}</script>`;
 
         const ogAttr = (key) => `(?:property|name)="${key}"`;
         const replaceOg = (h, key, val) =>
@@ -2351,12 +2426,16 @@ app.get('/collection/:id', async (req, res) => {
         html = replaceOg(html, 'twitter:title',       `${title} | NeoArchive`);
         html = replaceOg(html, 'twitter:description', description);
         html = replaceOg(html, 'twitter:image',       ogImage);
+        html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/g, `$1${description}$2`);
 
         if (!html.includes('og:image:width')) {
             html = html.replace('</head>', `${inject}\n</head>`);
+        } else if (!html.includes('application/ld+json')) {
+            html = html.replace('</head>', `  <link rel="canonical" href="${pageUrl}" />\n  <script type="application/ld+json">${jsonLd}</script>\n</head>`);
         }
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
         res.send(html);
     } catch (e) {
         console.error('[OG] Error injecting meta for collection:', e.message);
@@ -2367,9 +2446,16 @@ app.get('/collection/:id', async (req, res) => {
 // ── Динамическая карта сайта ──────────────────────────────────────────────────
 app.get('/sitemap.xml', async (req, res) => {
     try {
+        const cached = cache.get('sitemap');
+        if (cached) {
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=600');
+            return res.send(cached);
+        }
+
         const [exhibitsRes, collectionsRes] = await Promise.all([
-            query(`SELECT id, updated_at, created_at FROM exhibits WHERE (data->>'isDraft')::boolean IS NOT TRUE ORDER BY created_at DESC LIMIT 50000`),
-            query(`SELECT id, updated_at, created_at FROM collections ORDER BY created_at DESC LIMIT 10000`),
+            query(`SELECT id, updated_at, created_at FROM exhibits WHERE (data->>'isDraft')::boolean IS NOT TRUE ORDER BY updated_at DESC LIMIT 50000`),
+            query(`SELECT id, updated_at, created_at FROM collections ORDER BY updated_at DESC LIMIT 10000`),
         ]);
 
         const fmt = (row) => {
@@ -2392,8 +2478,9 @@ ${exhibitUrls}
 ${collectionUrls}
 </urlset>`;
 
+        cache.set('sitemap', xml, 600);
         res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'public, max-age=600');
         res.send(xml);
     } catch (e) {
         console.error('[Sitemap] Error generating sitemap:', e.message);

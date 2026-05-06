@@ -1,5 +1,15 @@
 User-agent: *
-Allow: /
+Allow: /artifact/
+Allow: /collection/
+Allow: /privacy
+Allow: /terms
+Disallow: /api/
+Disallow: /admin
+Disallow: /settings
+Disallow: /create
+Disallow: /my-collection
+Disallow: /activity
+Disallow: /direct-chat
 
 Sitemap: https://neoarchive.ru/sitemap.xml
 Host: https://neoarchive.ru
